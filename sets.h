@@ -3,7 +3,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include <stdint.h> // only used for the stdint-based sets below, not used in implementation
+#include <stdint.h> // only used for the declarations below, not used in implementation
 
 /*********************************
       Pointer Sets
@@ -63,7 +63,7 @@ do { \
 	(ss)->length = 0; \
 	(ss)->alloc = 0; \
 	(ss)->elem_size = sizeof(type); \
-	(ss)->cmp = (void*)(comp_fn); \
+	(ss)->cmp = (SetCmpFn)(comp_fn); \
 } while(0)
 
 
@@ -143,9 +143,9 @@ void type##Set_insert(type##Set* ps, type p) { \
 
 #define DEFINE_SET_PRINT(type, fmt) \
 void type##Set_print(type##Set* ps) { \
-	printf(#type "Set %p (%ld items)\n", ps, ps->length); \
-	for(int i = 0; i < ps->length; i++) { \
-		printf(" %d: " fmt "\n", i, ps->set[i]); \
+	printf(#type "Set %p (%ld items)\n", (void*)ps, ps->length); \
+	for(size_t i = 0; i < ps->length; i++) { \
+		printf(" %ld: " fmt "\n", i, ps->set[i]); \
 	} \
 }
 
@@ -377,6 +377,10 @@ DECLARE_SET_FOR_TYPE(char)
 DECLARE_SET_FOR_TYPE(short)
 DECLARE_SET_FOR_TYPE(int)
 DECLARE_SET_FOR_TYPE(long)
+DECLARE_SET_FOR_TYPE(int8_t)
+DECLARE_SET_FOR_TYPE(int16_t)
+DECLARE_SET_FOR_TYPE(int32_t)
+DECLARE_SET_FOR_TYPE(int64_t)
 DECLARE_SET_FOR_TYPE(uint8_t)
 DECLARE_SET_FOR_TYPE(uint16_t)
 DECLARE_SET_FOR_TYPE(uint32_t)

@@ -39,7 +39,7 @@ int recurseDirs(
 	}
 	
 	
-	while((result = readdir(derp)) && result && !stop) {
+	while((result = readdir(derp)) && !stop) {
 		char* n = result->d_name;
 		unsigned char type = DT_UNKNOWN;
 		char* fullPath;

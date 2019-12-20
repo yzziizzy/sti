@@ -12,9 +12,9 @@
 
 void PointerSet_print(PointerSet* ps) {
 	
-	printf("PointerSet %p (%ld items)\n", ps, ps->length);
-	for(int i = 0; i < ps->length; i++) {
-		printf(" %d: %p\n", i, ps->set[i]);
+	printf("PointerSet %p (%ld items)\n", (void*)ps, ps->length);
+	for(size_t i = 0; i < ps->length; i++) {
+		printf(" %ld: %p\n", i, ps->set[i]);
 	}
 }
 
@@ -259,13 +259,13 @@ PointerSet* PointerSet_difference(PointerSet* a, PointerSet* b) {
 // Struct Sets
 
 #define SS_EQ(ss, i, p) \
-	ss->cmp(ss->set + i * ss->elem_size, p)
+	ss->cmp((char*)ss->set + i * ss->elem_size, p)
 
 #define SS_CMP(a, b, ai, bi) \
-	a->cmp(a->set + ai * a->elem_size, b->set + bi * b->elem_size)
+	a->cmp((char*)a->set + (ai * a->elem_size), (char*)b->set + (bi * b->elem_size))
 
 #define SS_SET(ss, i, p) \
-	memcpy(ss->set + i * ss->elem_size, p, ss->elem_size)
+	memcpy((char*)ss->set + i * ss->elem_size, p, ss->elem_size)
 
 size_t StructSet_find_index(StructSet* ss, void* p) {
 	ptrdiff_t  R = ss->length - 1;
@@ -311,8 +311,8 @@ int StructSet_insert(StructSet* ss, void* p) {
 	if(SS_EQ(ss, i, &p) == 0) return 1;
 
 	memmove(
-		ss->set + (i + 1) * ss->elem_size, 
-		ss->set + i * ss->elem_size, 
+		(char*)ss->set + (i + 1) * ss->elem_size, 
+		(char*)ss->set + i * ss->elem_size, 
 		(ss->length - i) * ss->elem_size
 	);
 	SS_SET(ss, i, &p);
@@ -328,8 +328,8 @@ int StructSet_remove(StructSet* ss, void* p) {
 	if(SS_EQ(ss, i, &p) != 0) return 0;
 	
 	memmove(
-		ss->set + i * ss->elem_size, 
-		 ss->set + (i + 1) * ss->elem_size,
+		(char*)ss->set + i * ss->elem_size, 
+		(char*)ss->set + (i + 1) * ss->elem_size,
 		(ss->length - i - 1) * ss->elem_size
 	);
 	ss->length--;
@@ -373,7 +373,7 @@ StructSet* StructSet_intersect(StructSet* a, StructSet* b) {
 	while(ai < a->length && bi < b->length) {
 		int n = SS_CMP(a, b, ai, bi);
 		if(n == 0) {
-			SS_SET(c, ci, a->set + ai * a->elem_size);
+			SS_SET(c, ci, (char*)a->set + ai * a->elem_size);
 			c->length++;
 			ai++; bi++; ci++; 
 		}
@@ -403,17 +403,17 @@ StructSet* StructSet_union(StructSet* a, StructSet* b) {
 	while(ai < a->length || bi < b->length) {
 		int n = SS_CMP(a, b, ai, bi);
 		if(n == 0) {
-			SS_SET(c, ci, a->set + ai * a->elem_size);
+			SS_SET(c, ci, (char*)a->set + ai * a->elem_size);
 			c->length++;
 			ai++; bi++; ci++; 
 		}
 		else if(n > 0) {
-			SS_SET(c, ci, b->set + bi * b->elem_size);
+			SS_SET(c, ci, (char*)b->set + bi * b->elem_size);
 			c->length++;
 			bi++;
 		}
 		else {
-			SS_SET(c, ci, a->set + ai * a->elem_size);
+			SS_SET(c, ci, (char*)a->set + ai * a->elem_size);
 			c->length++;
 			ai++;
 		}
@@ -440,12 +440,12 @@ StructSet* StructSet_difference(StructSet* a, StructSet* b) {
 			ai++; bi++; 
 		}
 		else if(n > 0) {
-			SS_SET(c, ci, b->set + bi * b->elem_size);
+			SS_SET(c, ci, (char*)b->set + bi * b->elem_size);
 			c->length++;
 			bi++;
 		}
 		else {
-			SS_SET(c, ci, a->set + ai * a->elem_size);
+			SS_SET(c, ci, (char*)a->set + ai * a->elem_size);
 			c->length++;
 			ai++;
 		}
@@ -462,6 +462,10 @@ DEFINE_SET_FOR_TYPE(char, "%c")
 DEFINE_SET_FOR_TYPE(short, "%d")
 DEFINE_SET_FOR_TYPE(int, "%d")
 DEFINE_SET_FOR_TYPE(long, "%ld")
+DEFINE_SET_FOR_TYPE(int8_t, "%d")
+DEFINE_SET_FOR_TYPE(int16_t, "%d")
+DEFINE_SET_FOR_TYPE(int32_t, "%d")
+DEFINE_SET_FOR_TYPE(int64_t, "%ld")
 DEFINE_SET_FOR_TYPE(uint8_t, "%d")
 DEFINE_SET_FOR_TYPE(uint16_t, "%d")
 DEFINE_SET_FOR_TYPE(uint32_t, "%d")

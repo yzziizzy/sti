@@ -25,7 +25,7 @@ double timeSinceEpoch(double past); // also in seconds
 
 // super nifty site:
 // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-static unsigned long inline nextPOT(unsigned long in) {
+inline static size_t nextPOT(size_t in) {
 	
 	in--;
 	in |= in >> 1;
