@@ -1,3 +1,4 @@
+// Public Domain.
 
 #include <stddef.h> // ptrdiff_t, size_t
 #include <stdlib.h> // [c|m|re]alloc, free
@@ -20,7 +21,7 @@ void PointerSet_print(PointerSet* ps) {
 
 
 size_t PointerSet_find_index(PointerSet* ps, void* p) {
-	ptrdiff_t  R = ps->length - 1;
+	ptrdiff_t R = ps->length - 1;
 	ptrdiff_t L = 0;
 	ptrdiff_t i;
 	
@@ -52,7 +53,7 @@ void PointerSet_insert(PointerSet* ps, void* p) {
 		ps->length++;
 		return;
 	}
-	else if(ps->length + 1 <= ps->alloc) {
+	else if(ps->length + 1 > ps->alloc) {
 		ps->alloc *= 2;
 		ps->set = realloc(ps->set, ps->alloc * sizeof(*ps->set));
 	} 
@@ -277,10 +278,10 @@ size_t StructSet_find_index(StructSet* ss, void* p) {
 		// midpoint
 		i = L + ((R - L) / 2);
 		int n = SS_EQ(ss, i, &p);
-		if(n < 1) {
+		if(n < 0) {
 			L = i + 1;
 		}
-		else if(n > 1) {
+		else if(n > 0) {
 			R = i - 1;
 		}
 		else {
@@ -301,7 +302,7 @@ int StructSet_insert(StructSet* ss, void* p) {
 		ss->length++;
 		return 0;
 	}
-	else if(ss->length + 1 <= ss->alloc) {
+	else if(ss->length + 1 > ss->alloc) {
 		ss->alloc *= 2;
 		ss->set = realloc(ss->set, ss->alloc * ss->elem_size);
 	} 

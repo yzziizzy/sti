@@ -1,3 +1,4 @@
+// Public Domain.
 
 
 #include <time.h>

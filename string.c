@@ -1,3 +1,5 @@
+// Public Domain.
+
 
 #include <string.h>
 #include "string.h"

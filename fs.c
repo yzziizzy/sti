@@ -1,3 +1,6 @@
+// Public Domain.
+
+
 #include <stdlib.h> 
 #include <stddef.h> // offsetof
 #include <stdio.h> // fprintf, fopen et al.

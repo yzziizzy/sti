@@ -1,6 +1,10 @@
 #ifndef __sti__fs_h__
 #define __sti__fs_h__
 
+// Public Domain.
+
+
+
 #include <stddef.h> // size_t
 
 

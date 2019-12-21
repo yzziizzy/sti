@@ -1,6 +1,10 @@
 #ifndef __sti__misc_h__
 #define __sti__misc_h__
 
+// Public Domain.
+
+#include <math.h> // fmin,fmax
+
 
 // *performance* time counting functions
 
@@ -37,6 +41,71 @@ inline static size_t nextPOT(size_t in) {
 	
 	return in;
 }
+
+
+// Random number helpers
+
+inline static float frand(float low, float high) {
+	return low + ((high - low) * ((float)rand() / (float)RAND_MAX));
+}
+
+inline static float frandNorm() {
+	return ((float)rand() / (float)RAND_MAX);
+}
+
+inline static double drand(double low, double high) {
+	return low + ((high - low) * ((double)rand() / (double)RAND_MAX));
+}
+
+inline static double drandNorm() {
+	return ((double)rand() / (double)RAND_MAX);
+}
+
+
+// clamping
+
+inline static float fclamp(float val, float min, float max) {
+	return fminf(max, fmaxf(min, val));
+}
+inline static float fclampNorm(float val) {
+	return fclamp(val, 0.0f, 1.0f);
+}
+inline static float dclamp(double val, double min, double max) {
+	return fmin(max, fmax(min, val));
+}
+inline static float dclampNorm(double val) {
+	return fclamp(val, 0.0, 1.0);
+}
+
+inline static int iclamp(int val, int min, int max) {
+	return val > max ? max : (val < min ? min : val);
+}
+inline static int uiclamp(unsigned int val, unsigned int min, unsigned int max) {
+	return val > max ? max : (val < min ? min : val);
+}
+inline static int iclamp64(int64_t val, int64_t min, int64_t max) {
+	return val > max ? max : (val < min ? min : val);
+}
+inline static int uclamp64(uint64_t val, uint64_t min, uint64_t max) {
+	return val > max ? max : (val < min ? min : val);
+}
+
+
+// lerps (linear interpolation)
+
+inline static float flerp(float a, float b, float t) {
+	return a  + ((b - a) * t);
+}
+inline static float dlerp(double a, double b, double t) {
+	return a  + ((b - a) * t);
+}
+inline static float flerp2D(float x0y0, float x1y0, float x0y1, float x1y1, float tx, float ty) {
+	return flerp(flerp(x0y0, x1y0, tx), flerp(x0y1, x1y1, tx), ty);
+}
+inline static float dlerp2D(double x0y0, double x1y0, double x0y1, double x1y1, double tx, double ty) {
+	return dlerp(dlerp(x0y0, x1y0, tx), dlerp(x0y1, x1y1, tx), ty);
+}
+
 
 
 

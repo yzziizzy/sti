@@ -1,6 +1,7 @@
 #ifndef __sti__string_h__
 #define __sti__string_h__
 
+// Public Domain.
 
 
 // length of the line, or length of the string if no \n found

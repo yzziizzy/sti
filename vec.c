@@ -1,3 +1,4 @@
+// Public Domain.
 
 
 #include <stdlib.h> // realloc
@@ -6,6 +7,9 @@
 
 #include "vec.h"
 
+
+#ifndef STI_HAS_STATIC_nextPOT
+#define STI_HAS_STATIC_nextPOT
 // super nifty site:
 // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 inline static size_t nextPOT(size_t in) {
@@ -20,7 +24,7 @@ inline static size_t nextPOT(size_t in) {
 	
 	return in;
 }
-
+#endif
 
 void vec_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size) {
 	void* tmp;

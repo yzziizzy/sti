@@ -1,6 +1,8 @@
 #ifndef __sti__vec_h__
 #define __sti__vec_h__
 
+// Public Domain.
+
 
 #include <stddef.h> // size_t
 
@@ -67,6 +69,18 @@ do { \
 	VEC_LEN(x)++; \
 } while(0)
 
+
+#define VEC_PREPEND(x, e) \
+do { \
+	VEC_CHECK(x); \
+	memmove( \
+		VEC_DATA(x) + 1, \
+		VEC_DATA(x), \
+		VEC_LEN(x) * sizeof(*VEC_DATA(x)) \
+	); \
+	VEC_DATA(x)[0] = (e); \
+	VEC_LEN(x)++; \
+} while(0)
 
 
 #define VEC_PEEK(x) VEC_DATA(x)[VEC_LEN(x) - 1]
@@ -207,6 +221,7 @@ do { \
 
 #define VEC_SORT_R(x, fn, s) \
 	qsort_r(VEC_DATA(x), VEC_LEN(x), sizeof(*VEC_DATA(x)), (__compar_d_fn_t)fn, (void*)s);
+
 
 
 

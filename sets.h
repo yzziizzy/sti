@@ -1,6 +1,9 @@
 #ifndef __sti__sets_h__
 #define __sti__sets_h__
 
+// Public Domain.
+
+
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include <stdint.h> // only used for the declarations below, not used in implementation
@@ -10,6 +13,8 @@
 **********************************
 
 Built around sorted vectors
+Roughly, tsearch is faster over about 750 inserts. 
+
 
 */
 
@@ -127,7 +132,7 @@ void type##Set_insert(type##Set* ps, type p) { \
 		ps->length++;  \
 		return;  \
 	}  \
-	else if(ps->length + 1 <= ps->alloc) {  \
+	else if(ps->length + 1 > ps->alloc) {  \
 		ps->alloc *= 2;  \
 		ps->set = realloc(ps->set, ps->alloc * sizeof(*ps->set));  \
 	}   \
