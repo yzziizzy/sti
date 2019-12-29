@@ -14,6 +14,9 @@ char* strlndup(const char* s);
 size_t strlinecnt(const char* s);
 
 
+// append b to a in a new buffer
+char* strappend(const char* a, const char* const b);
+
 
 
 #endif // __sti__string_h__

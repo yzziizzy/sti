@@ -10,6 +10,7 @@
 #include "sets.c"
 #include "sexp.c"
 #include "string.c"
+#include "utf.c"
 #include "vec.c"
 
 // heavily dependent on Linux

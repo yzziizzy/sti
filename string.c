@@ -36,3 +36,20 @@ size_t strlinecnt(const char* s) {
 	
 	return n;
 }
+
+
+
+// append b to a in a new buffer
+char* strappend(const char* a, const char* const b) {
+	if(a == NULL) return strdup(b);
+	if(b == NULL) return strdup(a);
+	
+	size_t la = strlen(a);
+	size_t lb = strlen(b);
+	char* o = malloc(la + lb + 1);
+	strcpy(o, a);
+	strcpy(o + la, b);
+	o[la + lb] = '\0';
+	return o;
+}
+
