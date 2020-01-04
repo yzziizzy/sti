@@ -4,6 +4,9 @@
 // Public Domain.
 
 
+int decodeHexDigit(char c);
+
+
 // length of the line, or length of the string if no \n found
 size_t strlnlen(const char* s);
 

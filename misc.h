@@ -43,6 +43,7 @@ inline static size_t nextPOT(size_t in) {
 }
 
 
+#ifndef STI_C3DLAS_NO_CONFLICT
 // Random number helpers
 
 inline static float frand(float low, float high) {
@@ -106,6 +107,7 @@ inline static float dlerp2D(double x0y0, double x1y0, double x0y1, double x1y1, 
 	return dlerp(dlerp(x0y0, x1y0, tx), dlerp(x0y1, x1y1, tx), ty);
 }
 
+#endif
 
 
 

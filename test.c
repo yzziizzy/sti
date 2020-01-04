@@ -18,14 +18,14 @@
 
 
 
-static void nothin(void* );
-static void nothin(void* b) { (void)b; }
-static int intcomp(const void* a, const void* b);
-static int intcomp(const void* a, const void* b) {
-	int ai = *(uint64_t*)a;
-	int bi = *(uint64_t*)b;
-	return bi - ai;
-}
+// static void nothin(void* );
+// static void nothin(void* b) { (void)b; }
+// static int intcomp(const void* a, const void* b);
+// static int intcomp(const void* a, const void* b) {
+// 	int ai = *(uint64_t*)a;
+// 	int bi = *(uint64_t*)b;
+// 	return bi - ai;
+// }
 
 
 int main(int argc, char* argv[]) {
@@ -93,25 +93,25 @@ int main(int argc, char* argv[]) {
 		
 		
 		while(ttime > btime) {
-			int i = 0;
+// 			int i = 0;
 			
-			int64_t* nums = malloc(max * sizeof(*nums));
-			for(i = 0; i < max; i++) nums[i] = frandNorm() * 1000000 + 1;
+// 			int64_t* nums = malloc(max * sizeof(*nums));
+// 			for(i = 0; i < max; i++) nums[i] = frandNorm() * 1000000 + 1;
 			
 	// 		int64_tSet set;
 	// 		int64_tSet_init(&set);
-			PointerSet set;
-			HashTable hash;
+// 			PointerSet set;
+// 			HashTable hash;
 			
 			
 			start = getCurrentTimePerf();
-			PointerSet_init(&set);
-			for(i = 0; i < max; i++) {
+// 			PointerSet_init(&set);
+// 			for(i = 0; i < max; i++) {
 	// 			int64_tSet_insert(&set, nums[i]);
-				PointerSet_insert(&set, (void*)nums[i]);
+// 				PointerSet_insert(&set, (void*)nums[i]);
 				
-			}
-			PointerSet_destroy(&set);
+// 			}
+// 			PointerSet_destroy(&set);
 			
 			
 			btime = timeSincePerf(start);
@@ -121,16 +121,16 @@ int main(int argc, char* argv[]) {
 			
 			start = getCurrentTimePerf();
 			
-			for(i = 0; i < max; i++) {
-				tsearch(&nums[i], &tree, intcomp);
-			}
-			tdestroy(tree, nothin);
+// 			for(i = 0; i < max; i++) {
+// 				tsearch(&nums[i], &tree, intcomp);
+// 			}
+// 			tdestroy(tree, nothin);
 			
 			ttime = timeSincePerf(start);
 			printf("tree time: %fms\n", ttime * 1000);
 			
 			
-			max += inc;
+// 			max += inc;
 		}
 		
 		printf("passed at: %d\n", max - inc);

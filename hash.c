@@ -14,7 +14,7 @@
 #define MURMUR_SEED 718281828
 
  
-static uint64_t hash_key(char* key, size_t len);
+static uint64_t hash_key(char* key, int64_t len);
 static ptrdiff_t find_bucket(HashTable* obj, uint64_t hash, char* key);
  
  
@@ -64,7 +64,7 @@ int HT_init(HashTable* obj, int minAllocSize) {
 	pot = pot < 16 ? 16 : pot;
 	
 	obj->fill = 0;
-	obj->alloc_size = 1 << pot;
+	obj->alloc_size = pot;
 	obj->grow_ratio = 0.75f;
 	obj->shrink_ratio = 99.0f; // set greater than 1.0 to entirely disable
 	obj->buckets = calloc(1, sizeof(*obj->buckets) * obj->alloc_size);
@@ -97,11 +97,11 @@ void HT_destroy(HashTable* obj, int free_values_too) {
 
 
 // uses a truncated 128bit murmur3 hash
-static uint64_t hash_key(char* key, size_t len) {
+static uint64_t hash_key(char* key, int64_t len) {
 	uint64_t hash[2];
 	
 	// len is optional
-	if(len == 0) len = strlen(key);
+	if(len <= 0) len = strlen(key);
 	
 	MurmurHash3_x64_128(key, len, MURMUR_SEED, hash);
 	
@@ -109,7 +109,7 @@ static uint64_t hash_key(char* key, size_t len) {
 }
 
 static ptrdiff_t find_bucket(HashTable* obj, uint64_t hash, char* key) {
-	size_t startBucket, bi;
+	int64_t startBucket, bi;
 	
 	bi = startBucket = hash % obj->alloc_size; 
 	
@@ -149,8 +149,8 @@ static ptrdiff_t find_bucket(HashTable* obj, uint64_t hash, char* key) {
 // should always be called with a power of two
 int HT_resize(HashTable* obj, int newSize) {
 	struct hash_bucket* old, *op;
-	size_t oldlen = obj->alloc_size;
-	size_t i, n, bi;
+	int64_t oldlen = obj->alloc_size;
+	int64_t i, n, bi;
 	
 	old = op = obj->buckets;
 	
@@ -216,8 +216,8 @@ int HT_set(HashTable* obj, char* key, void* val) {
 	
 	if(obj->buckets[bi].key == NULL) {
 		// new bucket
-		obj->buckets[bi].key = key;
-		obj->buckets[bi].hash = hash;
+// 		obj->buckets[bi].key = key;
+// 		obj->buckets[bi].hash = hash;
 		obj->fill++;
 	}
 	

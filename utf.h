@@ -6,7 +6,7 @@
 //         NOTE:
 //
 //  This is a basic, general utf8/32 string handling library.
-//  It is written with speed and efficiency before "correctness".
+//  It is written for speed and efficiency before "correctness".
 //  It will pass through any characters it does not know about.
 //  It is aimed at *reasonable* support for *most* modern languages.
 //  It IS NOT a full-featured, complete, correct unicode library. 
@@ -14,11 +14,14 @@
 //     including your favorite language.
 //  It makes no attempt, and never will, to support special features of
 //     ancient, obscure, or unusual languages.
+//  Character properties above FFFF are completely unsupported.
 //  
 /////////////////////////////////////////////////////////////////////////
 
 // https://www.unicode.org/reports/tr44/#UnicodeData.txt
 
+
+#include <string.h>
 
 // utf8 functions
 
@@ -48,6 +51,7 @@ int utf8_has_multibyte(const char* u8);
 
 // some normal string functions are utf8 safe. *8 versions are provided here so you don't have
 //   to remember which ones are which
+inline static size_t strlen8(const char* s) { return strlen(s); }
 inline static char* strcat8(char* dst, const char* src) { return strcat(dst, src); }
 inline static char* strncat8(char* dst, const char* src, size_t len) { return strncat(dst, src, len); }
 inline static char* strcpy8(char* dst, const char* src) { return strcpy(dst, src); }
@@ -63,7 +67,7 @@ inline static char* strndup8(const char* const s, size_t len) { return strndup(s
 inline static char* strtok8(char* s, const char* delim) {
 	(void)s;
 	(void)delim;
-	*((int*)0) = 1; // segfault on purpose because non-reentrant fns are bad. use strtok_r. 
+	*((int*)0) = 0xBadBad; // segfault on purpose because non-reentrant fns are bad. use strtok_r. 
 	return NULL;
 }
 
