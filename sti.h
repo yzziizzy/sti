@@ -7,6 +7,7 @@
 #include "hash.h"
 #include "MurmurHash3.h"
 #include "misc.h"
+#include "rpn.h"
 #include "sets.h"
 #include "sexp.h"
 #include "string.h"

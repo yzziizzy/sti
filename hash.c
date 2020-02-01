@@ -158,7 +158,7 @@ int HT_resize(HashTable* obj, int newSize) {
 	obj->buckets = calloc(1, sizeof(*obj->buckets) * newSize);
 	if(!obj->buckets) return 1;
 	
-	for(i = 0, n = 0; i < oldlen && n < obj->fill; i++) {
+	for(i = 0, n = 0; i < oldlen && n < (int64_t)obj->fill; i++) {
 		if(op->key == NULL) continue;
 		
 		bi = find_bucket(obj, op->hash, op->key);

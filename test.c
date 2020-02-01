@@ -11,11 +11,7 @@
 #include <search.h> // for other testing
 
 
-#include "sets.h"
-#include "vec.h"
-#include "fs.h"
-#include "misc.h"
-
+#include "sti.h"
 
 
 // static void nothin(void* );
@@ -34,18 +30,53 @@ int main(int argc, char* argv[]) {
 	char test_vec = 0;
 	char test_fs = 0;
 	char test_b_vs_t = 0;
+	char test_rpn = 0;
 	
-	while ((c = getopt (argc, argv, "svf1")) != -1) {
+	while ((c = getopt (argc, argv, "svf1p")) != -1) {
 		switch(c) {
 			case 's': test_sets = 1; break;
 			case 'v': test_vec = 1; break;
 			case 'f': test_fs = 1; break;
 			case '1': test_b_vs_t = 1; break;
+			case 'p': test_rpn = 1; break;
 		}
 	}
 		
 		
+	if(test_rpn) {
+		sti_op_prec_rule rules[] = {
+			{"",  0, STI_OP_ASSOC_NONE,  0},
+			{"+", 1, STI_OP_ASSOC_LEFT,  2},
+			{"-", 1, STI_OP_ASSOC_LEFT,  2},
+			{"*", 2, STI_OP_ASSOC_LEFT,  2},
+			{"/", 2, STI_OP_ASSOC_LEFT,  2},
+			{NULL, 0, 0, 0},
+		};
 		
+		char* infix[] = {
+			"1",
+			"+",
+			"2",
+			"*",
+			"3",
+			"/",
+			"4",
+			"-",
+			"5",
+			NULL,
+		};
+		
+		char** rpn;
+		size_t len;
+		
+		infix_to_rpn(rules, infix, &rpn, &len);
+		
+		while(*rpn) {
+			printf(" %s \n", *rpn);
+			rpn++;
+		}
+		
+	}
 		
 		
 	if(test_sets) {

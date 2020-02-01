@@ -12,6 +12,7 @@
 #include "string.c"
 #include "utf.c"
 #include "vec.c"
+#include "rpn.c"
 
 // heavily dependent on Linux
 #include "memarena.c"
