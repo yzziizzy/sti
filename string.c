@@ -74,8 +74,8 @@ char** strsplit_inplace(char* src, char delim, size_t* outLen) {
 			out[len++] = start;
 			start = src + i + 1;
 			
-			// always have an extra 
-			if(len >= alloc){
+			// always have two extra for the end
+			if(len + 1 >= alloc){
 				alloc *= 2;
 				out = realloc(out, alloc * sizeof(*out));
 			}
@@ -83,7 +83,8 @@ char** strsplit_inplace(char* src, char delim, size_t* outLen) {
 		}
 	}
 	
-	out[len++] = start;
+// 	out[len++] = start;
+	out[len++] = NULL;
 	
 	if(outLen) *outLen = len;
 	
@@ -94,7 +95,7 @@ char** strsplit_inplace(char* src, char delim, size_t* outLen) {
 
 
 
-int decodeHexDigit(char c) {
+unsigned int decodeHexDigit(char c) {
 	if(c >= '0' && c <= '9') {
 		return c - '0';
 	}
@@ -112,44 +113,54 @@ static double nibbleHexNorm(char* s) {
 	double d = (decodeHexDigit(s[0]) * 16.0) + decodeHexDigit(s[1]);
 	return d / 256.0;
 }
-
-Vector4 sexp_argAsColor(sexp* x, int argn) {
-	int i;
-	union {
-		Vector4 c;
-		float f[4];
-	} u;
-	
-	u.c.x = 0.0;
-	u.c.y = 0.0;
-	u.c.z = 0.0;
-	u.c.w = 1.0; // default alpha is 1.0 
-
-	if(VEC_LEN(&x->args) < argn) return u.c;
-	sexp* arg = VEC_ITEM(&x->args, argn);
-	
-	if(arg->type == 0) { // it's an s-expression
-		for(i = 0; i < VEC_LEN(&arg->args); i++) { 
-			u.f[i] = sexp_argAsDouble(arg, i);
-		}
-	}
-	else { // it's a literal
-		// throw away any leading BS
-		char* s = arg->str;
-		char* e = arg->str + strlen(arg->str);
-		if(s[0] == '#') s++;
-		if(s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) s += 2;
-		
-		for(i = 0; i < 4 && s < e; i++) {
-			u.f[i] = nibbleHexNorm(s);
-			s += 2;
-		}
-	}
-	
-	printf("color: %f,%f,%f,%f\n", u.c.x, u.c.y, u.c.z, u.c.w);
-	
-	return u.c;
-}
 */
 
+// returns rgba, with r in most significant bits and a in the least
+uint32_t decodeHexColor(char* s) {
+	int i;
+	unsigned short c[4] = {0,0,0,255};
+	
+	// throw away any leading BS
+	char* e = s + strlen(s);
+	if(s[0] == '#') s++;
+	if(s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) s += 2;
+	
+	// the actual decoding
+	for(i = 0; i < 4 && s < e; i++) {
+		c[i] = (decodeHexDigit(s[0]) << 4) + decodeHexDigit(s[1]);
+		c[i] = c[i] > 255 ? 255 : c[i];
+		s += 2;
+	}
+	
+// 	printf(" color: %d,%d,%d,%d\n", c[0], c[1], c[2], c[3]);
+	
+	uint32_t o = 
+		(((uint32_t)c[0]) << 24) |
+		(((uint32_t)c[1]) << 16) |
+		(((uint32_t)c[2]) << 8) |
+		(((uint32_t)c[3]) << 0);
+	
+	return o;
+}
+
+
+void decodeHexColorNorm(char* s, float* out) {
+	int i;
+	out[0] = 0.0;
+	out[1] = 0.0;
+	out[2] = 0.0;
+	out[3] = 1.0;
+	
+	// throw away any leading BS
+	char* e = s + strlen(s);
+	if(s[0] == '#') s++;
+	if(s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) s += 2;
+	
+	// the actual decoding
+	for(i = 0; i < 4 && s < e; i++) {
+		int n = (decodeHexDigit(s[0]) << 4) + decodeHexDigit(s[1]);
+		out[i] = n / 255.0; 
+		s += 2;
+	}
+}
 

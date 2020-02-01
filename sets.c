@@ -322,6 +322,46 @@ int StructSet_insert(StructSet* ss, void* p) {
 	return 0;
 }
 
+int StructSet_insertGet(StructSet* ss, void* p, void** existing) {
+	
+	if(ss->length == 0) {
+		ss->alloc = 8;
+		ss->set = calloc(1, ss->alloc * ss->elem_size);
+		
+		SS_SET(ss, 0, &p);
+		ss->length++;
+		return 0;
+	}
+	else if(ss->length + 1 > ss->alloc) {
+		ss->alloc *= 2;
+		ss->set = realloc(ss->set, ss->alloc * ss->elem_size);
+	} 
+	
+	// find the slot
+	size_t i = StructSet_find_index(ss, p);
+	if(SS_EQ(ss, i, &p) == 0) {
+		if(existing) {
+			memcpy(
+				existing, 
+				(char*)ss->set + i * ss->elem_size, 
+				(ss->length - i) * ss->elem_size
+			);
+		}
+		
+		return 1;
+	}
+
+	memmove(
+		(char*)ss->set + (i + 1) * ss->elem_size, 
+		(char*)ss->set + i * ss->elem_size, 
+		(ss->length - i) * ss->elem_size
+	);
+	SS_SET(ss, i, &p);
+	ss->length++;
+	
+	return 0;
+}
+
 int StructSet_remove(StructSet* ss, void* p) {
 	if(ss->length == 0) return 0;
 	

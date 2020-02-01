@@ -4,7 +4,6 @@
 // Public Domain.
 
 
-int decodeHexDigit(char c);
 
 
 // length of the line, or length of the string if no \n found
@@ -23,6 +22,15 @@ char* strappend(const char* a, const char* const b);
 // mutates the source (replaces newlines with nulls)
 char** strsplit_inplace(char* src, char delim, size_t* outLen);
 
+
+// returns the numerical calue of a single hex digit
+unsigned int decodeHexDigit(char c);
+
+// returns rgba, with r in most significant bits and a in the least
+uint32_t decodeHexColor(char* s);
+
+// returns rgba, with r in out[0] and a in out[3], normalized to 0xFF = 1.0
+void decodeHexColorNorm(char* s, float* out);
 
 // TODO:
 // trim whitespace

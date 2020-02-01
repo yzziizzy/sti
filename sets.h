@@ -74,6 +74,7 @@ do { \
 
 
 int StructSet_insert(StructSet* ss, void* p);
+int StructSet_insertGet(StructSet* ss, void* p, void** existing);
 int StructSet_remove(StructSet* ss, void* p);
 int StructSet_exists(StructSet* ss, void* p);
 #define StructSet_alloc(e, c) StructSet_alloc_(sizeof(e), cmp)
