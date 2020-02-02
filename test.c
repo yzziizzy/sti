@@ -50,19 +50,29 @@ int main(int argc, char* argv[]) {
 			{"-", 1, STI_OP_ASSOC_LEFT,  2},
 			{"*", 2, STI_OP_ASSOC_LEFT,  2},
 			{"/", 2, STI_OP_ASSOC_LEFT,  2},
+			{"(", 8, STI_OP_OPEN_PAREN,  0},
+			{")", 8, STI_OP_CLOSE_PAREN, 0},
+			{"[", 9, STI_OP_OPEN_PAREN,  0},
+			{"]", 9, STI_OP_CLOSE_PAREN, 0},
 			{NULL, 0, 0, 0},
 		};
 		
 		char* infix[] = {
 			"1",
-			"+",
-			"2",
 			"*",
+			"(",
+			"2",
+			"+",
 			"3",
+			")",
 			"/",
+			"[",
 			"4",
 			"-",
 			"5",
+			"]",
+			"*",
+			"2",
 			NULL,
 		};
 		
