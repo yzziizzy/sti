@@ -1,5 +1,7 @@
 // Public Domain
 
+#include <ctype.h>
+
 #include "err.h"
 #include "rpn.h"
 #include "vec.h"
@@ -116,4 +118,100 @@ PAREN_MISMATCH:
 
 
 
+// the thinnest of checks
+static int string_is_number(char* s) {
+	if(s[0] >= '0' && s[0] <= '9') return 1;
+	
+	else if(s[0] == '-' || s[0] == '+') { 
+		if(s[1] >= '0' && s[1] <= '9') return 1;
+		else if(s[1] == '.') {
+			if(s[2] >= '0' && s[2] <= '9') return 1;
+		}
+	}
+	else if(s[0] == '.') {
+		if(s[1] >= '0' && s[1] <= '9') return 1;
+	}
+	
+	return 0;
+}
+
+
+
+#define oper(Z) { \
+	VEC_POP(&stack, b); \
+	VEC_POP(&stack, a); \
+	Z; \
+	VEC_PUSH(&stack, c); \
+	break; }
+
+int64_t rpn_eval_int_str(char** rpn) {
+	int64_t a, b, c;
+	
+	VEC(int64_t) stack;
+	VEC_INIT(&stack);
+	
+	for(char** r = rpn; *r; r++) {
+		if(string_is_number(*r)) {
+			VEC_PUSH(&stack, strtol(*r, NULL, 10));
+			continue;
+		}
+		
+		switch(**r) {
+			case '+': oper(c = a + b);
+			case '-': oper(c = a - b);
+			case '/': oper(c = a / b);
+			case '%': oper(c = a % b);
+			case '*': 
+				if((*r)[1] == '*') oper(c = a; for(int64_t n = abs(b); n > 1; n--) c *= a)
+				else oper(c = a * b);
+			case '&': oper(c = a & b);
+			case '|': oper(c = a | b);
+			case '^': oper(c = a ^ b);
+		}
+	}
+	
+	c = VEC_ITEM(&stack, 0);
+	
+	VEC_FREE(&stack);
+	
+	return c;
+}
+
+
+double rpn_eval_double_str(char** rpn) {
+	double a, b, c;
+	
+	VEC(double) stack;
+	VEC_INIT(&stack);
+	
+	for(char** r = rpn; *r; r++) {
+		if(string_is_number(*r)) {
+			VEC_PUSH(&stack, strtod(*r, NULL));
+			continue;
+		}
+		
+		switch(**r) {
+			case '+': oper(c = a + b);
+			case '-': oper(c = a - b);
+			case '/': oper(c = a / b);
+			case '*': oper(c = a * b);
+		}
+	}
+	
+	c = VEC_ITEM(&stack, 0);
+	
+	VEC_FREE(&stack);
+	
+	return c;
+}
+
+
+
+/*
+int infix_to_rpn_incr(sti_op_prec_rule* rules, shunting_context* ctx) {
+	
+	
+	
+}
+*/
 

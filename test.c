@@ -45,34 +45,38 @@ int main(int argc, char* argv[]) {
 		
 	if(test_rpn) {
 		sti_op_prec_rule rules[] = {
-			{"",  0, STI_OP_ASSOC_NONE,  0},
-			{"+", 1, STI_OP_ASSOC_LEFT,  2},
-			{"-", 1, STI_OP_ASSOC_LEFT,  2},
-			{"*", 2, STI_OP_ASSOC_LEFT,  2},
-			{"/", 2, STI_OP_ASSOC_LEFT,  2},
-			{"(", 8, STI_OP_OPEN_PAREN,  0},
-			{")", 8, STI_OP_CLOSE_PAREN, 0},
-			{"[", 9, STI_OP_OPEN_PAREN,  0},
-			{"]", 9, STI_OP_CLOSE_PAREN, 0},
+			{"",   0, STI_OP_ASSOC_NONE,  0},
+			{"+",  1, STI_OP_ASSOC_LEFT,  2},
+			{"-",  1, STI_OP_ASSOC_LEFT,  2},
+			{"*",  2, STI_OP_ASSOC_LEFT,  2},
+			{"**", 3, STI_OP_ASSOC_LEFT,  2},
+			{"/",  2, STI_OP_ASSOC_LEFT,  2},
+			{"(",  8, STI_OP_OPEN_PAREN,  0},
+			{")",  8, STI_OP_CLOSE_PAREN, 0},
+			{"[",  9, STI_OP_OPEN_PAREN,  0},
+			{"]",  9, STI_OP_CLOSE_PAREN, 0},
 			{NULL, 0, 0, 0},
 		};
-		
+
 		char* infix[] = {
-			"1",
-			"*",
-			"(",
 			"2",
-			"+",
-			"3",
-			")",
-			"/",
-			"[",
+			"*",
 			"4",
-			"-",
-			"5",
-			"]",
-			"*",
-			"2",
+// 			"1",
+// 			"*",
+// 			"(",
+// 			"2",
+// 			"+",
+// 			"3",
+// 			")",
+// 			"/",
+// 			"[",
+// 			"4",
+// 			"-",
+// 			"5",
+// 			"]",
+// 			"*",
+// 			"2",
 			NULL,
 		};
 		
@@ -80,6 +84,8 @@ int main(int argc, char* argv[]) {
 		size_t len;
 		
 		infix_to_rpn(rules, infix, &rpn, &len);
+		
+		printf("answer: %ld \n", rpn_eval_int_str(rpn));
 		
 		while(*rpn) {
 			printf(" %s \n", *rpn);
