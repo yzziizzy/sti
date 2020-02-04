@@ -8,6 +8,75 @@
 
 
 
+int parse_arithmetic_string(char* src, char*** out, size_t* outlen) {
+	VEC(char*) o;
+	char* s = src;
+	int l;
+	
+	VEC_INIT(&o);
+	
+	for(; *s; s++) {
+		int c = *s;
+		
+		switch(c) {
+			case ' ': continue;
+			case '\n': continue;
+			case '\r': continue;
+			case '\t': continue;
+			case '+':
+				VEC_PUSH(&o, strdup("+"));
+				break;
+			case '*':
+				if(s[1] == '*') {
+					VEC_PUSH(&o, strdup("**"));
+					s++;
+				}
+				else VEC_PUSH(&o, strdup("*"));
+				break;
+			case '/': VEC_PUSH(&o, strdup("/")); break;
+			case '-':
+				// TODO: check for negative signs
+				VEC_PUSH(&o, strdup("-"));
+				break;
+			case '&': VEC_PUSH(&o, strdup("&")); break;
+			case '^': VEC_PUSH(&o, strdup("^")); break;
+			case '|': VEC_PUSH(&o, strdup("|")); break;
+			case '~': VEC_PUSH(&o, strdup("~")); break;
+			case '(': VEC_PUSH(&o, strdup("(")); break;
+			case ')': VEC_PUSH(&o, strdup(")")); break;
+			case '[': VEC_PUSH(&o, strdup("[")); break;
+			case ']': VEC_PUSH(&o, strdup("]")); break;
+			
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+			case '.':
+				l = strspn(s, "0123456789.xbeE");
+				VEC_PUSH(&o, strndup(s, l));
+				s += l;
+				break;
+			
+			default:
+				continue;
+		}
+		
+	}
+	
+	if(out) *out = o.data;
+	if(outlen) *outlen = o.len;
+	
+	return 0;
+}
+
+
+
 static sti_op_prec_rule* shunting_classify(sti_op_prec_rule* rules, char* s) {
 	sti_op_prec_rule* r = rules;
 	
@@ -208,8 +277,9 @@ double rpn_eval_double_str(char** rpn) {
 
 
 /*
-int infix_to_rpn_incr(sti_op_prec_rule* rules, shunting_context* ctx) {
+int infix_to_rpn_incr(sti_op_prec_rule* rules, sti_shunting_context* ctx) {
 	
+	VEC_INIT(&ctx->stack);
 	
 	
 }
