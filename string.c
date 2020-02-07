@@ -230,7 +230,7 @@ Give a char set as long as your base.
 	
 	uint32_t sign =  (nf & 0x80000000) >> 31;
 	uint32_t exp_r = (nf & 0x7ff00000) >> 20;
-	uint32_t frac =   nf & 0x000fffff;
+	uint32_t frac =  (nf & 0x000fffff) | 0x00100000;
 	int32_t exp = exp_r - 127;
 	
 	printf("%x, %x, %x\n", sign, exp_r, frac);
@@ -284,9 +284,15 @@ int iprintf(char* fmt, ...) {
 	
 	for(size_t i = 0; fmt[i]; i++) { 
 		
+		
 		char c = fmt[i];
 		if(c == '%') {
 			// %[flags][width][.precision][length]specifier
+			
+			int starti = i;
+			char* start = fmt + i;
+			char fmtbuf[16];
+			char buf[64];
 			
 			char uppercase = 0;
 // 			char left_justify = 0;
@@ -399,24 +405,29 @@ int iprintf(char* fmt, ...) {
 					
 					break;
 				
-				case 'X': uppercase = 1; 
+				case 'X': uppercase = 1; /* fallthrough */
 				case 'x': // unsigned hex int
 					break;
 				
-				case 'F': uppercase = 1; 
+				// printing floats is very complicated.
+				// fall back to printf, because custom float printing is
+				//   not the point of iprintf()
+				case 'F': uppercase = 1; /* fallthrough */
 				case 'f': // float, decimal
-					break;
-				
-				case 'E': uppercase = 1; 
+// 					break;
+				case 'E': uppercase = 1;  /* fallthrough */
 				case 'e': // decimal scientific notation
-					break;
-				
-				case 'G': uppercase = 1; 
+// 					break; /* fallthrough */
+				case 'G': uppercase = 1;  /* fallthrough */
 				case 'g': // shortest of e/f
-					break;
-				
-				case 'A': uppercase = 1; 
+// 					break; /* fallthrough */
+				case 'A': uppercase = 1;  /* fallthrough */
 				case 'a': // hex float
+					strncpy(fmtbuf, start, i - starti);
+					sprintf(buf, fmtbuf, va_arg(va, double));
+					
+					puts(buf);
+					
 					break;
 				
 				case 'c': // character 
