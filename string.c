@@ -274,6 +274,24 @@ Give a sufficiently long buffer. You figure it out first.
 	
 	return int_r_cvt_str(n, base, buf, upper ? uchars : lchars);
 }
+/*
+Garbage in, garbage out. 
+Dont't give a base of 1.
+Dont't give a base greater than 36.
+Give a sufficiently long buffer. You figure it out first.
+*/
+/*static*/ int uint_r_cvt(uint64_t n, int base, int upper, char* buf) {
+	
+	if(n == 0) {
+		buf[0] = '0';
+		return 1;
+	}
+	
+	static char* lchars = "0123456789abcdefghijklmnopqrstuvwxyz"; 
+	static char* uchars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	
+	return uint_r_cvt_str(n, base, buf, upper ? uchars : lchars);
+}
 
 
 int iprintf(char* fmt, ...) {
@@ -290,8 +308,10 @@ int iprintf(char* fmt, ...) {
 			// %[flags][width][.precision][length]specifier
 			
 			int64_t i64;
-// 			uint64_t u64;
+			uint64_t u64;
 // 			double dbl;
+			
+			int len;
 			
 			int starti = i;
 			char* start = fmt + i;
@@ -398,11 +418,22 @@ int iprintf(char* fmt, ...) {
 			switch(c) {
 				case 0: goto END_STR;
 				
+				case 'b': // binary
+					u64 = va_arg(va, uint64_t);
+					
+					len = uint_r_cvt(u64, 2, uppercase, buf);
+					
+					for(int i = len - 1; i >=0; i--) {
+						putc(buf[i], stdout);
+					} 
+					
+					break;
+					
 				case 'd': 
 				case 'i': // signed decimal int
 					i64 = va_arg(va, int64_t);
 					
-					int len = int_r_cvt(i64, 10, uppercase, buf);
+					len = int_r_cvt(i64, 10, uppercase, buf);
 					
 					for(int i = len - 1; i >=0; i--) {
 						putc(buf[i], stdout);
@@ -411,29 +442,49 @@ int iprintf(char* fmt, ...) {
 					break;
 				
 				case 'u': // unsigned decimal int
+					u64 = va_arg(va, uint64_t);
+					
+					len = uint_r_cvt(u64, 10, uppercase, buf);
+					
+					for(int i = len - 1; i >=0; i--) {
+						putc(buf[i], stdout);
+					} 
 					break;
 				
 				case 'o': // unsigned octal int 
+					u64 = va_arg(va, uint64_t);
 					
+					len = uint_r_cvt(u64, 8, uppercase, buf);
+					
+					for(int i = len - 1; i >=0; i--) {
+						putc(buf[i], stdout);
+					} 
 					break;
 				
 				case 'X': uppercase = 1; /* fallthrough */
 				case 'x': // unsigned hex int
+					u64 = va_arg(va, uint64_t);
+					
+					len = uint_r_cvt(u64, 16, uppercase, buf);
+					
+					for(int i = len - 1; i >=0; i--) {
+						putc(buf[i], stdout);
+					} 
 					break;
 				
 				// printing floats is very complicated.
 				// fall back to printf, because custom float printing is
 				//   not the point of iprintf()
 				case 'F': uppercase = 1; /* fallthrough */
-				case 'f': // float, decimal
 // 					break;
 				case 'E': uppercase = 1;  /* fallthrough */
-				case 'e': // decimal scientific notation
 // 					break; /* fallthrough */
 				case 'G': uppercase = 1;  /* fallthrough */
-				case 'g': // shortest of e/f
 // 					break; /* fallthrough */
 				case 'A': uppercase = 1;  /* fallthrough */
+				case 'f': // float, decimal
+				case 'e': // decimal scientific notation
+				case 'g': // shortest of e/f
 				case 'a': // hex float
 					strncpy(fmtbuf, start, i - starti);
 					sprintf(buf, fmtbuf, va_arg(va, double));
