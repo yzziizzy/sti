@@ -289,6 +289,10 @@ int iprintf(char* fmt, ...) {
 		if(c == '%') {
 			// %[flags][width][.precision][length]specifier
 			
+			int64_t i64;
+// 			uint64_t u64;
+// 			double dbl;
+			
 			int starti = i;
 			char* start = fmt + i;
 			char fmtbuf[16];
@@ -396,6 +400,14 @@ int iprintf(char* fmt, ...) {
 				
 				case 'd': 
 				case 'i': // signed decimal int
+					i64 = va_arg(va, int64_t);
+					
+					int len = int_r_cvt(i64, 10, uppercase, buf);
+					
+					for(int i = len - 1; i >=0; i--) {
+						putc(buf[i], stdout);
+					} 
+					
 					break;
 				
 				case 'u': // unsigned decimal int
@@ -430,7 +442,8 @@ int iprintf(char* fmt, ...) {
 					
 					break;
 				
-				case 'c': // character 
+				case 'c': // character
+					putc(va_arg(va, int), stdout);
 					break;
 				
 				case 's': // string

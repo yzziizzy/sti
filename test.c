@@ -7,12 +7,18 @@
 #include <stdio.h>
 #include <unistd.h>
 
-
+#include <math.h>
 #include <search.h> // for other testing
+
+#include <float.h> // for float limts of conversion testing
 
 
 #include "sti.h"
 
+
+// temp, will be static later
+int flt_r_cvt_str(float f, int base, char* buf, char* charset);
+ int int_r_cvt(int64_t n, int base, int upper, char* buf) ;
 
 // static void nothin(void* );
 // static void nothin(void* b) { (void)b; }
@@ -31,18 +37,53 @@ int main(int argc, char* argv[]) {
 	char test_fs = 0;
 	char test_b_vs_t = 0;
 	char test_rpn = 0;
+	char test_iprintf = 0;
 	
-	while ((c = getopt (argc, argv, "svf1p")) != -1) {
+	while ((c = getopt (argc, argv, "svf1pi")) != -1) {
 		switch(c) {
 			case 's': test_sets = 1; break;
 			case 'v': test_vec = 1; break;
 			case 'f': test_fs = 1; break;
 			case '1': test_b_vs_t = 1; break;
 			case 'p': test_rpn = 1; break;
+			case 'i': test_iprintf = 1; break;
 		}
 	}
 		
 		
+	if(test_iprintf) {
+		
+		for(int i = 0; i < 24; i++) {
+			long ii = 5;
+			uint64_t ijh = 0;
+			uint64_t ijl = 1;
+			for(int n = 0; n < i; n++) ii *= 5;
+			for(int n = 23; n > i; n--) {
+				uint64_t two, four;
+// 				uint64_t ci = 0, co = 0;
+				ijh += __builtin_add_overflow(ijl, ijl, &two);
+				ijh += __builtin_add_overflow(two, two, &four);
+				ijh += __builtin_add_overflow(four, four, &ijl);
+				ijh += __builtin_add_overflow(two, ijl, &ijl);
+				ijh *= 10;
+			}
+			printf("% .2d - %.25f - %lu %lu - % .*ld\n", i, 1.0/(2<<i), ijh, ijl, i+1, ii);
+		}
+		
+		
+		char buf[100];
+		uint32_t N = 0x00000001;
+		float F = *((float*)&N);
+		float f = F;// -0x1.fffffep+127;
+		printf("%a\n", f);
+		uint32_t d = *((uint32_t*)&f);
+		int n = int_r_cvt(d, 2, 0, buf);
+		printf("%.*s\n", n, buf);
+		flt_r_cvt_str(f, 10, buf, "0123456789abcdef");
+// 		printf("%.*s\n", n, buf);
+		
+	}
+	
 	if(test_rpn) {
 		sti_op_prec_rule rules[] = {
 			{"",   0, STI_OP_ASSOC_NONE,  0},
