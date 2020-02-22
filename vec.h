@@ -112,9 +112,9 @@ do { \
 do { \
 	if(VEC_LEN(x) < (i)) break; \
 	memmove( \
-		VEC_DATA(x) + ((i) * sizeof(*VEC_DATA(x))), \
-		VEC_DATA(x) + (((i) + 1) * sizeof(*VEC_DATA(x))), \
-		VEC_LEN(x) - (((i) - 1) * sizeof(*VEC_DATA(x))) \
+		(char*)VEC_DATA(x) + ((i) * sizeof(*VEC_DATA(x))), \
+		(char*)VEC_DATA(x) + (((i) + 1) * sizeof(*VEC_DATA(x))), \
+		(VEC_LEN(x) - (i)) * sizeof(*VEC_DATA(x)) \
 	); \
 	VEC_LEN(x)--; \
 } while(0)
