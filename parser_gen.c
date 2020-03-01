@@ -9,6 +9,7 @@
 #include "fs.h" 
 #include "vec.h" 
 #include "string.h" 
+#include "hash.h" 
 
 
 
@@ -48,6 +49,37 @@ char* exchg[] = {
 };
 
 
+typedef struct charset {
+	char* name;
+	char* raw;
+	
+	char* table;
+	int minval;
+	int maxval;
+	int len;
+} charset;
+
+static void build_charset(charset* cs) {
+	cs->minval = 9999999;
+	cs->maxval = -9999999;
+	for(int i = 0; cs->raw[i] != 0; i++) {
+		if(cs->raw[i] < cs->minval) cs->minval = cs->raw[i];
+		if(cs->raw[i] > cs->maxval) cs->maxval = cs->raw[i];
+	}
+	
+	cs->len = cs->maxval - cs->minval;
+	cs->table = calloc(1, sizeof(*cs->table) * cs->len);
+	
+	for(int i = 0; cs->raw[i] != 0; i++) {
+		cs->table[(int)cs->raw[i] - cs->minval] = 1;
+	}
+}
+
+int charset_has(charset* cs, int c) {
+	int i = c - cs->minval;
+	if(i > cs->maxval || i < 0) return 0;
+	return cs->table[i];
+}
 
 
 typedef struct node {
@@ -57,6 +89,8 @@ typedef struct node {
 	VEC(struct node*) kids;
 	
 	char* type_name;
+	
+	char* fail_charset;
 	char* fail_to;
 	
 } node;
@@ -117,6 +151,31 @@ static node* insert_word(node* root, char* word, int len) {
 }
 
 
+typedef struct {
+	int type; // 0 = char, 1 = charset, 2 = invcharset
+	
+	int c;
+	char* cs_name;
+	charset* cset;
+	
+	char* dest_state;
+} state_case_info;
+
+typedef struct {
+	char* name;
+	VEC(state_case_info) cases;
+	
+	node* words;
+} state_info;
+
+
+state_info* new_state_info(char* name) {
+	state_info* si = calloc(1, sizeof(*si));
+	si->name  = strdup(name);
+	si->words = new_node(0);
+	return si;
+}
+
 
 typedef struct context {
 	char* buffer;
@@ -164,36 +223,6 @@ static void extract_strings(node* n, context* ctx) {
 
 
 
-// a test parser
-
-
-// this is for the processing of the input stream overall
-struct input_state {
-	char* buffer;
-	int length;
-	int cursor;
-	
-	int tokenState;
-	int tokenFinished;
-};
-
-// this is for the incremental lexing of each token, not the whole stream
-struct lexer_state {
-	int state;
-	char* buffer;
-	int blen;
-	int balloc;
-	
-	int linenum;
-	int charnum;
-	
-	size_t pastLeadingWS; // flag set to 1 upton first non-whitespace character on each line 
-	char priorEscape; 
-	char priorBackslash;
-	
-	int tokenState;
-	int tokenFinished; // buffer should be consumed and cleaned at this point 
-};
 
 
 
@@ -287,6 +316,8 @@ static char* state_name(char* pre, char* r, int next) {
 		printf("unhandleable char: %d\n", next);
 	}
 	
+	b[len] = 0;
+	
 	return b;
 }
 
@@ -299,8 +330,20 @@ static void extract_table(node* n, tcontext* ctx) {
 	
 	
 	
-	if(n->c != 0) {
+	if(n->c == 0) {
 		
+		printf("case LST_NULL: ");
+		printf("switch(c) {\n");
+		VEC_EACH(&n->kids, i, k) {
+			char* nn = state_name(ctx->prefix, ctx->buffer, k->c);
+			printf("\tcase '%c': push_char_id(%s);\n", k->c, nn);
+			free(nn);
+		}
+		
+		printf("\tdefault: goto ERROR;\n");
+		printf("\t}\n");
+	} 
+	else {
 		ctx->buffer[ctx->len++] = n->c;
 		ctx->buffer[ctx->len] = 0;
 		
@@ -314,7 +357,14 @@ static void extract_table(node* n, tcontext* ctx) {
 		
 		
 		if(n->is_terminal) {
-			printf("goto TOKEN_DONE;\n");
+			if(n->fail_to) {
+				printf("\n");
+				printf("\tif(charset_has(%s, c)) { retry_as(%s); }\n", "charset_var", n->fail_to);
+				printf("\tgoto TOKEN_DONE;\n");
+			}
+			else {
+				printf("goto TOKEN_DONE;\n");
+			}
 			VEC_PUSH(&ctx->terminals, sname);
 		}
 		else {
@@ -323,13 +373,25 @@ static void extract_table(node* n, tcontext* ctx) {
 		
 		
 		if(VEC_LEN(&n->kids)) {
-			printf("switch(n) {\n");
+			printf("switch(c) {\n");
 			VEC_EACH(&n->kids, i, k) {
 				char* nn = state_name(ctx->prefix, ctx->buffer, k->c);
 				printf("\tcase '%c': push_char_id(%s);\n", k->c, nn);
 				free(nn);
 			}
-			printf("\tdefault: goto ERROR;\n");
+			
+			printf("\tdefault:");
+// 			if(n->fail_charset) {
+// 				printf("\n");
+// 				printf("if(charset_has(c)");
+// 				
+// 			}
+// 			else {
+			if(n->is_terminal)
+				printf(" goto TOKEN_DONE;\n");
+			else 
+				printf(" goto ERROR;\n");
+// 			}
 			printf("\t}\n");
 			
 		}
@@ -353,66 +415,91 @@ static char* word_end(char* s, size_t* n) {
 }
 
 
+#include <unistd.h>
+
+
+
 int main(int argc, char* argv[]) {
-	size_t flen;
-	(void)argc;
+	char ac;
+	char print_enums = 0;
+	char print_switch = 0;
+	char* enum_pattern = NULL;
+	char* terminal_pattern = NULL;
+	char* fname = NULL;
 	
+	while((ac = getopt(argc, argv, "esE:T:")) != -1) {
+		switch(ac) {
+			case 'e': print_enums = 1; break;
+			case 'E': 
+				print_enums = 1; 
+				enum_pattern = optarg;
+				break;
+			case 'T': 
+				print_enums = 1; 
+				terminal_pattern = optarg;
+				break;
+			case 's': print_switch = 1; break;
+		}
+	}
+	
+	if(optind < argc) {
+		fname = argv[optind];
+	}
+	
+	(void)terminal_pattern;
+	(void)enum_pattern;
+	
+	size_t flen;
 	size_t max_len = 0;
 	
-	char* src = readWholeFile(argv[1], &flen);
+	char* src = readWholeFile(fname, &flen);
 	char** lines = strsplit_inplace(src, '\n', NULL);
 	
-	node* root = new_node(0);
+// 	node* root = new_node(0);
+	
+	HashTable(state_info) states;
+	HT_init(&states, 1024);
+	
+	HashTable(charset) csets;
+	HT_init(&csets, 64);
 	
 	for(int i = 0; lines[i]; i++) {
 		int c = lines[i][0];
 		char* s, *end;
 		size_t wl;
+		char* state_prefix = strdup("LST_NULL"); // TODO unhardcode
 		
+		s = lines[i];
+		
+// 		printf("i: %d, '%c/%d'\n", i, *s, *s);
 		if(c == 0) continue; // empty line
 		if(c == '#') continue; // comments
 		
-		if(c == '>') { // word
-			end = strpbrk(lines[i] + 1, " \n\t\r");
-			wl = end - lines[i] - 2;
-// 			printf(">%d %s\n", l, lines[i]+1);
-			
-			// put the word in the tree
-			node* n = insert_word(root, lines[i] + 1, wl);
-			max_len = MAX(max_len, strlen(lines[i]));
-			
-			// add its metadata
-			s = end;
-			while(*s && *s == ' ') s++;
-			end = word_end(s, &wl);
-			
-			n->type_name = strndup(s, wl);
-			
-			
-			s = end;
-			while(*s && *s == ' ') s++;
-			end = word_end(s, &wl);
-			
-			n->fail_to = strndup(s, wl); 
-// 			printf("%s\n", n->type_name);
-			
-			continue;
-		}
-		
-		if(c == '[') { // character set
+		// character set declaration
+		if(c == '[') {
 			s = lines[i] + 1;
 			end = word_end(s, &wl);
 			
+			// the name
+			char* sname = strndup(s, wl);
+			
 			s = end;
 			while(*s && *s == ' ') s++;
 			end = word_end(s, &wl);
 			
+			// char set itself
 			VEC(char) chars;
 			VEC_INIT(&chars);
 			while(*s && *s == ' ') s++;
 			while(*s && *s != ' ') {
 				if(s[0] == '\\') { // escape
-					VEC_PUSH(&chars, s[1]);
+					int ec = s[1];
+					if(ec == 't') ec = '\t';
+					else if(ec == 'r') ec = '\r';
+					else if(ec == 'n') ec = '\n';
+					else if(ec == 'v') ec = '\v';
+					else if(ec == '\\') ec = '\\';
+					VEC_PUSH(&chars, ec);
 					s++;
 				}
 				else if(s[1] == '-') { // range
@@ -425,47 +512,167 @@ int main(int argc, char* argv[]) {
 					
 					s += 2;
 				}
-				else {
+				else { // normal char
 					VEC_PUSH(&chars, s[0]);
 				}
 				
 				s++;
 			}
 			
-			printf("[%.*s\n", (int)chars.len, chars.data);
+			VEC_PUSH(&chars, 0);
+			
+			charset* cs = calloc(1, sizeof(*cs));
+			cs->raw = strdup(chars.data);
+			cs->name = sname;
+			build_charset(cs);
+			
+			if(HT_set(&csets, sname, cs)) {
+				printf("ht fail: '%s'\n", sname);
+			}
+			
+			printf("%s: '%s'\n", sname, chars.data);
+			VEC_FREE(&chars);
+			
+			continue;
+		}
+
+		
+		// state prefix
+		if(c == ':') {
+			end = word_end(++s, &wl);
+			state_prefix = strndup(s, wl);
+			s = end;
+			while(*s && *s == ' ') s++;
+		}
+		else {
+			state_prefix = strdup("LST_NULL");
+		}
+		
+		state_info* pst;
+		if(HT_get(&states, state_prefix, (void*)&pst)) {
+			pst = new_state_info(state_prefix);
+			HT_set(&states, state_prefix, pst);
+		}
+		
+		
+		// word
+		node* n = NULL;
+		if(*s == '{') {
+			end = strpbrk(lines[i] + 1, " \n\t\r");
+			wl = end - lines[i] - 2;
+// 			printf(">%d %s\n", l, lines[i]+1);
+			
+			// put the word in the tree
+			n = insert_word(pst->words, s + 1, wl);
+			max_len = MAX(max_len, strlen(s));
+			
+			// check for various metadata
+			s = end;
+			while(*s && *s == ' ') s++;
+		}
+		// single char transition
+		else if(*s == '@') {
+			s = word_end(++s, &wl);
+		}
+		
+		
+		while(*s && *s != '\r' && *s != '\n') {
+			while(*s && *s == ' ') s++;
+			
+			if(*s == ':') { // token type
+				end = word_end(++s, &wl);
+				n->type_name = strndup(s, wl);
+				s = end;
+				continue;
+			}
+			
+			
+			// go-to
+			if(*s == '>') {
+				// TODO this one is wrong
+				break;
+			}
+			
+			// fail-to
+			if(*s == '+') {
+				s++;
+				end = strchr(s, '>');
+				
+				char* set_name = strndup(s, end - s);
+				
+				
+				s = end + 1;
+				end = word_end(s, &wl);
+				
+				char* fail_to = strndup(s, wl);
+				
+				// TODO: look up lazily later
+// 				if(HT_get(&csets, set_name, (void*)&n->fail_charset)) {
+// 					printf("failed to get charset: %p '%s'\n", n->fail_charset, set_name);
+// 				}
+				// TODO: state transition info
+				
+				VEC_INC(&pst->cases);
+				state_case_info* ci = &VEC_TAIL(&pst->cases); 
+				
+				ci->type = 1; // charset
+				ci->cs_name = set_name;
+				ci->dest_state = fail_to;
+				
+				s = end;
+				continue;
+			}
+		
+			printf("unknown s: '%c'\n", *s);
+			s++;
 		}
 	}
 	
+	char* prefix = "LST__";
+	
 // 	print_node(root);
 	
-	context* ctx = calloc(1, sizeof(*ctx));
-	ctx->alloc = max_len + 1;
-	ctx->buffer = malloc(ctx->alloc);
-	
-	extract_strings(root, ctx);
-	
-	
-	VEC_EACH(&ctx->terminals, i, t) {
-		printf("t: %ld: '%s'\n", i, t);
+	if(print_enums) {
+		context* ctx = calloc(1, sizeof(*ctx));
+		ctx->alloc = max_len + 1;
+		ctx->buffer = malloc(ctx->alloc);
+		
+		// TODO: make it expand the states
+		state_info* nst;
+		HT_get(&states, "LST_NULL", (void*)&nst);
+		extract_strings(nst->words, ctx);
+		
+		printf("// terminals\n"); 
+		VEC_EACH(&ctx->terminals, i, t) {
+			char* sname = state_name(prefix, t, 0); 
+			printf("%s,\n", sname);
+			free(sname);
+		}
+		
+		printf("\n// internals\n"); 
+		VEC_EACH(&ctx->internals, i, t) {
+			char* sname = state_name(prefix, t, 0); 
+			printf("%s,\n", sname);
+			free(sname);
+		}
 	}
-	VEC_EACH(&ctx->internals, i, t) {
-		printf("i: %ld: '%s'\n", i, t);
+	
+	
+	if(print_switch) {
+		// build a table
+		tcontext* tctx = calloc(1, sizeof(*tctx));
+		tctx->alloc = max_len + 1;
+		tctx->fbuffer = malloc(tctx->alloc);
+		tctx->prefix = prefix;
+		strcpy(tctx->fbuffer, tctx->prefix);
+		tctx->buffer = tctx->fbuffer + strlen(tctx->prefix);
+		
+	// 	number_states(root, tctx);
+		// TODO make it work for all states
+		state_info* nst;
+		HT_get(&states, "LST_NULL", (void*)&nst);
+		extract_table(nst->words, tctx);
 	}
-	
-	
-	
-	// build a table
-	tcontext* tctx = calloc(1, sizeof(*tctx));
-	tctx->alloc = max_len + 1;
-	tctx->fbuffer = malloc(tctx->alloc);
-	tctx->prefix = "DST_";
-	strcpy(tctx->fbuffer, tctx->prefix);
-	tctx->buffer = tctx->fbuffer + strlen(tctx->prefix);
-	
-// 	number_states(root, tctx);
-	
-	extract_table(root, tctx);
-	
 	
 	
 	

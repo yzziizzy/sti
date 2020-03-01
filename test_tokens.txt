@@ -1,0 +1,38 @@
+# foo
+[identifier_schars a-zA-Z_
+[identifier_chars a-zA-Z0-9_
+[ws \ \t\r\n
+
+# reserved words
+{: :operator +identifier_chars>LST_identifier
+{bool :type +identifier_chars>LST_identifier
+{break :keyword +identifier_chars>LST_identifier
+{buffer :type +identifier_chars>LST_identifier
+{bvec2 :type +identifier_chars>LST_identifier
+{bvec3 :type +identifier_chars>LST_identifier
+{bvec4 :type +identifier_chars>LST_identifier
+{case :keyword +identifier_chars>LST_identifier
+{coherent :typespec +identifier_chars>LST_identifier
+{const  :typespec +identifier_chars>LST_identifier
+{con%st :typespec +identifier_chars>LST_identifier
+{con%&st :typespec +identifier_chars>LST_identifier
+{continue :keyword +identifier_chars>LST_identifier
+{cos :builtin +identifier_chars>LST_identifier
+{int :type +identifier_chars>LST_identifier
+{int8_t :type +identifier_chars>LST_identifier
+{int16_t :type +identifier_chars>LST_identifier
+{int32_t :type +identifier_chars>LST_identifier
+{int64_t :type +identifier_chars>LST_identifier
+
+# any of the charset, fail to 
+#+identifier_schars >LST_identifier
+
+# from the start state, like above
+:LST_identifier +identifier_chars>LST_identifier
+
+#@" >LST_string
+:LST_string +string_chars>LST_string
+:LST_string @">LST_string_end
+:LST_string @\\>LST_string_esc
+:LST_string_esc @">LST_string
+:LST_string_end >LST_NULL
