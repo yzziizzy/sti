@@ -423,12 +423,14 @@ int main(int argc, char* argv[]) {
 	char ac;
 	char print_enums = 0;
 	char print_switch = 0;
+	char print_csets = 0;
 	char* enum_pattern = NULL;
 	char* terminal_pattern = NULL;
 	char* fname = NULL;
 	
-	while((ac = getopt(argc, argv, "esE:T:")) != -1) {
+	while((ac = getopt(argc, argv, "cesE:T:")) != -1) {
 		switch(ac) {
+			case 'c': print_csets = 1; break;
 			case 'e': print_enums = 1; break;
 			case 'E': 
 				print_enums = 1; 
@@ -675,10 +677,19 @@ int main(int argc, char* argv[]) {
 	}
 	
 	
+	if(print_csets) {
+		
+		HT_LOOP(&csets, key, charset*, cs) {
+			printf("char cset_%s[] = {", cs->name);
+			for(int i = 0; i < cs->minval; i++) printf("0,"); 
+			for(int i = cs->minval; i <= cs->maxval; i++) printf("%d,", !!cs->table[i]); 
+			printf("0};\n");
+			printf("int cset_%s_len = %d;\n", cs->name, cs->maxval);
+		}
+		
+	}
 	
 	
-	
-	// push char, accept token, change state, retry with new state
 	
 	return 0;
 }

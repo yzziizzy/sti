@@ -54,3 +54,8 @@ UnicodeData.txt
 caps.txt
 
 sti_test
+parser_gen
+parser_example
+parser_example_enums.h
+parser_example_switch.c
+
