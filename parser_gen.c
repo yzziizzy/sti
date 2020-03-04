@@ -132,7 +132,7 @@ static node* get_kid(node* n, char c) {
 	return NULL;
 }
 
-static node* insert_word(node* root, char* word, int len) {
+node* insert_word(node* root, char* word, int len) {
 // 	if(word[0] == 0) return;
 	
 	node* k = get_kid(root, word[0]);
@@ -277,6 +277,8 @@ static char* state_name(char* pre, char* r, int next) {
 	strcpy(b, pre);
 	int len = strlen(pre);
 	int last_was_an = 1;
+	b[len++] = '_';
+	b[len++] = '_';
 	
 	for(int i = 0; r[i] != 0; i++) {
 		int rc = (int)r[i];
@@ -386,6 +388,7 @@ char* state_name_inc(char* prefix, char* r) {
 */
 
 // expand a word into a set of transitions
+// returns the final state
 state_info* expand_word(char* word, state_info* base, tcontext* ctx) {
 	
 	size_t blen = 0;
@@ -756,15 +759,20 @@ int main(int argc, char* argv[]) {
 		
 		
 		// word
-		node* n = NULL;
+		state_info* lst; // last state of the word
 		if(*s == '{') {
 			end = strpbrk(lines[i] + 1, " \n\t\r");
 			wl = end - lines[i] - 2;
 // 			printf(">%d %s\n", l, lines[i]+1);
 			
+			char* w = strndup(s+1, wl);
+			
+			lst = expand_word(w, pst, tctx); 
 			// put the word in the tree
-			n = insert_word(pst->words, s + 1, wl);
-			max_len = MAX(max_len, strlen(s));
+// 			n = insert_word(pst->words, s + 1, wl);
+			max_len = MAX(max_len, wl);
+			
+			free(w);
 			
 			// check for various metadata
 			s = end;
@@ -778,10 +786,11 @@ int main(int argc, char* argv[]) {
 		
 		while(*s && *s != '\r' && *s != '\n') {
 			while(*s && *s == ' ') s++;
+			if(!s) break;
 			
 			if(*s == ':') { // token type
 				end = word_end(++s, &wl);
-				n->type_name = strndup(s, wl);
+// 				n->type_name = strndup(s, wl);
 				s = end;
 				continue;
 			}
@@ -856,6 +865,8 @@ int main(int argc, char* argv[]) {
 			printf("unknown s: '%c'\n", *s);
 			s++;
 		}
+		
+		(void)lst;
 	}
 	
 	
@@ -866,7 +877,7 @@ int main(int argc, char* argv[]) {
 		
 		
 		HT_LOOP(&tctx->states, key, state_info*, si) {
-			extract_table(si->words, tctx);
+// 			extract_table(si->words, tctx); // not used
 			
 			// reset context fields
 			tctx->len = 0;
