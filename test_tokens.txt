@@ -30,7 +30,7 @@
 # from the start state, like above
 :LST_identifier +identifier_chars>LST_identifier
 
-#@" >LST_string
+# single char transition:  @">LST_string
 :LST_string +string_chars>LST_string
 :LST_string @">LST_string_end
 :LST_string @\\>LST_string_esc
