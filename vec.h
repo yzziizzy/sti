@@ -217,10 +217,10 @@ do { \
 
 
 #define VEC_SORT(x, fn) \
-	qsort(VEC_DATA(x), VEC_LEN(x), sizeof(*VEC_DATA(x)), (void*)fn);
+	qsort(VEC_DATA(x), VEC_LEN(x), sizeof(*VEC_DATA(x)), (int(*)(const void*,const void*))fn);
 
 #define VEC_SORT_R(x, fn, s) \
-	qsort_r(VEC_DATA(x), VEC_LEN(x), sizeof(*VEC_DATA(x)), (__compar_d_fn_t)fn, (void*)s);
+	qsort_r(VEC_DATA(x), VEC_LEN(x), sizeof(*VEC_DATA(x)), (int(*)(const void*,const void*,void*))fn, (void*)s);
 
 
 
