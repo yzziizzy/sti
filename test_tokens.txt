@@ -5,24 +5,24 @@
 
 # reserved words
 {: :operator +identifier_chars>LST_identifier
-{bool :type +identifier_chars>LST_identifier
-{break :keyword +identifier_chars>LST_identifier
-{buffer :type +identifier_chars>LST_identifier
-{bvec2 :type +identifier_chars>LST_identifier
-{bvec3 :type +identifier_chars>LST_identifier
-{bvec4 :type +identifier_chars>LST_identifier
-{case :keyword +identifier_chars>LST_identifier
-{coherent :typespec +identifier_chars>LST_identifier
-{const  :typespec +identifier_chars>LST_identifier
-{con%st :typespec +identifier_chars>LST_identifier
-{con%&st :typespec +identifier_chars>LST_identifier
-{continue :keyword +identifier_chars>LST_identifier
-{cos :builtin +identifier_chars>LST_identifier
-{int :type +identifier_chars>LST_identifier
-{int8_t :type +identifier_chars>LST_identifier
-{int16_t :type +identifier_chars>LST_identifier
-{int32_t :type +identifier_chars>LST_identifier
-{int64_t :type +identifier_chars>LST_identifier
+{bool :type |LST_identifier
+{break :keyword |LST_identifier
+{buffer :type |LST_identifier
+{bvec2 :type |LST_identifier
+{bvec3 :type |LST_identifier
+{bvec4 :type |LST_identifier
+{case :keyword |LST_identifier
+{coherent :typespec |LST_identifier
+{const  :typespec |LST_identifier
+{con%st :typespec |LST_identifier
+{con%&st :typespec |LST_identifier
+{continue :keyword |LST_identifier
+{cos :builtin |LST_identifier
+{int :type |LST_identifier
+{int8_t :type |LST_identifier
+{int16_t :type |LST_identifier
+{int32_t :type |LST_identifier
+{int64_t :type |LST_identifier
 
 # any of the charset, fail to 
 #+identifier_schars >LST_identifier
