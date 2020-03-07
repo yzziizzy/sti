@@ -1,0 +1,197 @@
+# character sets
+[identifier_schars a-zA-Z_
+[identifier_chars a-zA-Z0-9_
+[num_chars_start 0-9
+[num_chars 0-9
+[octal_chars 0-7
+[hex_chars 0-9a-fA-F
+[float_chars_start 0-9.\-\+
+[float_chars 0-9.eE
+[float_chars_start 0-9.\-\+
+[ws \ \t\r\n
+[endl \r\n
+# single-character transitions can't be inverted yet, but csets can 
+[slash \\
+[star *
+
+
+# keywords
+# : is extra user data to be carried through
+# | is a failover on a character set on discontinuity in the word 
+{break :keyword |identifier_chars>LST_identifier
+{case :keyword |identifier_chars>LST_identifier
+{chan :keyword |identifier_chars>LST_identifier
+{const :keyword |identifier_chars>LST_identifier
+{continue :keyword |identifier_chars>LST_identifier
+{default :keyword |identifier_chars>LST_identifier
+{defer :keyword |identifier_chars>LST_identifier
+{else :keyword |identifier_chars>LST_identifier
+{fallthrough :keyword |identifier_chars>LST_identifier
+{for :keyword |identifier_chars>LST_identifier
+{func :keyword |identifier_chars>LST_identifier
+{go :keyword |identifier_chars>LST_identifier
+{goto :keyword |identifier_chars>LST_identifier
+{if :keyword |identifier_chars>LST_identifier
+{import :keyword |identifier_chars>LST_identifier
+{interface :keyword |identifier_chars>LST_identifier
+{iota :keyword |identifier_chars>LST_identifier
+{map :keyword |identifier_chars>LST_identifier
+{package :keyword |identifier_chars>LST_identifier
+{range :keyword |identifier_chars>LST_identifier
+{return :keyword |identifier_chars>LST_identifier
+{select :keyword |identifier_chars>LST_identifier
+{struct :keyword |identifier_chars>LST_identifier
+{switch :keyword |identifier_chars>LST_identifier
+{type :keyword |identifier_chars>LST_identifier
+{var :keyword |identifier_chars>LST_identifier
+
+# operators and punctuation
+{+ :operator
+{& :operator
+{+= :operator
+{&= :operator
+{&& :operator
+{== :operator
+{!= :operator
+{( :punct
+{) :punct
+{- :operator
+{| :operator
+{-= :operator
+{|= :operator
+{|| :operator
+{< :operator
+{<= :operator
+{[ :punct
+{] :punct
+{* :operator
+{^ :operator
+{*= :operator
+{^= :operator
+{<- :operator
+{> :operator
+{>= :operator
+{{ :punct
+{} :punct
+{/ :operator
+:LST_NULL___slash @/>LST_sl_comment
+:LST_NULL___slash @*>LST_ml_comment
+{<< :operator
+{/= :operator
+{<<= :operator
+{++ :operator
+{= :operator
+{:= :operator
+{, :operator
+{; :operator
+{% :operator
+{>> :operator
+{%= :operator
+{>>= :operator
+{-- :operator
+{! :operator
+{... :operator
+{. :operator +num_chars>LST_float
+{: :operator
+{&^ :operator
+{&^= :operator
+
+# types
+{uint8 :type |identifier_chars>LST_identifier
+{uint16 :type |identifier_chars>LST_identifier
+{uint32 :type |identifier_chars>LST_identifier
+{uint64 :type |identifier_chars>LST_identifier
+{int8 :type |identifier_chars>LST_identifier
+{int16 :type |identifier_chars>LST_identifier
+{int32 :type |identifier_chars>LST_identifier
+{int64 :type |identifier_chars>LST_identifier
+{float32 :type |identifier_chars>LST_identifier
+{float64 :type |identifier_chars>LST_identifier
+{complex64 :type |identifier_chars>LST_identifier
+{complex128 :type |identifier_chars>LST_identifier
+{rune :type |identifier_chars>LST_identifier
+{byte :type |identifier_chars>LST_identifier
+{uint :type |identifier_chars>LST_identifier
+{int :type |identifier_chars>LST_identifier
+{uintptr :type |identifier_chars>LST_identifier
+{string :type |identifier_chars>LST_identifier
+
+
+# mark some terminal states
+&LST_float
+&LST_probenum
+&LST_intnum
+&LST_octalnum
+&LST_hexnum
+&LST_identifier
+&LST_float_exp
+
+# all other identifiers
+# + is transition on a character set
+:LST_identifier +identifier_chars>LST_identifier
+:LST_NULL +identifier_schars>LST_identifier
+
+# ignore whitespace
+# ^ discards the char while moving to the next state
+:LST_NULL +ws^LST_NULL
+
+# strings
+# @ is a single-char transition
+:LST_string @"=LST_string
+:LST_NULL @">LST_string
+&LST_string_end
+:LST_string @\\>LST_string_esc
+:LST_string !+slash>LST_string
+:LST_string_esc @">LST_string
+
+# char literals
+:LST_charlit @'=LST_charlit
+:LST_NULL @'>LST_charlit
+&LST_charlit_end
+:LST_charlit @\\>LST_charlit_esc
+:LST_charlit !+slash>LST_charlit
+:LST_charlit_esc @'>LST_charlit
+
+# numbers
+:LST_NULL @0>LST_probenum
+:LST_NULL @1>LST_intnum
+:LST_NULL @2>LST_intnum
+:LST_NULL @3>LST_intnum
+:LST_NULL @4>LST_intnum
+:LST_NULL @5>LST_intnum
+:LST_NULL @6>LST_intnum
+:LST_NULL @7>LST_intnum
+:LST_NULL @8>LST_intnum
+:LST_NULL @9>LST_intnum
+
+:LST_probenum @.>LST_float
+:LST_probenum @x>LST_hexnum
+:LST_probenum @X>LST_hexnum
+:LST_probefixed @x>LST_hexnum
+:LST_probefixed @X>LST_hexnum
+:LST_probenum +num_chars>LST_octalnum
+:LST_probefixed +num_chars>LST_octalnum
+:LST_intnum @.>LST_float
+:LST_intnum +num_chars>LST_intnum
+:LST_octalnum +octal_chars>LST_octalnum
+:LST_hexnum +hex_chars>LST_hexnum
+
+:LST_float @.>LST_INVALID
+:LST_float +num_chars>LST_float
+:LST_float @e>LST_float_exp_start
+:LST_float @E>LST_float_exp_start
+:LST_float_exp_start +num_chars>LST_float_exp
+:LST_float_exp_start @->LST_float_exp
+:LST_float_exp_start @+>LST_float_exp
+:LST_float_exp +num_chars>LST_float_exp
+
+# comments
+&LST_sl_comment 
+:LST_sl_comment !+endl>LST_sl_comment
+:LST_sl_comment @\r~LST_sl_comment
+:LST_sl_comment @\n~LST_sl_comment
+&LST_ml_comment
+:LST_ml_comment @*>LST_ml_comment_star
+:LST_ml_comment !+star>LST_ml_comment
+:LST_ml_comment_star @/=LST_ml_comment
+:LST_ml_comment_star !+slash>LST_ml_comment

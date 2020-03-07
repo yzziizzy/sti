@@ -14,6 +14,8 @@
 #include "hash.h" 
 
 
+int has_case_conflict = 0;
+
 
 char* exchg[] = {
 	['!'] = "bang",
@@ -87,6 +89,8 @@ int charset_has(charset* cs, int c) {
 
 typedef struct {
 	int type; // 0 = char, 1 = charset, 2 = invchar, 3 = invcharset
+	int action; // > each char, ^ discard char
+	int invert;
 	
 	int c;
 	char* cs_name;
@@ -102,6 +106,7 @@ typedef struct state_info {
 	
 	struct state_info* fail_to; 
 	char* retry_as;
+	char* retry_as_cs_name;
 	
 	char is_terminal;
 } state_info;
@@ -118,6 +123,7 @@ state_case_info* add_case_char(state_info* si, int c, char* dest) {
 		if(ci.type == 0 && ci.c == c) {
 			if(0 != strcmp(dest, ci.dest_state)) {
 				printf("case conflict: %s (%c)->%s / (%c)->%s\n", si->name, ci.c, ci.dest_state, c, dest);
+				has_case_conflict = 1;
 				return NULL;
 			}
 			
@@ -130,11 +136,13 @@ state_case_info* add_case_char(state_info* si, int c, char* dest) {
 	nci->dest_state = strdup(dest);
 	nci->type = 0;
 	nci->c = c;
+	nci->action = 0; // consume character
+	nci->invert = 0; 
 	
 	return nci;
 } 
 
-state_case_info* add_case_cset(state_info* si, char* cset, char* dest) {
+state_case_info* add_case_cset(state_info* si, char* cset, char* dest, int action, int invert) {
 	VEC_EACH(&si->cs_cases, i, ci) {
 		if(ci.type == 1 && 0 == strcmp(ci.cs_name, cset)) {
 			if(0 != strcmp(dest, ci.dest_state)) {
@@ -151,6 +159,8 @@ state_case_info* add_case_cset(state_info* si, char* cset, char* dest) {
 	nci->dest_state = strdup(dest);
 	nci->type = 1;
 	nci->cs_name = strdup(cset);
+	nci->action = action;
+	nci->invert = invert;
 	
 	return nci;
 } 
@@ -255,7 +265,7 @@ state_info* induce_state(char* name, tcontext* ctx) {
 	
 	if(HT_get(&ctx->states, name, (void*)&s)) {
 		s = new_state_info(name);
-		HT_set(&ctx->states, name, s);
+		HT_set(&ctx->states, strdup(name), s); // BUG fix needing to strdup the name
 	}
 	
 	return s;
@@ -268,7 +278,13 @@ typedef struct case_list {
 
 // expand a word into a set of transitions
 // returns the final state
-state_info* expand_word(char* word, state_info* base, case_list* extra, char* retry_as, tcontext* ctx) {
+state_info* expand_word(
+	char* word, 
+	state_info* base, 
+	case_list* extra, 
+	char* retry_as, 
+	char* retry_as_cs_name, 
+	tcontext* ctx) {
 	
 	size_t blen = 0;
 	size_t balloc = 256;
@@ -303,6 +319,7 @@ state_info* expand_word(char* word, state_info* base, case_list* extra, char* re
 		state_info* s = induce_state(this_name, ctx);
 // 			s->is_terminal = n->is_terminal;
 		if(retry_as) s->retry_as = strdup(retry_as);
+		if(retry_as_cs_name) s->retry_as_cs_name = strdup(retry_as_cs_name);
 			
 		// add the transitions
 		
@@ -311,9 +328,9 @@ state_info* expand_word(char* word, state_info* base, case_list* extra, char* re
 		
 		
 		VEC_EACH(&extra->cases, i, cs) {
-			add_case_cset(s, cs.cs_name, cs.dest_state);
+			add_case_cset(s, cs.cs_name, cs.dest_state, cs.action, cs.invert);
 		}
-// 			
+// 		
 		
 		
 		// next
@@ -329,28 +346,54 @@ state_info* expand_word(char* word, state_info* base, case_list* extra, char* re
 	return prev_st;
 }
 
+// buff must be at least as long as it needs to be
+static void pretty_print_char(char* buf, int c) {
+	
+#define ESC_CHAR(x) \
+	buf[0] = '\''; \
+	buf[1] = '\\'; \
+	buf[2] = x; \
+	buf[3] = '\''; \
+	buf[4] = 0; \
+	break;
+	
+	switch(c) {
+		case '\t': ESC_CHAR('t');
+		case '\r': ESC_CHAR('r');
+		case '\n': ESC_CHAR('n');
+		case '\v': ESC_CHAR('v');
+		case '\'': ESC_CHAR('\'');
+		case '\\': ESC_CHAR('\\');
+			
+		default:
+			if(isgraph(c)) {
+				buf[0] = '\'';
+				buf[1] = c;
+				buf[2] = '\'';
+				buf[3] = 0;
+			}
+			else {
+				sprintf(buf, "0x%x", c);
+			}
+	}
+}
 
 static void print_state_switch(state_info* si) {
+	char buf[16];
+	
 	printf("\ncase %s:\n", si->name);
 	
 			
 	
 	if(VEC_LEN(&si->c_cases)) {
 		printf("\tswitch(c) {\n");
-		char* slash = "\\";
 		VEC_EACH(&si->c_cases, ckey, ci) {
-			if(ci.type != 0) continue;
-			int esc = (NULL != strchr("\\\t\n\r\v", ci.c)) ? 1 : 0; 
-			printf("\t\tcase '%.*s%c': push_char_id(%s);\n", esc, slash, ci.c, ci.dest_state);
-	// 			extract_table(si->words, tctx); // not used
-	// 				printf("%s [%c] -> %s\n", key, ci.c, ci.dest_state);
 			
-		}
-// 		printf("\tdefault:");
-		if(VEC_LEN(&si->cs_cases)) {
-			
-			
-		// 			}
+			pretty_print_char(buf, ci.c);
+			char* action = "push_char_id";
+			if(ci.action == 1) action = "push_char_done";
+			else if(ci.action == 2) action = "done_zero_move";
+			printf("\t\tcase %s: %s(%s);\n", buf, action, ci.dest_state);
 		}
 		
 		printf("\t}\n");
@@ -359,14 +402,19 @@ static void print_state_switch(state_info* si) {
 	
 	if(VEC_LEN(&si->cs_cases)) {
 		VEC_EACH(&si->cs_cases, ckey, ci) {
-			if(0 == strcmp(si->retry_as, ci.cs_name) continue;
-			printf("\tif(charset_has(%s, c)) { retry_as(%s); }\n", "charset_var", ci.cs_name);
+			if(si->retry_as && 0 == strcmp(si->retry_as, ci.cs_name)) continue;
+			char* action = ci.action == '^' ? "discard_char_id" : "push_char_id";
+			char* inv = ci.invert ? "!" : "";
+			printf("\tif(%scharset_has(cset_%s, c)) { %s(%s); }\n", inv, ci.cs_name, action, ci.dest_state);
 		}
 	}
 	
 	
-	if(si->is_terminal)
-		printf("\tgoto TOKEN_DONE;\n");
+	if(si->is_terminal) {
+		if(si->retry_as) printf("\tif(charset_has(cset_%s, c)) { retry_as(%s); }\n", si->retry_as_cs_name, si->retry_as);
+		printf("\tdone_zero_move(%s);\n", si->name);
+
+	}
 	else if(si->retry_as)
 		printf("\tretry_as(%s);\n", si->retry_as);
 	else 
@@ -377,6 +425,8 @@ static void print_state_switch(state_info* si) {
 
 
 static char* word_end(char* s, size_t* n) {
+	// TODO: suport escaped spaces
+	
 	char* end = strpbrk(s, " \n\t\r");
 	if(!end) end = s + strlen(s);
 	
@@ -409,6 +459,7 @@ static int case_cs_sort_fn(void* a_, void* b_) {
 int main(int argc, char* argv[]) {
 	char ac;
 	char print_enums = 0;
+	char print_enum_names = 0;
 	char print_switch = 0;
 	char print_csets = 0;
 	char* enum_pattern = NULL;
@@ -416,10 +467,11 @@ int main(int argc, char* argv[]) {
 	char* fname = NULL;
 	char* prefix = "LST__";
 	
-	while((ac = getopt(argc, argv, "cesE:T:")) != -1) {
+	while((ac = getopt(argc, argv, "censE:T:")) != -1) {
 		switch(ac) {
 			case 'c': print_csets = 1; break;
 			case 'e': print_enums = 1; break;
+			case 'n': print_enum_names = 1; break;
 			case 'E': 
 				print_enums = 1; 
 				enum_pattern = optarg;
@@ -475,13 +527,30 @@ int main(int argc, char* argv[]) {
 		int c = lines[i][0];
 		char* s, *end;
 		size_t wl;
-		char* state_prefix = strdup("LST_NULL"); // TODO unhardcode
+		char* state_prefix = NULL;//strdup("LST_NULL"); // TODO unhardcode
 		
 		s = lines[i];
 		
 // 		printf("i: %d, '%c/%d'\n", i, *s, *s);
 		if(c == 0) continue; // empty line
 		if(c == '#') continue; // comments
+		
+		// mark state as terminal
+		if(c == '&') {
+			s = lines[i] + 1;
+			end = word_end(s, &wl);
+			
+			// the name
+			char* sname = strndup(s, wl);
+			
+			state_info* si = induce_state(sname, tctx);
+			si->is_terminal = 1;
+			
+			free(sname);
+			
+			s = end;
+			continue;
+		}
 		
 		// character set declaration
 		if(c == '[') {
@@ -499,7 +568,7 @@ int main(int argc, char* argv[]) {
 			VEC(char) chars;
 			VEC_INIT(&chars);
 			while(*s && *s == ' ') s++;
-			while(*s && *s != ' ') {
+			while(*s && !isspace(*s)) {
 				if(s[0] == '\\') { // escape
 					int ec = s[1];
 					if(ec == 't') ec = '\t';
@@ -538,7 +607,7 @@ int main(int argc, char* argv[]) {
 				printf("ht fail: '%s'\n", sname);
 			}
 			
-			printf("%s: '%s'\n", sname, chars.data);
+// 			printf("%s: '%s'\n", sname, chars.data);
 			VEC_FREE(&chars);
 			
 			continue;
@@ -556,11 +625,11 @@ int main(int argc, char* argv[]) {
 			state_prefix = strdup("LST_NULL");
 		}
 		
-		state_info* pst;
-		if(HT_get(&tctx->states, state_prefix, (void*)&pst)) {
-			pst = new_state_info(state_prefix);
-			HT_set(&tctx->states, state_prefix, pst);
-		}
+		state_info* pst = induce_state(state_prefix, tctx);
+// 		if(HT_get(&tctx->states, state_prefix, (void*)&pst)) {
+// 			pst = new_state_info(state_prefix);
+// 			HT_set(&tctx->states, state_prefix, pst);
+// 		}
 		
 		
 		char* cached_word = NULL;
@@ -590,11 +659,19 @@ int main(int argc, char* argv[]) {
 // 			s = word_end(++s, &wl);
 // 		}
 		char* retry_as = NULL;
+		char* retry_as_cs_name = NULL;
 		case_list extra;
 		VEC_INIT(&extra.cases);
-		while(*s && *s != '\r' && *s != '\n') {
+		while(*s) {
+			int invert = 0;
 			while(*s && *s == ' ') s++;
-			if(!s) break;
+			if(!*s || *s == '\r' || *s == '\n') break;
+			
+			if(*s == '!') {
+				s++;
+				invert = 1;
+				if(!*s) break;
+			}
 			
 			if(*s == ':') { // token type
 				end = word_end(++s, &wl);
@@ -613,9 +690,18 @@ int main(int argc, char* argv[]) {
 			// retry-as, the final failto
 			if(*s == '|') {
 				s++;
+				end = strchr(s, '>');
+				
+				char* set_name = strndup(s, end - s);
+				
+				
+				s = end + 1;
+				end = word_end(s, &wl);
+				
 				
 				end = word_end(s, &wl);
 				retry_as = strndup(s, wl);
+				retry_as_cs_name = set_name;
 				
 				s = end;
 				
@@ -627,7 +713,7 @@ int main(int argc, char* argv[]) {
 				s++;
 				int ec = *s;
 				if(ec == '\\') {
-					ec = *(s++);
+					ec = *++s;
 					if(ec == 't') ec = '\t';
 					else if(ec == 'r') ec = '\r';
 					else if(ec == 'n') ec = '\n';
@@ -635,15 +721,29 @@ int main(int argc, char* argv[]) {
 					// TODO: hex/unicode exscape
 					// else the literal char
 				}
+				s++;
+				
+				int type = *s++;
+				
+				if(invert) {
+					printf("cannot invert a single character\n");
+					has_case_conflict = 1;
+				}
 				
 				// the target state
-				s = end + 1;
 				end = word_end(s, &wl);
 				char* fail_to = strndup(s, wl);
 				
-				state_case_info* ci = add_case_char(pst, ec, fail_to); 
-				(void)ci;
+				state_case_info* ci = add_case_char(pst, ec, fail_to);
+				if(type == '>') ci->action = 0;
+				else if(type == '=') ci->action = 1;
+				else if(type == '~') ci->action = 2;
+				
+				
+				
+				
 				free(fail_to);
+				
 				
 				
 				s = end;
@@ -653,10 +753,12 @@ int main(int argc, char* argv[]) {
 			// charset fail-to
 			if(*s == '+') {
 				s++;
-				end = strchr(s, '>');
+				end = strpbrk(s, ">^");
 				
 				char* set_name = strndup(s, end - s);
 				
+				
+				int type = *end;
 				
 				s = end + 1;
 				end = word_end(s, &wl);
@@ -673,7 +775,12 @@ int main(int argc, char* argv[]) {
 					.type = 1,
 					.cs_name = set_name,
 					.dest_state = fail_to,
+					.action = type,
+					.invert = invert,
 				}));
+				
+				(void)fail_to;
+				(void)set_name;
 				
 // 				state_case_info* ci = add_case_cset(pst, set_name, fail_to); 
 // 				(void)ci;
@@ -689,12 +796,20 @@ int main(int argc, char* argv[]) {
 		
 		
 		if(cached_word) {
-			expand_word(cached_word, pst, &extra, retry_as, tctx); 
+			expand_word(cached_word, pst, &extra, retry_as, retry_as_cs_name, tctx); 
 		}
+		else {
+			VEC_EACH(&extra.cases, i, ci) {
+				add_case_cset(pst, ci.cs_name, ci.dest_state, ci.action, ci.invert);
+			}
+		}
+		
+		cached_word = NULL;
 		
 		VEC_EACH(&extra.cases, i, s) { free(s.cs_name); free(s.dest_state); }
 		VEC_FREE(&extra.cases);
 		if(retry_as) free(retry_as);
+		if(retry_as_cs_name) free(retry_as_cs_name);
 	}
 	
 	
@@ -704,15 +819,19 @@ int main(int argc, char* argv[]) {
 		VEC_SORT(&si->cs_cases, case_cs_sort_fn);
 
 		if(si->is_terminal) {
+// 			printf("t:%s %p, %s, %s\n", key, (void*)si, si->name, si->retry_as);
 			VEC_PUSH(&tctx->terminals, si);
 		}
 		else {
+// 			printf("i:%s %p, %s\n", key, (void*)si, si->name);
 			VEC_PUSH(&tctx->internals, si);
 		}
 	}
 	
 	VEC_SORT(&tctx->terminals, state_sort_fn);
 	VEC_SORT(&tctx->internals, state_sort_fn);
+	
+	if(has_case_conflict) exit(1);
 	
 	
 	
@@ -736,6 +855,18 @@ int main(int argc, char* argv[]) {
 	
 	
 	
+	if(print_enum_names) {
+		printf("// terminals\n"); 
+		VEC_EACH(&tctx->terminals, i, t) {
+			printf("[%s] = \"%s\",\n", t->name, t->name);
+		}
+		
+		printf("\n// internals\n"); 
+		VEC_EACH(&tctx->internals, i, t) {
+			printf("[%s] = \"%s\",\n", t->name, t->name);
+		}
+	}
+	
 	if(print_enums) {
 		
 		
@@ -758,7 +889,7 @@ int main(int argc, char* argv[]) {
 		HT_LOOP(&tctx->csets, key, charset*, cs) {
 			printf("char cset_%s[] = {", cs->name);
 			for(int i = 0; i < cs->minval; i++) printf("0,"); 
-			for(int i = cs->minval; i <= cs->maxval; i++) printf("%d,", !!cs->table[i]); 
+			for(int i = cs->minval; i <= cs->maxval; i++) printf("%d,", !!cs->table[i - cs->minval]); 
 			printf("0};\n");
 			printf("int cset_%s_len = %d;\n", cs->name, cs->maxval);
 		}
