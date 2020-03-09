@@ -10,9 +10,6 @@
 [float_chars_start 0-9.\-\+
 [ws \ \t\r\n
 [endl \r\n
-# single-character transitions can't be inverted yet, but csets can 
-[slash \\
-[star *
 
 
 # keywords
@@ -141,7 +138,7 @@
 :LST_NULL @">LST_string
 &LST_string_end
 :LST_string @\\>LST_string_esc
-:LST_string !+slash>LST_string
+:LST_string !@/>LST_string
 :LST_string_esc @">LST_string
 
 # char literals
@@ -149,7 +146,7 @@
 :LST_NULL @'>LST_charlit
 &LST_charlit_end
 :LST_charlit @\\>LST_charlit_esc
-:LST_charlit !+slash>LST_charlit
+:LST_charlit !@/>LST_charlit
 :LST_charlit_esc @'>LST_charlit
 
 # numbers
@@ -186,12 +183,16 @@
 :LST_float_exp +num_chars>LST_float_exp
 
 # comments
+# @c~state terminates the token on finding c but does NOT consume c
+# @c=state terminates the token on finding c but DOES consume c
+# note how single-line comments do not include the linebreak but do terminate on it
+#  whereas multiline comments terminate on the slash as well as include it
 &LST_sl_comment 
 :LST_sl_comment !+endl>LST_sl_comment
 :LST_sl_comment @\r~LST_sl_comment
 :LST_sl_comment @\n~LST_sl_comment
 &LST_ml_comment
 :LST_ml_comment @*>LST_ml_comment_star
-:LST_ml_comment !+star>LST_ml_comment
+:LST_ml_comment !@*>LST_ml_comment
 :LST_ml_comment_star @/=LST_ml_comment
-:LST_ml_comment_star !+slash>LST_ml_comment
+:LST_ml_comment_star !@/>LST_ml_comment

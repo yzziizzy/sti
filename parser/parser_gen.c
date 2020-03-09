@@ -119,9 +119,9 @@ state_info* new_state_info(char* name) {
 	return si;
 }
 
-state_case_info* add_case_char(state_info* si, int c, char* dest) {
+state_case_info* add_case_char(state_info* si, int c, int invert, char* dest) {
 	VEC_EACH(&si->c_cases, i, ci) {
-		if(ci.type == 0 && ci.c == c) {
+		if(ci.type == 0 && ci.c == c && ci.invert == invert) {
 			if(0 != strcmp(dest, ci.dest_state)) {
 				printf("case conflict: %s (%c)->%s / (%c)->%s\n", si->name, ci.c, ci.dest_state, c, dest);
 				has_case_conflict = 1;
@@ -138,7 +138,7 @@ state_case_info* add_case_char(state_info* si, int c, char* dest) {
 	nci->type = 0;
 	nci->c = c;
 	nci->action = 0; // consume character
-	nci->invert = 0; 
+	nci->invert = invert; 
 	
 	return nci;
 } 
@@ -324,7 +324,7 @@ state_info* expand_word(
 			
 		// add the transitions
 		
-		state_case_info* ci = add_case_char(prev_st, c, this_name); 
+		state_case_info* ci = add_case_char(prev_st, c, 0, this_name); 
 		(void)ci;
 		
 		
@@ -389,6 +389,7 @@ static void print_state_switch(state_info* si) {
 	if(VEC_LEN(&si->c_cases)) {
 		printf("\tswitch(c) {\n");
 		VEC_EACH(&si->c_cases, ckey, ci) {
+			if(ci.invert) continue;
 			
 			pretty_print_char(buf, ci.c);
 			char* action = "push_char_id";
@@ -399,6 +400,15 @@ static void print_state_switch(state_info* si) {
 		
 		printf("\t}\n");
 		
+		VEC_EACH(&si->c_cases, ckey, ci) {
+			if(!ci.invert) continue;
+
+			pretty_print_char(buf, ci.c);
+			char* action = "push_char_id";
+			if(ci.action == 1) action = "push_char_done";
+			else if(ci.action == 2) action = "done_zero_move";
+			printf("\tif(c != %s) { %s(%s); }\n", buf, action, ci.dest_state);
+		}
 	}
 	
 	if(VEC_LEN(&si->cs_cases)) {
@@ -729,26 +739,17 @@ int main(int argc, char* argv[]) {
 				
 				int type = *s++;
 				
-				if(invert) {
-					printf("cannot invert a single character\n");
-					has_case_conflict = 1;
-				}
-				
 				// the target state
 				end = word_end(s, &wl);
 				char* fail_to = strndup(s, wl);
 				
-				state_case_info* ci = add_case_char(pst, ec, fail_to);
+				state_case_info* ci = add_case_char(pst, ec, invert, fail_to);
 				if(type == '>') ci->action = 0;
 				else if(type == '=') ci->action = 1;
 				else if(type == '~') ci->action = 2;
 				
 				
-				
-				
 				free(fail_to);
-				
-				
 				
 				s = end;
 				continue;
