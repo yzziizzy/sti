@@ -1,0 +1,195 @@
+{% :operator |identifier>LST_identifier
+{* :operator |identifier>LST_identifier
+{+ :operator |identifier>LST_identifier
+{- :operator |identifier>LST_identifier
+{/ :operator |identifier>LST_identifier
+:LST_NULL___slash @/>LST_sl_comment
+:LST_NULL___slash @*>LST_ml_comment
+{; :operator |identifier>LST_identifier
+{. :operator |identifier>LST_identifier
+{, :operator |identifier>LST_identifier
+{= :operator |identifier>LST_identifier
+{[ :operator |identifier>LST_identifier
+{] :operator |identifier>LST_identifier
+{} :operator |identifier>LST_identifier
+{{ :operator |identifier>LST_identifier
+{) :operator |identifier>LST_identifier
+{( :operator |identifier>LST_identifier
+{! :operator |identifier>LST_identifier
+{? :operator |identifier>LST_identifier
+{: :operator |identifier>LST_identifier
+{| :operator |identifier>LST_identifier
+{^ :operator |identifier>LST_identifier
+{& :operator |identifier>LST_identifier
+{++ :operator |identifier>LST_identifier
+{-- :operator |identifier>LST_identifier
+{>> :operator |identifier>LST_identifier
+{<< :operator |identifier>LST_identifier
+{+= :operator |identifier>LST_identifier
+{-= :operator |identifier>LST_identifier
+{/= :operator |identifier>LST_identifier
+{*= :operator |identifier>LST_identifier
+{|| :operator |identifier>LST_identifier
+{&& :operator |identifier>LST_identifier
+{^^ :operator |identifier>LST_identifier
+{!= :operator |identifier>LST_identifier
+{== :operator |identifier>LST_identifier
+{>= :operator |identifier>LST_identifier
+{<= :operator |identifier>LST_identifier
+{attribute :keyword |identifier>LST_identifier
+{bool :keyword |identifier>LST_identifier
+{break :keyword |identifier>LST_identifier
+{buffer :keyword |identifier>LST_identifier
+{bvec2 :keyword |identifier>LST_identifier
+{bvec3 :keyword |identifier>LST_identifier
+{bvec4 :keyword |identifier>LST_identifier
+{case :keyword |identifier>LST_identifier
+{coherent :keyword |identifier>LST_identifier
+{const :keyword |identifier>LST_identifier
+{continue :keyword |identifier>LST_identifier
+{cos :keyword |identifier>LST_identifier
+{do :keyword |identifier>LST_identifier
+{double :keyword |identifier>LST_identifier
+{dvec2 :keyword |identifier>LST_identifier
+{dvec3 :keyword |identifier>LST_identifier
+{dvec4 :keyword |identifier>LST_identifier
+{flat :keyword |identifier>LST_identifier
+{float :keyword |identifier>LST_identifier
+{for :keyword |identifier>LST_identifier
+{gl_BaseInstance :keyword |identifier>LST_identifier
+{gl_BaseVertex :keyword |identifier>LST_identifier
+{gl_ClipDistance :keyword |identifier>LST_identifier
+{gl_DrawID :keyword |identifier>LST_identifier
+{gl_InstanceID :keyword |identifier>LST_identifier
+{gl_InvocationID :keyword |identifier>LST_identifier
+{gl_Layer :keyword |identifier>LST_identifier
+{gl_MaxPatchVertices :keyword |identifier>LST_identifier
+{gl_PatchVerticesIn :keyword |identifier>LST_identifier
+{gl_PerVertex :keyword |identifier>LST_identifier
+{gl_PointSize :keyword |identifier>LST_identifier
+{gl_Position :keyword |identifier>LST_identifier
+{gl_PrimitiveID :keyword |identifier>LST_identifier
+{gl_TessCoord :keyword |identifier>LST_identifier
+{gl_TessLevelInner :keyword |identifier>LST_identifier
+{gl_TessLevelOuter :keyword |identifier>LST_identifier
+{gl_VertexID :keyword |identifier>LST_identifier
+{gl_ViewportIndex :keyword |identifier>LST_identifier
+{gl_in :keyword |identifier>LST_identifier
+{gl_out :keyword |identifier>LST_identifier
+{if :keyword |identifier>LST_identifier
+{inout :keyword |identifier>LST_identifier
+{int :keyword |identifier>LST_identifier
+{int64_t :keyword |identifier>LST_identifier
+{invariant :keyword |identifier>LST_identifier
+{ivec2 :keyword |identifier>LST_identifier
+{ivec3 :keyword |identifier>LST_identifier
+{ivec4 :keyword |identifier>LST_identifier
+{layout :keyword |identifier>LST_identifier
+{mat2 :keyword |identifier>LST_identifier
+{mat2x2 :keyword |identifier>LST_identifier
+{mat2x3 :keyword |identifier>LST_identifier
+{mat2x4 :keyword |identifier>LST_identifier
+{mat3 :keyword |identifier>LST_identifier
+{mat3x2 :keyword |identifier>LST_identifier
+{mat3x3 :keyword |identifier>LST_identifier
+{mat3x4 :keyword |identifier>LST_identifier
+{mat4 :keyword |identifier>LST_identifier
+{mat4x2 :keyword |identifier>LST_identifier
+{mat4x3 :keyword |identifier>LST_identifier
+{mat4x4 :keyword |identifier>LST_identifier
+{out :keyword |identifier>LST_identifier
+{precision :keyword |identifier>LST_identifier
+{readonly :keyword |identifier>LST_identifier
+{restrict :keyword |identifier>LST_identifier
+{return :keyword |identifier>LST_identifier
+{sin :keyword |identifier>LST_identifier
+{switch :keyword |identifier>LST_identifier
+{tan :keyword |identifier>LST_identifier
+{texelFetch :keyword |identifier>LST_identifier
+{texture :keyword |identifier>LST_identifier
+{texture2D :keyword |identifier>LST_identifier
+{texture2DArray :keyword |identifier>LST_identifier
+{texture3D :keyword |identifier>LST_identifier
+{texture3DArray :keyword |identifier>LST_identifier
+{textureArray :keyword |identifier>LST_identifier
+{uint :keyword |identifier>LST_identifier
+{uint64_t :keyword |identifier>LST_identifier
+{uniform :keyword |identifier>LST_identifier
+{uvec2 :keyword |identifier>LST_identifier
+{uvec3 :keyword |identifier>LST_identifier
+{uvec4 :keyword |identifier>LST_identifier
+{varying :keyword |identifier>LST_identifier
+{vec2 :keyword |identifier>LST_identifier
+{vec3 :keyword |identifier>LST_identifier
+{vec4 :keyword |identifier>LST_identifier
+{void :keyword |identifier>LST_identifier
+{volatile :keyword |identifier>LST_identifier
+{while :keyword |identifier>LST_identifier
+{writeonly :keyword |identifier>LST_identifier
+
+
+# mark some terminal states
+&LST_float
+&LST_probenum
+&LST_intnum
+&LST_octalnum
+&LST_hexnum
+&LST_identifier
+&LST_float_exp
+
+# all other identifiers
+# + is transition on a character set
+:LST_identifier +identifier_chars>LST_identifier
+:LST_NULL +identifier_schars>LST_identifier
+
+# ignore whitespace
+# ^ discards the char while moving to the next state
+:LST_NULL +ws^LST_NULL
+
+# numbers
+:LST_NULL @0>LST_probenum
+:LST_NULL @1>LST_intnum
+:LST_NULL @2>LST_intnum
+:LST_NULL @3>LST_intnum
+:LST_NULL @4>LST_intnum
+:LST_NULL @5>LST_intnum
+:LST_NULL @6>LST_intnum
+:LST_NULL @7>LST_intnum
+:LST_NULL @8>LST_intnum
+:LST_NULL @9>LST_intnum
+
+:LST_probenum @.>LST_float
+:LST_probenum @x>LST_hexnum
+:LST_probenum @X>LST_hexnum
+:LST_probefixed @x>LST_hexnum
+:LST_probefixed @X>LST_hexnum
+:LST_probenum +num_chars>LST_octalnum
+:LST_probefixed +num_chars>LST_octalnum
+:LST_intnum @.>LST_float
+:LST_intnum +num_chars>LST_intnum
+:LST_octalnum +octal_chars>LST_octalnum
+:LST_hexnum +hex_chars>LST_hexnum
+
+:LST_float @.>LST_INVALID
+:LST_float +num_chars>LST_float
+:LST_float @e>LST_float_exp_start
+:LST_float @E>LST_float_exp_start
+:LST_float @d=LST_float
+:LST_float @f=LST_float
+:LST_float_exp_start +num_chars>LST_float_exp
+:LST_float_exp_start @->LST_float_exp
+:LST_float_exp_start @+>LST_float_exp
+:LST_float_exp +num_chars>LST_float_exp
+:LST_float_exp @d=LST_float
+:LST_float_exp @f=LST_float
+
+# comments
+&LST_sl_comment 
+:LST_sl_comment !+endl>LST_sl_comment
+:LST_sl_comment @\r~LST_sl_comment
+:LST_sl_comment @\n~LST_sl_comment
+&LST_ml_comment
+:LST_ml_comment @*>LST_ml_comment_star
+:LST_ml_comment !+star>LST_ml_comment
+:LST_ml_comment_star @/=LST_ml_comment
+:LST_ml_comment_star !+slash>LST_ml_comment
