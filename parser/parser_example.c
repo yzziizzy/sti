@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "sti.h"
+#include "../sti.h"
 
 enum LexState {
 	LST_INVALID,
@@ -98,7 +98,7 @@ RETRY:
 	assert(0);
 	// never gets here
 ERROR:
-	printf("Lexer error: %d(%s) %d '%c' \n", st->state, state_names[st->state], c, c);
+	printf("Lexer error at line %d:%d: state %d(%s) %d='%c' \n", st->linenum, st->charnum, st->state, state_names[st->state], c, c);
 	st->state = LST_NULL; 
 	st->blen = 0;
 	return 1;

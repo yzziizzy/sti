@@ -8,10 +8,10 @@
 
 #include <unistd.h>
 
-#include "fs.h" 
-#include "vec.h" 
-#include "string.h" 
-#include "hash.h" 
+#include "../fs.h" 
+#include "../vec.h" 
+#include "../string.h" 
+#include "../hash.h" 
 
 
 int has_case_conflict = 0;
@@ -109,6 +109,7 @@ typedef struct state_info {
 	char* retry_as_cs_name;
 	
 	char is_terminal;
+	char* terminal_data;
 } state_info;
 
 
@@ -458,6 +459,7 @@ static int case_cs_sort_fn(void* a_, void* b_) {
 
 int main(int argc, char* argv[]) {
 	char ac;
+	char print_data = 0;
 	char print_enums = 0;
 	char print_enum_names = 0;
 	char print_switch = 0;
@@ -467,9 +469,10 @@ int main(int argc, char* argv[]) {
 	char* fname = NULL;
 	char* prefix = "LST__";
 	
-	while((ac = getopt(argc, argv, "censE:T:")) != -1) {
+	while((ac = getopt(argc, argv, "cdensE:T:")) != -1) {
 		switch(ac) {
 			case 'c': print_csets = 1; break;
+			case 'd': print_data = 1; break;
 			case 'e': print_enums = 1; break;
 			case 'n': print_enum_names = 1; break;
 			case 'E': 
@@ -660,6 +663,7 @@ int main(int argc, char* argv[]) {
 // 		}
 		char* retry_as = NULL;
 		char* retry_as_cs_name = NULL;
+		char* terminal_data = NULL;
 		case_list extra;
 		VEC_INIT(&extra.cases);
 		while(*s) {
@@ -675,7 +679,7 @@ int main(int argc, char* argv[]) {
 			
 			if(*s == ':') { // token type
 				end = word_end(++s, &wl);
-// 				n->type_name = strndup(s, wl);
+ 				terminal_data = strndup(s, wl);
 				s = end;
 				continue;
 			}
@@ -796,9 +800,11 @@ int main(int argc, char* argv[]) {
 		
 		
 		if(cached_word) {
-			expand_word(cached_word, pst, &extra, retry_as, retry_as_cs_name, tctx); 
+			state_info* final = expand_word(cached_word, pst, &extra, retry_as, retry_as_cs_name, tctx); 
+			if(terminal_data) final->terminal_data = terminal_data;
 		}
 		else {
+			if(terminal_data) pst->terminal_data = terminal_data;
 			VEC_EACH(&extra.cases, i, ci) {
 				add_case_cset(pst, ci.cs_name, ci.dest_state, ci.action, ci.invert);
 			}
@@ -880,6 +886,13 @@ int main(int argc, char* argv[]) {
 			printf("%s,\n", t->name);
 		}
 		
+	}
+	
+	if(print_data) {
+		VEC_EACH(&tctx->terminals, i, t) {
+			char* d = t->terminal_data ? t->terminal_data : "NULL" ;
+			printf("[%s] = \"%s\",\n", t->name, d); // TODO: string escaping
+		}
 	}
 	
 	
