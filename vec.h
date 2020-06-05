@@ -120,6 +120,12 @@ do { \
 } while(0)
 
 
+
+// ruins order but is O(1). meh.
+#define VEC_RM_VAL(x, ptr_o) vec_rm_val((char*)VEC_DATA(x), &VEC_LEN(x), sizeof(*VEC_DATA(x)), ptr_o)
+
+
+
 // TODO: vec_set_ins // sorted insert
 // TODO: vec_set_rem
 // TODO: vec_set_has
@@ -324,6 +330,7 @@ else \
 
 void vec_resize(void** data, size_t* size, size_t elem_size);
 ptrdiff_t vec_find(void* data, size_t len, size_t stride, void* search);
+ptrdiff_t vec_rm_val(char* data, size_t* len, size_t stride, void* search);
 void vec_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size);
 
 

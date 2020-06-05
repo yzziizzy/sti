@@ -67,3 +67,16 @@ ptrdiff_t vec_find(void* data, size_t len, size_t stride, void* search) {
 	
 	return -1;
 }
+ 
+ptrdiff_t vec_rm_val(char* data, size_t* len, size_t stride, void* search) {
+	size_t i;
+	for(i = 0; i < *len; i++) {
+		if(0 == memcmp(data + (i * stride), search, stride)) {
+			memcpy(data + (i * stride), data + ((*len - 1) * stride), stride);
+			*len--;
+			return 0;
+		}
+	}
+	
+	return 1;
+}
