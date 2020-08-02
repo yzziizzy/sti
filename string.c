@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "string.h"
 
@@ -168,6 +169,8 @@ void decodeHexColorNorm(char* s, float* out) {
 
 
 /*
+Returns the reversed string
+
 Garbage in, garbage out.
 Unsigned ints only.
 Dont't give a base of 1.
@@ -192,6 +195,7 @@ Give a char set as long as your base.
 }
 
 /*
+Does not add a minus character 
 Garbage in, garbage out. 
 Dont't give a base of 1.
 Dont't give a base greater than 36.
@@ -199,18 +203,18 @@ Give a sufficiently long buffer. You figure it out first.
 Give a char set as long as your base.
 */
 /*static*/ int int_r_cvt_str(int64_t n, int base, char* buf, char* charset) {
-	char negative = 0;
+// 	char negative = 0;
 	int i = 0;
 	
 	if(n < 0) {
-		negative = 1;
+// 		negative = 1;
 		n = -n;
 	}
 	
 	i = uint_r_cvt_str(n, base, buf, charset);
 	
-	if(negative) buf[i++] = '-';
-	
+// 	if(negative) buf[i++] = '-';
+	// GPUEDIT: reformat all numbers in selection by fmt string
 	return i;
 }
 
@@ -294,6 +298,25 @@ Give a sufficiently long buffer. You figure it out first.
 }
 
 
+
+int int_r_add_commas(char* buf, int len) {
+	char tmp[64];
+	int n = 0;
+	
+	strncpy(tmp, buf, len);
+	
+	for(int i = 0; i < len; n++, i++) {
+		if(i && i % 3 == 0) {
+			buf[n++] = ',';
+		}
+		buf[n] = tmp[i];
+	}
+	
+	return n;
+}
+
+
+
 int iprintf(char* fmt, ...) {
 	va_list va;
 	
@@ -309,6 +332,7 @@ int iprintf(char* fmt, ...) {
 			
 			int64_t i64;
 			uint64_t u64;
+			char* str;
 // 			double dbl;
 			
 			int len;
@@ -319,8 +343,9 @@ int iprintf(char* fmt, ...) {
 			char buf[64];
 			
 			char uppercase = 0;
+			char add_commas = 0;
+			char force_sign = 0;
 // 			char left_justify = 0;
-// 			char force_sign = 0;
 // 			char optional_sign = 0;
 // 			char force_decimal = 0;
 // 			char pad_zeroes = 0;
@@ -342,10 +367,15 @@ int iprintf(char* fmt, ...) {
 				if(c == 0) { // end of fmt string
 					goto END_STR;
 				}
+				else if(c == ',') { // add thousands separators
+					add_commas = 1;
+					c = fmt[++i];
+				}
 				else if(c == '-') { // left-justify
 					c = fmt[++i];
 				}
 				else if(c == '+') { // show sign
+					force_sign = 1;
 					c = fmt[++i];
 				}
 				else if(c == ' ') { // optional sign
@@ -395,22 +425,22 @@ int iprintf(char* fmt, ...) {
 			
 			// length 
 			if(c == 0) goto END_STR;
-			else if(c == 'h') {
+			else if(c == 'h') { // short int // hh = char
 				c = fmt[i++];
 			}
-			else if(c == 'l') {
+			else if(c == 'l') { // long // ll = long long
 				c = fmt[i++];
 			}
-			else if(c == 'z') {
+			else if(c == 'z') { // size_t
 				c = fmt[i++];
 			}
-			else if(c == 't') {
+			else if(c == 't') { // ptrdiff_t
 				c = fmt[i++];
 			}
-			else if(c == 'j') {
+			else if(c == 'j') { // uintmax_t
 				c = fmt[i++];
 			}
-			else if(c == 'L') {
+			else if(c == 'L') { // long double
 				c = fmt[i++];
 			}
 			
@@ -435,9 +465,17 @@ int iprintf(char* fmt, ...) {
 					
 					len = int_r_cvt(i64, 10, uppercase, buf);
 					
+					if(add_commas) {
+						len = int_r_add_commas(buf, len);
+					}
+					
+					if(force_sign && i64 > 0) putc('+', stdout);
+					if(i64 < 0) putc('-', stdout);
+					
 					for(int i = len - 1; i >=0; i--) {
 						putc(buf[i], stdout);
-					} 
+					}
+				
 					
 					break;
 				
@@ -445,6 +483,12 @@ int iprintf(char* fmt, ...) {
 					u64 = va_arg(va, uint64_t);
 					
 					len = uint_r_cvt(u64, 10, uppercase, buf);
+					
+					if(add_commas) {
+						len = int_r_add_commas(buf, len);
+					}
+					
+					if(force_sign) putc('+', stdout);
 					
 					for(int i = len - 1; i >=0; i--) {
 						putc(buf[i], stdout);
@@ -456,6 +500,8 @@ int iprintf(char* fmt, ...) {
 					
 					len = uint_r_cvt(u64, 8, uppercase, buf);
 					
+					if(force_sign) putc('+', stdout);
+					
 					for(int i = len - 1; i >=0; i--) {
 						putc(buf[i], stdout);
 					} 
@@ -466,6 +512,8 @@ int iprintf(char* fmt, ...) {
 					u64 = va_arg(va, uint64_t);
 					
 					len = uint_r_cvt(u64, 16, uppercase, buf);
+
+					if(force_sign) putc('+', stdout);
 					
 					for(int i = len - 1; i >=0; i--) {
 						putc(buf[i], stdout);
@@ -498,10 +546,20 @@ int iprintf(char* fmt, ...) {
 					break;
 				
 				case 's': // string
+					str = va_arg(va, char*);
+					fputs(str, stdout);
 					break;
 					
 				case 'P': // shortened pointer
 				case 'p': // pointer
+					u64 = va_arg(va, uint64_t);
+					
+					len = uint_r_cvt(u64, 16, 0, buf);
+					fputs("0x", stdout);
+					
+					for(int i = len - 1; i >=0; i--) {
+						putc(buf[i], stdout);
+					} 
 					break;
 					
 				case 'n': // set arg to number of chars written

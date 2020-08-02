@@ -14,12 +14,16 @@
 
 
 #include "sti.h"
+#include "./string.h"
 
 
 // temp, will be static later
 int flt_r_cvt_str(float f, int base, char* buf, char* charset);
  int int_r_cvt(int64_t n, int base, int upper, char* buf) ;
 
+ 
+int iprintf(char* fmt, ...);
+ 
 // static void nothin(void* );
 // static void nothin(void* b) { (void)b; }
 // static int intcomp(const void* a, const void* b);
@@ -38,8 +42,9 @@ int main(int argc, char* argv[]) {
 	char test_b_vs_t = 0;
 	char test_rpn = 0;
 	char test_iprintf = 0;
+	char test_commas = 0;
 	
-	while ((c = getopt (argc, argv, "svf1pi")) != -1) {
+	while ((c = getopt (argc, argv, "csvf1pi")) != -1) {
 		switch(c) {
 			case 's': test_sets = 1; break;
 			case 'v': test_vec = 1; break;
@@ -47,6 +52,7 @@ int main(int argc, char* argv[]) {
 			case '1': test_b_vs_t = 1; break;
 			case 'p': test_rpn = 1; break;
 			case 'i': test_iprintf = 1; break;
+			case 'c': test_commas = 1; break;
 		}
 	}
 		
@@ -222,6 +228,25 @@ int main(int argc, char* argv[]) {
 		}
 		
 		printf("passed at: %d\n", max - inc);
+	}
+	
+	
+	if(test_commas) {
+		iprintf("%+,d\n", 1);
+		iprintf("%+,d\n", -12l);
+		iprintf("%,d\n", -123l);
+		iprintf("%,d\n", 1234);
+		iprintf("%,d\n", 12345);
+		iprintf("%,d\n", 123456);
+		iprintf("%,d\n", 1234567);
+		iprintf("%,d\n", 12345678);
+		iprintf("%,d\n", 123456789);
+		iprintf("%,d\n", 1234567890);
+		iprintf("%+,d\n", 12345678901);
+		iprintf("%,d\n", 123456789012);
+		iprintf("%,d\n", 1234567890123);
+		iprintf("%p\n", &c);
+		
 	}
 	
 	
