@@ -24,6 +24,8 @@ int flt_r_cvt_str(float f, int base, char* buf, char* charset);
  
 int iprintf(char* fmt, ...);
  
+int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args);
+
 // static void nothin(void* );
 // static void nothin(void* b) { (void)b; }
 // static int intcomp(const void* a, const void* b);
@@ -42,9 +44,11 @@ int main(int argc, char* argv[]) {
 	char test_b_vs_t = 0;
 	char test_rpn = 0;
 	char test_iprintf = 0;
+	char test_Iprintf = 0;
 	char test_commas = 0;
 	
-	while ((c = getopt (argc, argv, "csvf1pi")) != -1) {
+	
+	while ((c = getopt (argc, argv, "csvf1piI")) != -1) {
 		switch(c) {
 			case 's': test_sets = 1; break;
 			case 'v': test_vec = 1; break;
@@ -52,11 +56,33 @@ int main(int argc, char* argv[]) {
 			case '1': test_b_vs_t = 1; break;
 			case 'p': test_rpn = 1; break;
 			case 'i': test_iprintf = 1; break;
+			case 'I': test_Iprintf = 1; break;
 			case 'c': test_commas = 1; break;
 		}
 	}
+	
+	
+	if(test_Iprintf) {
+		char buffer[256] = "zzzzzzzzzzzz";
+		size_t n;
+		double dd = 3.5;
+		uint64_t nn = *((uint64_t*)&dd);
 		
+		uint64_t iargs[] = {
+			123456,
+			nn,
+			(uint64_t)&dd,
+			-500000000,
+			(uint64_t)"string test",
+		};
 		
+// 		printf("%d\n", snprintf(buffer, 100, "%ld", 123456l));
+		n = isnprintfv(buffer, 256, "a %ld b %.3f c %p d %d e %s f", (void**)iargs);
+		
+		printf("\n\n%s\n%ld\n%p\n", buffer, n, (void*)&dd);
+	}
+	
+	
 	if(test_iprintf) {
 		
 		for(int i = 0; i < 24; i++) {

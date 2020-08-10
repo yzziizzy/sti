@@ -586,3 +586,218 @@ END_STR:
 	
 	return 0;
 }
+
+
+
+int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
+	
+	int n = 0;
+	int ar = 0;
+	
+	char fmt_buf[64];
+	fmt_buf[0] = '%';
+	
+	
+	for(size_t i = 0; fmt[i];) { 
+		char c = fmt[i];
+// 		printf("+i:%ld+", i);
+		if(c == '%') {
+			
+			char Int = 0;
+			char Double = 0;
+			char Pointer = 0;
+			char Broken = 0;
+			
+			char WidthStar = 0;
+// 			char WidthDollar = 0;
+			char PrecStar = 0;
+// 			char PrecDollar = 0;
+			char Long = 0;
+			
+			int fblen = 1;
+			
+			int numExtra = 0;
+			
+			c = fmt[++i];
+			
+			if(c == 0) break;
+			if(c == '%') {
+				if(n < out_sz - 1) out[n] = '%';
+				i++;
+				n++;
+				continue;
+			}
+			
+			// flags
+			switch(c) {
+				case '#':
+				case '0':
+				case '-':
+				case ' ':
+				case '+':
+				case '\'':
+				case 'I':
+					fmt_buf[fblen++] = c;
+					c = fmt[++i];
+			}
+			
+			// field width
+			if(c == '*') {
+				WidthStar = 1;
+				fmt_buf[fblen++] = c;
+				c = fmt[++i];
+			}
+			
+			while(1) {
+				if(c < '0' || c > '9') break;
+				
+				fmt_buf[fblen++] = c;
+				c = fmt[++i];
+			}
+			
+			if(WidthStar && c == '$') {
+// 				WidthDollar = 1;
+				fmt_buf[fblen++] = c;
+				c = fmt[++i];
+			}
+			
+			// precision
+			if(c == '.') {
+				fmt_buf[fblen++] = c;
+				c = fmt[++i];
+				
+				if(c == '*') {
+					PrecStar = 1;
+					fmt_buf[fblen++] = c;
+					c = fmt[++i];
+				}
+				
+				while(1) {
+					if(c < '0' || c > '9') break;
+					
+					fmt_buf[fblen++] = c;
+					c = fmt[++i];
+				}
+				
+				if(c == '$') {
+// 					PrecDollar = 1;
+					fmt_buf[fblen++] = c;
+					c = fmt[++i];
+				}
+			}
+			
+			// length
+			
+			switch(c) {
+				case 'l':
+				case 'L':
+				case 'z':
+				case 'Z':
+				case 't':
+					Long = 1; /* fallthrough */
+// 				case 'hh':
+				case 'h':
+// 				case 'll':
+				case 'q':
+				case 'j':
+					fmt_buf[fblen++] = c;
+					c = fmt[++i];
+			}
+			
+			// conversion specifier
+			switch(c) {
+				case 'C':
+					Long = 1; /* fallthrough */
+				case 'd':
+				case 'i':
+				case 'o':
+				case 'u':
+				case 'x':
+				case 'X':
+				case 'c':
+					Int = 1;
+					break;
+					
+				case 'e':
+				case 'E':
+				case 'f':
+				case 'F':
+				case 'g':
+				case 'G':
+				case 'a':
+				case 'A':
+					Double = 1;
+					break;
+					
+				case 's':
+				case 'S':
+				case 'p':
+					Pointer = 1;
+					break;
+					
+				case 'n':
+					// TODO
+// 				case 'm': // not supported
+				
+				default:
+					Broken = 1;
+					// broken specifier
+			}
+			
+			
+			fmt_buf[fblen++] = c;
+			fmt_buf[fblen] = 0;
+			c = fmt[++i];
+			
+// 			printf("(%s)", fmt_buf);
+			
+			if(PrecStar) numExtra++;
+			if(WidthStar) numExtra++;
+			
+			if(Broken) {
+				fprintf(stderr, "Broken format specifier.\n");
+				continue;
+			}
+			else if(Double) {
+				double dd1 = *((double*)&args[ar]);
+				double dd2 = *((double*)&args[ar+1]);
+				double dd3 = *((double*)&args[ar+2]);
+				
+				if(numExtra == 0) n += snprintf(out + n, out_sz - n, fmt_buf, dd1);
+				else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], dd2);
+				else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (uint64_t)args[ar+1], dd3);
+			}
+			else if(Pointer) {
+				if(numExtra == 0) n += snprintf(out + n, out_sz - n, fmt_buf, (void*)args[ar]);
+				else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (void*)args[ar], (int*)args[ar+1]);
+				else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (void*)args[ar], (int*)args[ar+1], (int*)args[ar+2]);
+			}
+			else if(Int) {
+				if(Long) {
+					if(numExtra == 0) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar]);
+					else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (int*)args[ar+1]);
+					else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (int*)args[ar+1], (int*)args[ar+2]);
+				}
+				else { // careful of precision
+					// BUG fix int cast 
+					if(numExtra == 0) n += snprintf(out + n, out_sz - n, fmt_buf, (uint32_t)(uint64_t)args[ar]);
+					else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (uint32_t)(uint64_t)args[ar], (int*)args[ar+1]);
+					else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint32_t)(uint64_t)args[ar], (int*)args[ar+1], (int*)args[ar+2]);
+				}
+			}
+// 			printf("-ex:%d-", numExtra);
+			ar += 1 + numExtra;
+			
+		}
+		else {
+			if(n < out_sz - 1) out[n] = c;
+			n++;
+			i++;
+		}
+	}
+	
+	out[n] = 0;
+	(void)out_sz;
+	
+	return n;
+}
