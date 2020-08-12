@@ -67,19 +67,22 @@ int main(int argc, char* argv[]) {
 		size_t n;
 		double dd = 3.5;
 		uint64_t nn = *((uint64_t*)&dd);
+		uint64_t n1, n2;
 		
 		uint64_t iargs[] = {
 			123456,
+			(uint64_t)&n1,
 			nn,
 			(uint64_t)&dd,
 			-500000000,
 			(uint64_t)"string test",
+			(uint64_t)&n2,
 		};
 		
 // 		printf("%d\n", snprintf(buffer, 100, "%ld", 123456l));
-		n = isnprintfv(buffer, 256, "a %ld b %.3f c %p d %d e %s f", (void**)iargs);
+		n = isnprintfv(buffer, 256, "a %ld%n b %.3f c %p d %d e %s f-%n-g", (void**)iargs);
 		
-		printf("\n\n%s\n%ld\n%p\n", buffer, n, (void*)&dd);
+		printf("\n\n%s\n%ld\n%p\n%ld, %ld\n", buffer, n, (void*)&dd, n1, n2);
 	}
 	
 	

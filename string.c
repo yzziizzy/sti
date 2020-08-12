@@ -606,7 +606,7 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 			char Int = 0;
 			char Double = 0;
 			char Pointer = 0;
-			char Broken = 0;
+// 			char Broken = 0;
 			
 			char WidthStar = 0;
 // 			char WidthDollar = 0;
@@ -736,11 +736,18 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 					break;
 					
 				case 'n':
-					// TODO
+					*((uint64_t*)args[ar]) = n;
+					ar++;
+					i++;
+					continue;
+					
 // 				case 'm': // not supported
 				
 				default:
-					Broken = 1;
+// 					Broken = 1;
+					fprintf(stderr, "Broken format specifier.\n");
+					i++;
+					continue;
 					// broken specifier
 			}
 			
@@ -754,11 +761,7 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 			if(PrecStar) numExtra++;
 			if(WidthStar) numExtra++;
 			
-			if(Broken) {
-				fprintf(stderr, "Broken format specifier.\n");
-				continue;
-			}
-			else if(Double) {
+			if(Double) {
 				double dd1 = *((double*)&args[ar]);
 				double dd2 = *((double*)&args[ar+1]);
 				double dd3 = *((double*)&args[ar+2]);
@@ -769,20 +772,20 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 			}
 			else if(Pointer) {
 				if(numExtra == 0) n += snprintf(out + n, out_sz - n, fmt_buf, (void*)args[ar]);
-				else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (void*)args[ar], (int*)args[ar+1]);
-				else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (void*)args[ar], (int*)args[ar+1], (int*)args[ar+2]);
+				else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (void*)args[ar+1]);
+				else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (uint64_t)args[ar+1], (void*)args[ar+2]);
 			}
 			else if(Int) {
 				if(Long) {
 					if(numExtra == 0) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar]);
-					else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (int*)args[ar+1]);
-					else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (int*)args[ar+1], (int*)args[ar+2]);
+					else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (uint64_t)args[ar+1]);
+					else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (uint64_t)args[ar+1], (uint64_t)args[ar+2]);
 				}
 				else { // careful of precision
 					// BUG fix int cast 
 					if(numExtra == 0) n += snprintf(out + n, out_sz - n, fmt_buf, (uint32_t)(uint64_t)args[ar]);
-					else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (uint32_t)(uint64_t)args[ar], (int*)args[ar+1]);
-					else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint32_t)(uint64_t)args[ar], (int*)args[ar+1], (int*)args[ar+2]);
+					else if(numExtra == 1) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (uint32_t)(uint64_t)args[ar+1]);
+					else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)args[ar], (uint64_t)args[ar+1], (uint32_t)(uint64_t)args[ar+2]);
 				}
 			}
 // 			printf("-ex:%d-", numExtra);
@@ -796,8 +799,7 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 		}
 	}
 	
-	out[n] = 0;
-	(void)out_sz;
+	out[out_sz < n ? out_sz : n] = 0;
 	
 	return n;
 }
