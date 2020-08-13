@@ -65,12 +65,19 @@ int main(int argc, char* argv[]) {
 	if(test_Iprintf) {
 		char buffer[256] = "zzzzzzzzzzzz";
 		size_t n;
+		int i = 77;
+		int* pi = &i;
+		int** ppi = &pi;
 		double dd = 3.5;
 		uint64_t nn = *((uint64_t*)&dd);
 		uint64_t n1, n2;
+		(void)pi;
+		(void)ppi;
 		
 		uint64_t iargs[] = {
-			123456,
+			3,
+			(uint64_t)ppi,
+			
 			(uint64_t)&n1,
 			nn,
 			(uint64_t)&dd,
@@ -80,7 +87,7 @@ int main(int argc, char* argv[]) {
 		};
 		
 // 		printf("%d\n", snprintf(buffer, 100, "%ld", 123456l));
-		n = isnprintfv(buffer, 256, "a %ld%n b %.3f c %p d %d e %s f-%n-g", (void**)iargs);
+		n = isnprintfv(buffer, 256, "a %>>.*ld%n b %.3f c %p d %d e %s f-%n-g", (void**)iargs);
 		
 		printf("\n\n%s\n%ld\n%p\n%ld, %ld\n", buffer, n, (void*)&dd, n1, n2);
 	}

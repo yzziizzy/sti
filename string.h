@@ -32,6 +32,11 @@ uint32_t decodeHexColor(char* s);
 // returns rgba, with r in out[0] and a in out[3], normalized to 0xFF = 1.0
 void decodeHexColorNorm(char* s, float* out);
 
+,
+// snprintf, with a void*[] arg list
+int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args);
+
+
 // TODO:
 // trim whitespace
 // collapse whitespace
