@@ -77,10 +77,10 @@ int HT_init(HashTable* obj, int minAllocSize) {
 
 
 void HT_destroy(HashTable* obj, int free_values_too) {
-	size_t i, n;
+	int64_t i, n;
 	
 	if(free_values_too) {
-		for(i = 0, n = 0; i < obj->alloc_size && n < obj->fill; i++) {
+		for(i = 0, n = 0; i < obj->alloc_size && n < (int64_t)obj->fill; i++) {
 			// only free valid pointers that also have a key
 			// deleted items are assumed to be cleaned up by the user
 			if(obj->buckets[i].key) {
@@ -159,7 +159,10 @@ int HT_resize(HashTable* obj, int newSize) {
 	if(!obj->buckets) return 1;
 	
 	for(i = 0, n = 0; i < oldlen && n < (int64_t)obj->fill; i++) {
-		if(op->key == NULL) continue;
+		if(op->key == NULL) {
+			op++;
+			continue;
+		}
 		
 		bi = find_bucket(obj, op->hash, op->key);
 		obj->buckets[bi].value = op->value;
@@ -181,6 +184,11 @@ int HT_resize(HashTable* obj, int newSize) {
 int HT_get(HashTable* obj, char* key, void** val) {
 	uint64_t hash;
 	int64_t bi;
+	
+	if(key == NULL) {
+		if(val) *val = NULL;
+		return 2;
+	}
 	
 	hash = hash_key(key, -1);
 	
