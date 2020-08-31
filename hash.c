@@ -80,7 +80,7 @@ void HT_destroy(HashTable* obj, int free_values_too) {
 	int64_t i, n;
 	
 	if(free_values_too) {
-		for(i = 0, n = 0; i < obj->alloc_size && n < (int64_t)obj->fill; i++) {
+		for(i = 0, n = 0; i < (int64_t)obj->alloc_size && n < (int64_t)obj->fill; i++) {
 			// only free valid pointers that also have a key
 			// deleted items are assumed to be cleaned up by the user
 			if(obj->buckets[i].key) {

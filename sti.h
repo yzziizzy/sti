@@ -13,6 +13,7 @@
 #include "string.h"
 #include "utf.h"
 #include "vec.h"
+#include "ring.h"
 
 // heavily dependent on Linux
 #include "memarena.h"

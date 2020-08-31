@@ -46,9 +46,10 @@ int main(int argc, char* argv[]) {
 	char test_iprintf = 0;
 	char test_Iprintf = 0;
 	char test_commas = 0;
+	char test_ring = 0;
 	
 	
-	while ((c = getopt (argc, argv, "csvf1piI")) != -1) {
+	while ((c = getopt (argc, argv, "csvf1piIr")) != -1) {
 		switch(c) {
 			case 's': test_sets = 1; break;
 			case 'v': test_vec = 1; break;
@@ -58,7 +59,45 @@ int main(int argc, char* argv[]) {
 			case 'i': test_iprintf = 1; break;
 			case 'I': test_Iprintf = 1; break;
 			case 'c': test_commas = 1; break;
+			case 'r': test_ring = 1; break;
 		}
+	}
+	
+	
+	
+	
+	if(test_ring) {
+		RING(int) r;
+		
+		RING_INIT(&r, 10);
+		
+		for(int j = 0; j < 11; j++) {
+			RING_PUSH(&r, 50 + j);
+		}
+		
+		
+		for(int i = 0; i < 10; i++) {
+			printf("%d: %d\n", i, r.data[i]);
+		}
+		
+		int a = -99;
+		RING_POP(&r, a);
+		printf("\na: %d, len: %ld\n", a, r.len);
+		
+		int b = -99;
+		RING_POP(&r, b);
+		printf("\nb: %d, len: %ld\n", b, r.len);
+		
+		RING_PUSH(&r, 70);
+		
+		int c = -99;
+		RING_POP(&r, c);
+		printf("\nc: %d, len: %ld\n", c, r.len);
+		
+		RING_EACH(&r, i, v) {
+			printf("each: %ld - %d\n", i, v);
+		}
+		
 	}
 	
 	
