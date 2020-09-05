@@ -23,6 +23,12 @@ char* strappend(const char* a, const char* const b);
 char** strsplit_inplace(char* src, char delim, size_t* outLen);
 
 
+// handy shortcut
+static inline char* strskip(char* s, char* skip) {
+	return s + strspn(s, skip);
+}
+
+
 // returns the numerical calue of a single hex digit
 unsigned int decodeHexDigit(char c);
 
@@ -32,7 +38,7 @@ uint32_t decodeHexColor(char* s);
 // returns rgba, with r in out[0] and a in out[3], normalized to 0xFF = 1.0
 void decodeHexColorNorm(char* s, float* out);
 
-,
+
 // snprintf, with a void*[] arg list
 int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args);
 
