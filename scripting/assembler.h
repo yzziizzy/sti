@@ -16,17 +16,22 @@ type conversions, swizzles, unpacks
 #define IT_CROWD \
 	IT(debug, 1, "") \
 	IT(stack_dump, 1, "") \
+	\
 	IT(halt, 0, "") \
 	IT(label, 1, "") \
 	IT(goto, 1, "") \
+	IT(call, -1, "") \
+	IT(ret, 0, "") \
 	IT(cond, 3, "") \
 	\
 	IT(frame, 0, "start a new stack frame") \
 	IT(unframe, 0, "roll back to the previous stack frame") \
 	IT(local, 2, "reserve stack space for a local variable") \
+	\
 	IT(set, 2, "set a local variable's value") \
 	\
 	IT(add, 3, "") \
+	IT(sub, 3, "") \
 
 
 
@@ -62,7 +67,7 @@ enum VarType {
 typedef struct Inst {
 	int opid;
 	int argc;
-	char* args[4];
+	char** args;
 } Inst;
 
 typedef struct Ilabel {

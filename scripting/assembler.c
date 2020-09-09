@@ -54,14 +54,38 @@ void parse_asm(char** lines, size_t cnt) {
 		
 		// args
 		int argc = InstArgCounts[opid];
-		in->argc = argc;
-		
-		for(int a = 0; a < argc; a++) {
-			size_t arglen = strcspn(s, ws);
-			in->args[a] = strndup(s, oplen);
-			s = strskip(s + arglen, ws);
+		if(argc < 0) { // variable number of arguments
+			argc = 0;
+			char* os = s;
+			
+			while(*s && *s != '\r' && *s != '\n') {
+				size_t arglen = strcspn(s, ws);
+				s = strskip(s + arglen, ws);
+				argc++;
+			}
+			
+			s = os;
+			in->args = malloc(sizeof(*in->args) * argc);
+			
+			int a = 0;
+			while(*s) {
+				size_t arglen = strcspn(s, ws);
+				in->args[a++] = strndup(s, arglen);
+				s = strskip(s + arglen, ws);
+			}
+			
+			in->argc = argc;
 		}
-		
+		else { // fixed number of arguments
+			in->argc = argc;
+			in->args = malloc(sizeof(*in->args) * argc);
+			
+			for(int a = 0; a < argc; a++) {
+				size_t arglen = strcspn(s, ws);
+				in->args[a] = strndup(s, arglen);
+				s = strskip(s + arglen, ws);
+			}
+		}
 	}
 	
 	
@@ -84,7 +108,7 @@ typedef struct LocalInfo {
 } LocalInfo;
 
 typedef struct FrameInfo {
-	HashTable(size_t) labels;
+// 	HashTable(size_t) labels;
 	HashTable(LocalInfo*) locals;
 } FrameInfo;
 
@@ -109,21 +133,21 @@ typedef struct Context {
 } Context;
 
 
-static void stack_pushl(Context* ctx, uint64_t v) {
-	*((uint64_t*)(ctx->stack + ctx->stackHead)) = v;
+static void stack_pushl(Context* ctx, int64_t v) {
+	*((int64_t*)(ctx->stack + ctx->stackHead)) = v;
 	ctx->stackHead += sizeof(v);
 }
 
 static uint64_t stack_popl(Context* ctx) {
-	ctx->stackHead -= sizeof(uint64_t);
-	uint64_t v = *((uint64_t*)(ctx->stack + ctx->stackHead));
+	ctx->stackHead -= sizeof(int64_t);
+	int64_t v = *((int64_t*)(ctx->stack + ctx->stackHead));
 	return v;
 }
 
 
 static FrameInfo* get_frame(Context* ctx, int n) {
 	if(n >= VEC_LEN(&ctx->frames)) return NULL;
-	return &VEC_ITEM(&ctx->frames, VEC_LEN(&ctx->frames) - n);
+	return &VEC_ITEM(&ctx->frames, VEC_LEN(&ctx->frames) - n - 1);
 }
 
 static FrameInfo* add_frame(Context* ctx) {
@@ -134,7 +158,7 @@ static FrameInfo* add_frame(Context* ctx) {
 	VEC_INC(&ctx->frames);
 	
 	FrameInfo* f = &VEC_TAIL(&ctx->frames);
-	HT_init(&f->labels, 32);
+// 	HT_init(&f->labels, 32);
 	HT_init(&f->locals, 32);
 	
 	return f;
@@ -146,22 +170,22 @@ static void free_frame(Context* ctx) {
 	ctx->stackHead = ctx->stackBase;
 	ctx->stackBase = stack_popl(ctx);
 	
-	HT_destroy(&f->labels, 0);
+// 	HT_destroy(&f->labels, 0);
 	HT_destroy(&f->locals, 1);
 }
 
 static void add_label(Context* ctx, char* name, size_t index) {
-	FrameInfo* f = get_frame(ctx, 0);
+// 	FrameInfo* f = get_frame(ctx, 0);
 	
-	HT_set(&f->labels, name, index);
+	HT_set(&ctx->labels, name, index);
 	printf("adding label '%s' at %ld\n", name, index);
 }
 
 static size_t get_label(Context* ctx, char* name) {
 	size_t out;
-	FrameInfo* f = get_frame(ctx, 0);
+// 	FrameInfo* f = get_frame(ctx, 0);
 
-	if(HT_get(&f->labels, name, &out)) {
+	if(HT_get(&ctx->labels, name, &out)) {
 		printf("unknown label: '%s'\n", name);
 		return 0;
 	}
@@ -169,7 +193,7 @@ static size_t get_label(Context* ctx, char* name) {
 	return out;
 }
 
-static uint64_t get_local_offset(Context* ctx, int frame, char* name) {
+static size_t get_local_offset(Context* ctx, int frame, char* name) {
 	LocalInfo* local;
 	FrameInfo* f = get_frame(ctx, frame);
 	
@@ -181,12 +205,20 @@ static uint64_t get_local_offset(Context* ctx, int frame, char* name) {
 	return local->offset;
 }
 
-static uint64_t get_stackl(Context* ctx, size_t off) {
-	return *((uint64_t*)(ctx->stack + off));
+static int64_t get_stackl(Context* ctx, size_t off) {
+	return *((int64_t*)(ctx->stack + off));
 }
 
-static uint64_t get_locall(Context* ctx, char* name) {
+static void set_stackl(Context* ctx, size_t off, int64_t v) {
+	*((int64_t*)(ctx->stack + off)) = v;
+}
+
+static int64_t get_locall(Context* ctx, char* name) {
 	return get_stackl(ctx, get_local_offset(ctx, 0, name));
+}
+
+static void set_locall(Context* ctx, char* name, int64_t v) {
+	set_stackl(ctx, get_local_offset(ctx, 0, name), v);
 }
 
 
@@ -195,8 +227,9 @@ static void add_local(Context* ctx, char* name) {
 	
 	LocalInfo* local = calloc(1, sizeof(*local));
 	local->offset = ctx->stackHead;
+	local->name = strdup(name);
 	
-	ctx->stackHead += sizeof(uint64_t);
+	ctx->stackHead += sizeof(int64_t);
 	
 	HT_set(&f->locals, name, local);
 	printf("adding local '%s'\n", name);
@@ -214,7 +247,7 @@ static void check_stack(Context* ctx, size_t extra) {
 void run_inst(Context* ctx) {
 	Inst* in;
 	size_t p;
-	uint64_t va, vb, vc;
+	int64_t va, vb, vc;
 	
 	if(ctx->ip >= ctx->instLen) {
 		printf("Instruction pointer out of bounds\n");
@@ -226,6 +259,7 @@ void run_inst(Context* ctx) {
 	
 	switch(in->opid) {
 		case IT_label: 
+			add_label(ctx, in->args[0], ctx->ip + 1);
 			break;
 		
 		case IT_halt:
@@ -235,8 +269,23 @@ void run_inst(Context* ctx) {
 			
 		case IT_goto: // direct jump to a label
 			// find label, jump to it.
+			printf("jumping to label %s\n", in->args[0]);
 			p = get_label(ctx, in->args[0]);
 			ctx->ip = p;
+			return;
+			
+		case IT_call: // function call
+			// find label, jump to it.
+			printf("calling function %s\n", in->args[0]);
+			
+			stack_pushl(ctx, ctx->ip + 1);
+			p = get_label(ctx, in->args[0]);
+			ctx->ip = p;
+			return;
+			
+		case IT_ret: // 
+			printf("returning\n");
+			ctx->ip = stack_popl(ctx);
 			return;
 			
 		case IT_frame: // start a new stack frame
@@ -273,11 +322,33 @@ void run_inst(Context* ctx) {
 				printf("  frame %d:\n", i);
 				
 				HT_LOOP(&f->locals, n, LocalInfo*, l) {
-					printf("    %s: %ld\n", l->name, get_stackl(f, l->offset));
+					printf("    %s: %ld\n", l->name, get_stackl(ctx, l->offset));
 				}
 			}
 			
 			break;
+		
+		case IT_set:
+			printf("setting local %s to %ld\n", in->args[0], strtol(in->args[1], NULL, 10));
+			set_locall(ctx, in->args[0], strtol(in->args[1], NULL, 10));
+			break;
+			
+		case IT_add:
+			printf("adding locals: %s + %s = %s\n", in->args[0], in->args[1], in->args[2]);
+			
+			va = get_locall(ctx, in->args[0]);
+			vb = get_locall(ctx, in->args[1]);
+			set_locall(ctx, in->args[2], va + vb);
+			break;
+			
+		case IT_sub:
+			printf("subtracting locals: %s + %s = %s\n", in->args[0], in->args[1], in->args[2]);
+			
+			va = get_locall(ctx, in->args[0]);
+			vb = get_locall(ctx, in->args[1]);
+			set_locall(ctx, in->args[2], va - vb);
+			break;
+		
 		
 		case IT_cond: // skip next instruciton if false
 			va = get_locall(ctx, in->args[1]);
@@ -305,9 +376,12 @@ void run_inst(Context* ctx) {
 	
 	}
 	
+	
+	printf("\n");
+	
 	ctx->ip++;
 	return;
-		
+	
 }
 
 
@@ -316,11 +390,16 @@ void terrible_interpreter(Inst* inst, size_t instLen) {
 	
 	Context ctx;
 	
+	VEC_INIT(&ctx.frames);
 	ctx.inst = inst;
 	ctx.instLen = instLen;
-// 	HT_Init(&ctx.heap, 64);
  	HT_init(&ctx.labels, 64);
 	ctx.ip = 0;
+	ctx.halt = 0;
+	ctx.stack = calloc(1, 1024);
+	ctx.stackAlloc = 1024;
+	ctx.stackBase = 0;
+	ctx.stackHead = 0;
 	
 	// scan and fill in labels
 	for(size_t i = 0; i < instLen; i++) {
@@ -329,8 +408,10 @@ void terrible_interpreter(Inst* inst, size_t instLen) {
 	}
 	
 	
-	for(int i = 0; i < 10; i++) {
+	for(int i = 0; i < 40; i++) {
 		if(ctx.halt) break;
+		
+		printf("%d - ", i);
 		run_inst(&ctx);
 	}
 	
