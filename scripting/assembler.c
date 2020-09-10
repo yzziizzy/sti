@@ -139,6 +139,10 @@ static void stack_pushl(Context* ctx, int64_t v) {
 }
 
 static uint64_t stack_popl(Context* ctx) {
+	if(ctx->stackHead == 0) {
+		printf("stack underflow\n");
+		exit(1);
+	}
 	ctx->stackHead -= sizeof(int64_t);
 	int64_t v = *((int64_t*)(ctx->stack + ctx->stackHead));
 	return v;
@@ -147,6 +151,7 @@ static uint64_t stack_popl(Context* ctx) {
 
 static FrameInfo* get_frame(Context* ctx, int n) {
 	if(n >= VEC_LEN(&ctx->frames)) return NULL;
+// 	printf("getting frame %d\n", VEC_LEN(&ctx->frames) - n - 1);
 	return &VEC_ITEM(&ctx->frames, VEC_LEN(&ctx->frames) - n - 1);
 }
 
@@ -157,7 +162,7 @@ static FrameInfo* add_frame(Context* ctx) {
 	
 	VEC_INC(&ctx->frames);
 	
-	FrameInfo* f = &VEC_TAIL(&ctx->frames);
+	FrameInfo* f = get_frame(ctx, 0);
 // 	HT_init(&f->labels, 32);
 	HT_init(&f->locals, 32);
 	
@@ -172,6 +177,8 @@ static void free_frame(Context* ctx) {
 	
 // 	HT_destroy(&f->labels, 0);
 	HT_destroy(&f->locals, 1);
+	
+	VEC_LEN(&ctx->frames)--;
 }
 
 static void add_label(Context* ctx, char* name, size_t index) {
@@ -198,7 +205,7 @@ static size_t get_local_offset(Context* ctx, int frame, char* name) {
 	FrameInfo* f = get_frame(ctx, frame);
 	
 	if(HT_get(&f->locals, name, &local)) {
-		printf("unknown label: '%s'\n", name);
+		printf("unknown local: '%s'\n", name);
 		return 0;
 	}
 	
@@ -391,9 +398,9 @@ void terrible_interpreter(Inst* inst, size_t instLen) {
 	Context ctx;
 	
 	VEC_INIT(&ctx.frames);
+	HT_init(&ctx.labels, 64);
 	ctx.inst = inst;
 	ctx.instLen = instLen;
- 	HT_init(&ctx.labels, 64);
 	ctx.ip = 0;
 	ctx.halt = 0;
 	ctx.stack = calloc(1, 1024);

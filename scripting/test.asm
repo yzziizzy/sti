@@ -14,13 +14,16 @@ set end 5
 label foo
 ; sub bar baz bar
 call func
-stack_dump
+sub bar baz bar
+
 cond > bar end
 goto foo
 halt
 
 
 label func
-sub bar baz bar
+frame
+stack_dump
+unframe
 ret
 
