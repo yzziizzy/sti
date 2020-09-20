@@ -1,0 +1,138 @@
+# character sets
+[identifier_schars a-zA-Z_><=
+[identifier_chars a-zA-Z0-9_
+[num_chars_start 0-9
+[num_chars 0-9
+[octal_chars 0-7
+[hex_chars 0-9a-fA-F
+[float_chars_start 0-9.\-\+
+[float_chars 0-9.eE
+[float_chars_start 0-9.\-\+
+[ws \ \t\r\n
+[endl \n
+# single-character transitions can't be inverted yet, but csets can 
+[slash \\
+[star *
+
+
+#{debug :decl |identifier_chars>LST_identifier
+#{stack_dump :decl |identifier_chars>LST_identifier
+
+#{struct :decl |identifier_chars>LST_identifier
+#{end :decl |identifier_chars>LST_identifier
+
+#{frame :decl |identifier_chars>LST_identifier
+#{unframe :decl |identifier_chars>LST_identifier
+#{local :decl |identifier_chars>LST_identifier
+#{label :decl |identifier_chars>LST_identifier
+
+#{call :instruction |identifier_chars>LST_identifier
+#{goto :instruction |identifier_chars>LST_identifier
+#{halt :instruction |identifier_chars>LST_identifier
+
+#{cond :instruction |identifier_chars>LST_identifier
+#{add :instruction |identifier_chars>LST_identifier
+#{sub :instruction |identifier_chars>LST_identifier
+
+#{string :type |identifier_chars>LST_identifier
+#{f32 :type |identifier_chars>LST_identifier
+#{s64 :type |identifier_chars>LST_identifier
+#{u64 :type |identifier_chars>LST_identifier
+
+
+
+# mark some terminal states
+&LST_float
+&LST_probenum
+&LST_intnum
+&LST_octalnum
+&LST_hexnum
+&LST_float_exp
+
+&LST_instruction
+&LST_identifier
+&LST_endl
+
+
+# all other identifiers
+# + is transition on a character set
+:LST_identifier +identifier_chars>LST_identifier
+:LST_NULL +identifier_schars>LST_identifier
+
+# ignore whitespace
+# ^ discards the char while moving to the next state
+:LST_NULL +ws^LST_NULL
+:LST_NULL +endl>LST_endl
+# consume all consecutive endlines
+:LST_endl +endl>LST_endl 
+
+# double-quote strings
+# @ is a single-char transition
+:LST_string @"=LST_string
+:LST_NULL @">LST_string
+&LST_string_end
+:LST_string @\\>LST_string_esc
+:LST_string !+slash>LST_string
+:LST_string_esc @">LST_string
+
+
+# single-quote strings
+:LST_sq_string @'=LST_sq_string
+:LST_NULL @'>LST_sq_string
+&LST_sq_string_end
+:LST_sq_string @\\>LST_sq_string_esc
+:LST_sq_string !+slash>LST_sq_string
+:LST_sq_string_esc @'>LST_sq_string
+
+
+# numbers
+:LST_NULL @0>LST_probenum
+:LST_NULL @1>LST_intnum
+:LST_NULL @2>LST_intnum
+:LST_NULL @3>LST_intnum
+:LST_NULL @4>LST_intnum
+:LST_NULL @5>LST_intnum
+:LST_NULL @6>LST_intnum
+:LST_NULL @7>LST_intnum
+:LST_NULL @8>LST_intnum
+:LST_NULL @9>LST_intnum
+
+:LST_probenum @.>LST_float
+:LST_probenum @x>LST_hexnum
+:LST_probenum @X>LST_hexnum
+:LST_probefixed @x>LST_hexnum
+:LST_probefixed @X>LST_hexnum
+:LST_probenum +num_chars>LST_octalnum
+:LST_probefixed +num_chars>LST_octalnum
+:LST_intnum @.>LST_float
+:LST_intnum +num_chars>LST_intnum
+:LST_octalnum +octal_chars>LST_octalnum
+:LST_hexnum +hex_chars>LST_hexnum
+
+:LST_float @.>LST_INVALID
+:LST_float +num_chars>LST_float
+:LST_float @e>LST_float_exp_start
+:LST_float @E>LST_float_exp_start
+:LST_float @d=LST_float
+:LST_float @f=LST_float
+:LST_float_exp_start +num_chars>LST_float_exp
+:LST_float_exp_start @->LST_float_exp
+:LST_float_exp_start @+>LST_float_exp
+:LST_float_exp +num_chars>LST_float_exp
+:LST_float_exp @d=LST_float
+:LST_float_exp @f=LST_float
+
+# comments
+# ! inverts a character set
+# = finishes a token, including the character tested
+# ~ finishes a token but does not consume the character tested
+&LST_sl_comment 
+:LST_NULL @;>LST_sl_comment
+:LST_sl_comment !+endl>LST_sl_comment
+:LST_sl_comment @\r~LST_sl_comment
+:LST_sl_comment @\n~LST_sl_comment
+&LST_ml_comment
+:LST_ml_comment @*>LST_ml_comment_star
+:LST_ml_comment !+star>LST_ml_comment
+:LST_ml_comment_star @/=LST_ml_comment
+:LST_ml_comment_star !+slash>LST_ml_comment

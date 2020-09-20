@@ -64,3 +64,4 @@ parser_example_csets.c
 parser_example_switch.c
 
 scripting/ass
+scripting/lexer_*

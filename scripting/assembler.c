@@ -6,7 +6,7 @@
 #include "assembler.h"
 
 
-void terrible_interpreter(Inst* inst, size_t instLen);
+void terrible_interpreter(Context* ctx);
 
 
 
@@ -22,115 +22,11 @@ int op_name_lookup(char* name) {
 
 
 
-static char* ws = " \t\r";
-
-void parse_asm(char** lines, size_t cnt) {
-	size_t i;
-	
-	VEC(Inst) inst;
-	VEC_INIT(&inst);
-	
-	for(i = 0; i < cnt; i++) {
-		char* s = lines[i];
-		
-		if(!s) break;
-		if(s[0] == ';') continue; // comments
-		
-		s = strskip(s, ws);
-		
-		if(strlen(s) == 0) continue;
-		
-		// opcode 
-		size_t oplen = strcspn(s, ws);
-		char* opname = strndup(s, oplen);
-		int opid = op_name_lookup(opname);
-		
-		Inst* in;
-		VEC_INC(&inst);
-		in = &VEC_TAIL(&inst);
-		in->opid = opid;
-		
-		s = strskip(s + oplen, ws);
-		
-		// args
-		int argc = InstArgCounts[opid];
-		if(argc < 0) { // variable number of arguments
-			argc = 0;
-			char* os = s;
-			
-			while(*s && *s != '\r' && *s != '\n') {
-				size_t arglen = strcspn(s, ws);
-				s = strskip(s + arglen, ws);
-				argc++;
-			}
-			
-			s = os;
-			in->args = malloc(sizeof(*in->args) * argc);
-			
-			int a = 0;
-			while(*s) {
-				size_t arglen = strcspn(s, ws);
-				in->args[a++] = strndup(s, arglen);
-				s = strskip(s + arglen, ws);
-			}
-			
-			in->argc = argc;
-		}
-		else { // fixed number of arguments
-			in->argc = argc;
-			in->args = malloc(sizeof(*in->args) * argc);
-			
-			for(int a = 0; a < argc; a++) {
-				size_t arglen = strcspn(s, ws);
-				in->args[a] = strndup(s, arglen);
-				s = strskip(s + arglen, ws);
-			}
-		}
-	}
-	
-	
-	terrible_interpreter(VEC_DATA(&inst), VEC_LEN(&inst));
-}
 
 
 
 
 
-
-
-
-typedef struct LocalInfo {
-	char* name;
-	enum VarType type;
-	int width;
-	
-	size_t offset;
-} LocalInfo;
-
-typedef struct FrameInfo {
-// 	HashTable(size_t) labels;
-	HashTable(LocalInfo*) locals;
-} FrameInfo;
-
-typedef struct Context {
-// 	HashTable(tivar*) heap;
-	
-	Inst* inst;
-	size_t instLen;
-	
-	HashTable(size_t) labels;
-	
-	char* stack;
-	size_t stackAlloc;
-	size_t stackBase;
-	size_t stackHead;
-	
-	VEC(FrameInfo) frames;
-	
-	size_t ip;
-	char halt;
-	
-} Context;
 
 
 static void stack_pushl(Context* ctx, int64_t v) {
@@ -304,12 +200,29 @@ void run_inst(Context* ctx) {
 			// push base pointer
 			free_frame(ctx);
 			break;
+			/*
+		case IT_args: // push some args
+			
+			for(int i = 0; i < in->argc; i++) {
+				stack_pushl(ctx, get_locall(ctx, in->args[i]));
+			}
+			
+			// push the size of the arguments
+			stack_pushl(ctx, in->argc * 4);
+			
+			break;
+		
+		case IT_unargs: // pop off the most recent argument stack
+			va = stack_pop1(ctx);
+			ctx->stackHead -= va;
+			break;
+			*/
 			
 		case IT_local: // declare a local variable
 			// arg1: name
 			// arg2: type
 			// arg3: width
-			add_local(ctx, in->args[0]);
+			add_local(ctx, in->args[0]/*, in->args[1], in->args[2]*/);
 			
 // 			t->name = in->args[0];
 // 			t->type = vartype_from_name(in->args[1]);
@@ -393,33 +306,16 @@ void run_inst(Context* ctx) {
 
 
 
-void terrible_interpreter(Inst* inst, size_t instLen) {
+void terrible_interpreter(Context* ctx) {
 	
-	Context ctx;
 	
-	VEC_INIT(&ctx.frames);
-	HT_init(&ctx.labels, 64);
-	ctx.inst = inst;
-	ctx.instLen = instLen;
-	ctx.ip = 0;
-	ctx.halt = 0;
-	ctx.stack = calloc(1, 1024);
-	ctx.stackAlloc = 1024;
-	ctx.stackBase = 0;
-	ctx.stackHead = 0;
-	
-	// scan and fill in labels
-	for(size_t i = 0; i < instLen; i++) {
-		if(inst[i].opid != IT_label) continue;
-		add_label(&ctx, inst[i].args[0], i);
-	}
 	
 	
 	for(int i = 0; i < 40; i++) {
-		if(ctx.halt) break;
+		if(ctx->halt) break;
 		
 		printf("%d - ", i);
-		run_inst(&ctx);
+		run_inst(ctx);
 	}
 	
 }
@@ -431,13 +327,21 @@ void terrible_interpreter(Inst* inst, size_t instLen) {
 
 
 
-
+static void push_inst(Context* ctx, Inst inst) {
+	if(ctx->instLen <= ctx->instAlloc) {
+		ctx->instAlloc *= 2;
+		ctx->inst = realloc(ctx->inst, ctx->instAlloc * sizeof(*ctx->inst));
+	}
+	
+	ctx->inst[ctx->instLen++] = inst;
+}
 
 
 int main(int argc, char* argv[]) {
 	size_t len, numLines;
 	char* source;
 	char** lines;
+	Lexer* ls;
 	
 	if(argc < 2) {
 		fprintf(stderr, "Error: expected asm file as first argument.\n");
@@ -446,9 +350,62 @@ int main(int argc, char* argv[]) {
 	
 	source = readWholeFile(argv[1], &len);
 	
-	lines = strsplit_inplace(source, '\n', &numLines);
 	
-	parse_asm(lines, numLines);
+	Context ctx;
+	
+	VEC_INIT(&ctx.frames);
+	HT_init(&ctx.labels, 64);
+	ctx.inst = calloc(1, sizeof(*ctx.inst) * 64);
+	ctx.instAlloc = 64;
+	ctx.instLen = 0;
+	ctx.ip = 0;
+	ctx.halt = 0;
+	ctx.stack = calloc(1, 1024);
+	ctx.stackAlloc = 1024;
+	ctx.stackBase = 0;
+	ctx.stackHead = 0;
+	
+	
+	Inst in;
+	int n = 0;
+	
+	ls = start_lexer(source, len);
+	while(next_token(ls)) {
+		printf("TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+		
+		
+		if(ls->tokenState == LST_endl) {
+			push_inst(&ctx, in);
+			n = 0;
+			
+			continue;
+		}
+		
+		
+		if(n == 0) {
+			in.opid = op_name_lookup(ls->buffer);
+			
+		}
+		else {
+			in.args[in.argc] = strdup(ls->buffer);
+			in.argc++;
+		}
+		
+		n++;
+	}
+	
+	
+	// scan and fill in labels
+// 	for(size_t i = 0; i < instLen; i++) {
+// 		if(inst[i].opid != IT_label) continue;
+// 		add_label(ctx, inst[i].args[0], i);
+// 	}
+	
+// 	terrible_interpreter(VEC_DATA(&inst), VEC_LEN(&inst));
+	
+	
+	
+	terrible_interpreter(&ctx);
 	
 	return 0;
 }

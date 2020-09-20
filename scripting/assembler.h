@@ -26,7 +26,9 @@ type conversions, swizzles, unpacks
 	\
 	IT(frame, 0, "start a new stack frame") \
 	IT(unframe, 0, "roll back to the previous stack frame") \
-	IT(local, 2, "reserve stack space for a local variable") \
+	IT(args, -1, "push a set arguments") \
+	IT(unargs, 1, "pop one set of arguments") \
+	IT(local, 3, "reserve stack space for a local variable") \
 	\
 	IT(set, 2, "set a local variable's value") \
 	\
@@ -90,6 +92,90 @@ typedef struct Assembler {
 	int foo;
 	
 } Assembler;
+
+
+
+enum LexState {
+	LST_INVALID,
+	
+	#include "./lexer_enums.h"
+	
+	LST_MAXVALUE
+};
+
+
+
+static char* lexer_state_names[] = {
+	[LST_INVALID] = "LST_INVALID",
+	#include "./lexer_enum_names.h"
+	[LST_MAXVALUE] = "LST_MAXVALUE",
+};
+
+typedef struct Lexer {
+	enum LexState state;
+	char* buffer;
+	int blen;
+	int balloc;
+	
+	int linenum;
+	int charnum;
+	
+	enum LexState tokenState;
+	int tokenFinished; // buffer should be consumed and cleaned at this point 
+	
+	char* source;
+	size_t sourceLen;
+	int i;
+} Lexer;
+
+
+
+Lexer* start_lexer(char* source, size_t len);
+int next_token(Lexer* ls);
+
+
+
+
+
+
+typedef struct LocalInfo {
+	char* name;
+	enum VarType type;
+	int width;
+	
+	size_t offset;
+} LocalInfo;
+
+typedef struct FrameInfo {
+// 	HashTable(size_t) labels;
+	HashTable(LocalInfo*) locals;
+} FrameInfo;
+
+typedef struct Context {
+// 	HashTable(tivar*) heap;
+	
+	Inst* inst;
+	size_t instAlloc;
+	size_t instLen;
+	
+	HashTable(size_t) labels;
+	
+	char* stack;
+	size_t stackAlloc;
+	size_t stackBase;
+	size_t stackHead;
+	
+	VEC(FrameInfo) frames;
+	
+	size_t ip;
+	char halt;
+	
+} Context;
+
+
+
+
+
 
 
 
