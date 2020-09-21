@@ -1,6 +1,7 @@
 # character sets
 [identifier_schars a-zA-Z_><=
-[identifier_chars a-zA-Z0-9_
+[identifier_chars a-zA-Z0-9_.
+
 [num_chars_start 0-9
 [num_chars 0-9
 [octal_chars 0-7
@@ -8,6 +9,7 @@
 [float_chars_start 0-9.\-\+
 [float_chars 0-9.eE
 [float_chars_start 0-9.\-\+
+
 [ws \ \t\r\n
 [endl \n
 # single-character transitions can't be inverted yet, but csets can 
@@ -15,29 +17,38 @@
 [star *
 
 
-#{debug :decl |identifier_chars>LST_identifier
-#{stack_dump :decl |identifier_chars>LST_identifier
+{debug :decl |identifier_chars>LST_identifier
+{stack_dump :decl |identifier_chars>LST_identifier
 
-#{struct :decl |identifier_chars>LST_identifier
-#{end :decl |identifier_chars>LST_identifier
+{struct :decl |identifier_chars>LST_identifier
+{end :decl |identifier_chars>LST_identifier
 
-#{frame :decl |identifier_chars>LST_identifier
-#{unframe :decl |identifier_chars>LST_identifier
-#{local :decl |identifier_chars>LST_identifier
-#{label :decl |identifier_chars>LST_identifier
+{frame :decl |identifier_chars>LST_identifier
+{unframe :decl |identifier_chars>LST_identifier
+{local :decl |identifier_chars>LST_identifier
+{label :decl |identifier_chars>LST_identifier
 
-#{call :instruction |identifier_chars>LST_identifier
-#{goto :instruction |identifier_chars>LST_identifier
-#{halt :instruction |identifier_chars>LST_identifier
+{call :instruction |identifier_chars>LST_identifier
+{goto :instruction |identifier_chars>LST_identifier
+{halt :instruction |identifier_chars>LST_identifier
 
-#{cond :instruction |identifier_chars>LST_identifier
-#{add :instruction |identifier_chars>LST_identifier
-#{sub :instruction |identifier_chars>LST_identifier
+{set :instruction |identifier_chars>LST_identifier
+{cond :instruction |identifier_chars>LST_identifier
+{add :instruction |identifier_chars>LST_identifier
+{sub :instruction |identifier_chars>LST_identifier
 
-#{string :type |identifier_chars>LST_identifier
-#{f32 :type |identifier_chars>LST_identifier
-#{s64 :type |identifier_chars>LST_identifier
-#{u64 :type |identifier_chars>LST_identifier
+{utf8 :type |identifier_chars>LST_identifier
+{buffer :type |identifier_chars>LST_identifier
+{f32 :type |identifier_chars>LST_identifier
+{f64 :type |identifier_chars>LST_identifier
+{s8 :type |identifier_chars>LST_identifier
+{s16 :type |identifier_chars>LST_identifier
+{s32 :type |identifier_chars>LST_identifier
+{s64 :type |identifier_chars>LST_identifier
+{u8 :type |identifier_chars>LST_identifier
+{u16 :type |identifier_chars>LST_identifier
+{u32 :type |identifier_chars>LST_identifier
+{u64 :type |identifier_chars>LST_identifier
 
 
 
@@ -64,7 +75,10 @@
 :LST_NULL +ws^LST_NULL
 :LST_NULL +endl>LST_endl
 # consume all consecutive endlines
-:LST_endl +endl>LST_endl 
+:LST_endl +endl>LST_endl
+
+&LST_comma
+:LST_NULL @,>LST_comma 
 
 # double-quote strings
 # @ is a single-char transition
@@ -131,8 +145,9 @@
 :LST_sl_comment !+endl>LST_sl_comment
 :LST_sl_comment @\r~LST_sl_comment
 :LST_sl_comment @\n~LST_sl_comment
-&LST_ml_comment
-:LST_ml_comment @*>LST_ml_comment_star
-:LST_ml_comment !+star>LST_ml_comment
-:LST_ml_comment_star @/=LST_ml_comment
-:LST_ml_comment_star !+slash>LST_ml_comment
+
+# &LST_ml_comment
+# :LST_ml_comment @*>LST_ml_comment_star
+# :LST_ml_comment !+star>LST_ml_comment
+# :LST_ml_comment_star @/=LST_ml_comment
+# :LST_ml_comment_star !+slash>LST_ml_comment

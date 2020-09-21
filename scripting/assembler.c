@@ -337,6 +337,141 @@ static void push_inst(Context* ctx, Inst inst) {
 }
 
 
+static int token_is_instruction(enum LexState t) {
+	switch(t) {
+		default: return 0;
+		
+		case LST_NULL__debug:
+		case LST_NULL__stack_under_dump:
+		case LST_NULL__frame:
+		case LST_NULL__unframe:
+		case LST_NULL__local:
+		case LST_NULL__label:
+		case LST_NULL__call:
+		case LST_NULL__goto:
+		case LST_NULL__halt:
+		case LST_NULL__cond:
+		case LST_NULL__set:
+		case LST_NULL__add:
+		case LST_NULL__sub:
+			return 1;
+	}
+}
+
+
+static int parse_inst(Lexer* ls, Context* ctx) {
+	
+	int argsAlloc = 4;
+	Inst in;
+	
+	in.opid = op_name_lookup(ls->buffer);
+	in.argc = 0;
+	in.args = calloc(1, argsAlloc * sizeof(*in.args));
+	
+	while(1) {
+		if(!next_token(ls)) return 1;
+// 		printf(" @ TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+		
+		if(ls->tokenState == LST_endl) break;
+		
+		if(in.argc >= argsAlloc) {
+			argsAlloc *= 2;
+			in.args = realloc(in.args, argsAlloc * sizeof(*in.args));
+		}
+		
+		in.args[in.argc] = strdup(ls->buffer);
+		in.argc++;
+	}
+	
+	push_inst(ctx, in);
+	
+	return 0;
+}
+
+
+static int token_type_lookup[] = {
+	[LST_NULL__s8] = VT_s8,
+	[LST_NULL__s16] = VT_s16,
+	[LST_NULL__s32] = VT_s32,
+	[LST_NULL__s64] = VT_s64,
+	[LST_NULL__u8] = VT_u8,
+	[LST_NULL__u16] = VT_u16,
+	[LST_NULL__u32] = VT_u32,
+	[LST_NULL__u64] = VT_u64,
+	[LST_NULL__f32] = VT_f32,
+	[LST_NULL__f64] = VT_f64,
+	[LST_NULL__buffer] = VT_buffer,
+	[LST_NULL__utf8] = VT_utf8,
+	[LST_MAXVALUE] = 0,
+};
+
+static int parse_struct(Lexer* ls, Context* ctx) {
+	
+	if(!next_token(ls)) {
+		printf("unexpected end of file\n");
+		return 1;
+	}
+	
+	StructDef* st = calloc(1, sizeof(*st));
+	st->name = strdup(ls->buffer);;
+	if(!next_token(ls)) return 1;
+	
+	int ordinal = 0;
+	int offset = 0;
+	int membAlloc = 8;
+	st->members = calloc(1, sizeof(*st->members) * membAlloc);
+	
+	while(1) {
+// 		printf(" - TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+		
+		
+		if(!next_token(ls)) return 1;
+// 		printf(" a TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+		
+		if(ls->tokenState == LST_NULL__end) {
+// 			push_struct(ctx, in);
+			return 0;
+		}
+		
+		if(st->membc >= membAlloc) {
+			membAlloc *= 2;
+			st->members = realloc(st->members, membAlloc * sizeof(*st->members));
+		}
+		
+		st->members[st->membc].name = strdup(ls->buffer);
+		st->members[st->membc].ordinal = ordinal;
+		st->members[st->membc].offset = offset;
+		
+		if(!next_token(ls)) return 1;
+// 		printf(" b TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+		
+		st->members[st->membc].var.type = token_type_lookup[ls->tokenState];
+		
+		int width;
+		if(!next_token(ls)) return 1;
+// 		printf(" c TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+		if(ls->tokenState == LST_endl) {
+			width = 1;
+		}
+		else {
+			width = strtol(ls->buffer, NULL, 10);
+			
+			if(!next_token(ls)) return 1;
+// 			printf(" d TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+
+		}
+		
+		st->membc++;
+	}
+	
+	
+	
+	return 0;
+}
+
+
+
+
 int main(int argc, char* argv[]) {
 	size_t len, numLines;
 	char* source;
@@ -366,32 +501,24 @@ int main(int argc, char* argv[]) {
 	ctx.stackHead = 0;
 	
 	
-	Inst in;
-	int n = 0;
 	
 	ls = start_lexer(source, len);
 	while(next_token(ls)) {
-		printf("TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+// 		printf("TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
 		
-		
-		if(ls->tokenState == LST_endl) {
-			push_inst(&ctx, in);
-			n = 0;
+		if(token_is_instruction(ls->tokenState)) {
+			enum LexState os = ls->tokenState;
 			
-			continue;
-		}
-		
-		
-		if(n == 0) {
-			in.opid = op_name_lookup(ls->buffer);
+			if(parse_inst(ls, &ctx)) break;
 			
+			if(os == LST_NULL__label) {
+				add_label(ctx, inst[i].args[0], i);
+			}
 		}
-		else {
-			in.args[in.argc] = strdup(ls->buffer);
-			in.argc++;
+		else if(ls->tokenState == LST_NULL__struct) {
+			if(parse_struct(ls, &ctx)) break;
 		}
 		
-		n++;
 	}
 	
 	

@@ -18,9 +18,11 @@ type conversions, swizzles, unpacks
 	IT(stack_dump, 1, "") \
 	\
 	IT(halt, 0, "") \
-	IT(label, 1, "") \
-	IT(goto, 1, "") \
+	IT(wall, 0, "") \
+	IT(label, -1, "") \
+	IT(goto, -1, "") \
 	IT(call, -1, "") \
+	IT(resume, -1, "Goes after a call and defines the arguments returned") \
 	IT(ret, 0, "") \
 	IT(cond, 3, "") \
 	\
@@ -56,12 +58,21 @@ static int InstArgCounts[] = {
 };
 
 enum VarType {
-	VT_sint,
-	VT_uint,
-	VT_f16, // IEEE754 half-precision float
+	VT_INVALID,
+	VT_s8,
+	VT_s16,
+	VT_s32,
+	VT_s64,
+	VT_u8,
+	VT_u16,
+	VT_u32,
+	VT_u64,
+// 	VT_f16, // IEEE754 half-precision float
 	VT_f32,
 	VT_f64,
-	VT_fb16, // "binary 16", truncated f32
+	VT_buffer,
+	VT_utf8,
+// 	VT_fb16, // "binary 16", truncated f32
 };
 
 
@@ -72,15 +83,33 @@ typedef struct Inst {
 	char** args;
 } Inst;
 
-typedef struct Ilabel {
-	char* name;
-} Ilabel;
 
 typedef struct Ivar {
 	enum VarType type;
+	char* structName;
 	int width;
 } Ivar;
 
+
+typedef struct Ilabel {
+	char* name;
+	int varc;
+	Ivar* vars;
+} Ilabel;
+
+
+typedef struct StructMember {
+	char* name;
+	int ordinal;
+	int offset;
+	Ivar var;
+} StructMember;
+
+typedef struct StructDef {
+	char* name;
+	int membc;
+	StructMember* members;
+} StructDef;
 
 typedef struct Label {
 	char* name;
