@@ -18,18 +18,18 @@ type conversions, swizzles, unpacks
 	IT(stack_dump, 1, "") \
 	\
 	IT(halt, 0, "") \
-	IT(wall, 0, "") \
 	IT(label, -1, "") \
 	IT(goto, -1, "") \
 	IT(call, -1, "") \
+	IT(tail, -1, "tail-call another compatible function") \
 	IT(resume, -1, "Goes after a call and defines the arguments returned") \
 	IT(ret, 0, "") \
 	IT(cond, 3, "") \
 	\
-	IT(frame, 0, "start a new stack frame") \
-	IT(unframe, 0, "roll back to the previous stack frame") \
-	IT(args, -1, "push a set arguments") \
-	IT(unargs, 1, "pop one set of arguments") \
+	IT(func, -1, "") \
+	IT(args, -1, "") \
+	IT(returns, -1, "") \
+	IT(end, 3, "reserve stack space for a local variable") \
 	IT(local, 3, "reserve stack space for a local variable") \
 	\
 	IT(set, 2, "set a local variable's value") \
@@ -175,19 +175,53 @@ typedef struct LocalInfo {
 	size_t offset;
 } LocalInfo;
 
+
 typedef struct FrameInfo {
 // 	HashTable(size_t) labels;
 	HashTable(LocalInfo*) locals;
 } FrameInfo;
 
+
+
+
+
+typedef struct ArgInfo {
+	char* name;
+	enum VarType type;
+	int width;
+	int ordinal;
+} ArgInfo;
+
+typedef VEC(ArgInfo) ArgList;
+typedef VEC(Inst) InstList;
+
+
+typedef struct FunctionInfo {
+	char* name;
+	
+	InstList inst;
+	
+	ArgList args;
+	ArgList rets;
+	
+	HashTable(size_t) labels;
+	HashTable(LocalInfo*) locals;
+} FunctionInfo;
+
+typedef struct FunctionCtx {
+	HashTable(LocalInfo*) locals;
+} FunctionCtx;
+
 typedef struct Context {
 // 	HashTable(tivar*) heap;
 	
+	/*
 	Inst* inst;
 	size_t instAlloc;
 	size_t instLen;
+	*/
 	
-	HashTable(size_t) labels;
+	HashTable(FunctionInfo*) functions;
 	
 	char* stack;
 	size_t stackAlloc;

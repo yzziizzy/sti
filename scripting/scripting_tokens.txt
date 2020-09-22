@@ -1,5 +1,5 @@
 # character sets
-[identifier_schars a-zA-Z_><=
+[identifier_schars a-zA-Z><=
 [identifier_chars a-zA-Z0-9_.
 
 [num_chars_start 0-9
@@ -23,12 +23,15 @@
 {struct :decl |identifier_chars>LST_identifier
 {end :decl |identifier_chars>LST_identifier
 
-{frame :decl |identifier_chars>LST_identifier
-{unframe :decl |identifier_chars>LST_identifier
+{func :decl |identifier_chars>LST_identifier
+{args :decl |identifier_chars>LST_identifier
+{returns :decl |identifier_chars>LST_identifier
 {local :decl |identifier_chars>LST_identifier
 {label :decl |identifier_chars>LST_identifier
 
 {call :instruction |identifier_chars>LST_identifier
+{tail :instruction |identifier_chars>LST_identifier
+{resume :instruction |identifier_chars>LST_identifier
 {goto :instruction |identifier_chars>LST_identifier
 {halt :instruction |identifier_chars>LST_identifier
 
@@ -62,7 +65,6 @@
 
 &LST_instruction
 &LST_identifier
-&LST_endl
 
 
 # all other identifiers
@@ -70,12 +72,13 @@
 :LST_identifier +identifier_chars>LST_identifier
 :LST_NULL +identifier_schars>LST_identifier
 
-# ignore whitespace
+# ignore whitespace, collapse and finalize line endings
 # ^ discards the char while moving to the next state
+&LST_endl
 :LST_NULL +ws^LST_NULL
 :LST_NULL +endl>LST_endl
-# consume all consecutive endlines
-:LST_endl +endl>LST_endl
+# consume all consecutive endlines and subsequent whitespace
+:LST_endl +ws>LST_endl
 
 &LST_comma
 :LST_NULL @,>LST_comma 

@@ -190,7 +190,7 @@ void run_inst(Context* ctx) {
 			printf("returning\n");
 			ctx->ip = stack_popl(ctx);
 			return;
-			
+		/*
 		case IT_frame: // start a new stack frame
 			// push base pointer
 			add_frame(ctx);
@@ -200,7 +200,7 @@ void run_inst(Context* ctx) {
 			// push base pointer
 			free_frame(ctx);
 			break;
-			/*
+			*//*
 		case IT_args: // push some args
 			
 			for(int i = 0; i < in->argc; i++) {
@@ -306,10 +306,7 @@ void run_inst(Context* ctx) {
 
 
 
-void terrible_interpreter(Context* ctx) {
-	
-	
-	
+void run_function(Context* ctx, FunctionInfo* fn) {
 	
 	for(int i = 0; i < 40; i++) {
 		if(ctx->halt) break;
@@ -317,24 +314,27 @@ void terrible_interpreter(Context* ctx) {
 		printf("%d - ", i);
 		run_inst(ctx);
 	}
-	
 }
 
 
-
-
-
-
-
-
-static void push_inst(Context* ctx, Inst inst) {
-	if(ctx->instLen <= ctx->instAlloc) {
-		ctx->instAlloc *= 2;
-		ctx->inst = realloc(ctx->inst, ctx->instAlloc * sizeof(*ctx->inst));
+void terrible_interpreter(Context* ctx) {
+	
+	
+	FunctionInfo* main;
+	
+	if(HT_get(&ctx->functions, "main", &main)) {
+		printf("main function not found.\n");
+		return;
 	}
 	
-	ctx->inst[ctx->instLen++] = inst;
+	run_function(ctx, main);
 }
+
+
+
+
+
+
 
 
 static int token_is_instruction(enum LexState t) {
@@ -343,8 +343,8 @@ static int token_is_instruction(enum LexState t) {
 		
 		case LST_NULL__debug:
 		case LST_NULL__stack_under_dump:
-		case LST_NULL__frame:
-		case LST_NULL__unframe:
+// 		case LST_NULL__frame:
+// 		case LST_NULL__unframe:
 		case LST_NULL__local:
 		case LST_NULL__label:
 		case LST_NULL__call:
@@ -359,7 +359,7 @@ static int token_is_instruction(enum LexState t) {
 }
 
 
-static int parse_inst(Lexer* ls, Context* ctx) {
+static int parse_inst(Lexer* ls, FunctionInfo* fn) {
 	
 	int argsAlloc = 4;
 	Inst in;
@@ -383,7 +383,7 @@ static int parse_inst(Lexer* ls, Context* ctx) {
 		in.argc++;
 	}
 	
-	push_inst(ctx, in);
+	VEC_PUSH(&fn->inst, in);
 	
 	return 0;
 }
@@ -469,6 +469,105 @@ static int parse_struct(Lexer* ls, Context* ctx) {
 	return 0;
 }
 
+static int extract_arg_list(Lexer* ls, ArgList* args) {
+	
+	while(1) {
+		
+		if(ls->tokenState == LST_endl) break;
+		
+		VEC_INC(args);
+		ArgInfo* arg = &VEC_TAIL(args);
+		
+		// name
+		arg->name = strdup(ls->buffer);
+		if(!next_token(ls)) return 1;
+		
+		if(ls->tokenState == LST_endl) {
+			printf("Expected argument type.\n");
+			return 2;
+		}
+		
+		// type
+		arg->type = token_type_lookup[ls->tokenState];
+		if(!next_token(ls)) return 1;
+		
+		// TODO: default width
+		// width
+		arg->width = strtol(ls->buffer, NULL, 10);
+		if(!next_token(ls)) return 1;
+		
+		if(ls->tokenState == LST_comma) {
+			if(!next_token(ls)) return 1;
+		}
+	}
+	
+	return 0;
+}
+
+
+
+static int parse_function(Lexer* ls, Context* ctx) {
+	
+	FunctionInfo* fn = calloc(1, sizeof(*fn));
+	
+	// skip "func" keyword
+	if(!next_token(ls)) return 1;
+	
+	// name
+	fn->name = strdup(ls->buffer);
+	if(!next_token(ls)) return 1;
+	
+	// extract arguments
+	if(extract_arg_list(ls, &fn->args)) return 1;
+	if(!next_token(ls)) return 1;
+	
+	// extract return values
+	if(ls->tokenState == LST_NULL__args) {
+		if(extract_arg_list(ls, &fn->rets)) return 1;
+		if(!next_token(ls)) return 1;
+	}
+	
+	// parse instructions
+	while(next_token(ls)) {
+// 		printf("TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
+		
+		if(ls->tokenState == LST_NULL__end) {
+			break;
+		}
+		if(token_is_instruction(ls->tokenState)) {
+			/*
+			enum LexState os = ls->tokenState;
+			
+			if(parse_inst(ls, &ctx)) break;
+			
+			if(os == LST_NULL__label) {
+				add_label(ctx, inst[i].args[0], i);
+			}
+			*/
+		}
+		else if(ls->tokenState == LST_NULL__struct) {
+			printf("Struct definitions are not allowed in functions.\n");
+			return 2;
+		}
+		
+	}
+	
+	HT_set(&ctx->functions, fn->name, fn);
+	
+	return 0;
+	
+	
+SYN_ERR:
+	VEC_FREE(&fn->inst);
+	VEC_FREE(&fn->args);
+	VEC_FREE(&fn->rets);
+	HT_destroy(&fn->labels, 0);
+	// BUG: leaks local names
+	HT_destroy(&fn->locals, 1);
+	free(fn);
+	
+	return 2;
+}
 
 
 
@@ -489,10 +588,7 @@ int main(int argc, char* argv[]) {
 	Context ctx;
 	
 	VEC_INIT(&ctx.frames);
-	HT_init(&ctx.labels, 64);
-	ctx.inst = calloc(1, sizeof(*ctx.inst) * 64);
-	ctx.instAlloc = 64;
-	ctx.instLen = 0;
+	HT_init(&ctx.functions, 64);
 	ctx.ip = 0;
 	ctx.halt = 0;
 	ctx.stack = calloc(1, 1024);
@@ -507,13 +603,18 @@ int main(int argc, char* argv[]) {
 // 		printf("TOKEN: %s - '%.*s'\n", lexer_state_names[ls->tokenState], ls->blen, ls->buffer);
 		
 		if(token_is_instruction(ls->tokenState)) {
-			enum LexState os = ls->tokenState;
+// 			enum LexState os = ls->tokenState;
 			
-			if(parse_inst(ls, &ctx)) break;
+// 			if(parse_inst(ls, &ctx)) break;
 			
-			if(os == LST_NULL__label) {
-				add_label(ctx, inst[i].args[0], i);
-			}
+// 			if(os == LST_NULL__label) {
+// 				add_label(ctx, inst[i].args[0], i);
+// 			}
+			printf("Instructions are not allowed at global scope.\n");
+			break;
+		}
+		else if(ls->tokenState == LST_NULL__func) {
+			if(parse_function(ls, &ctx)) break;
 		}
 		else if(ls->tokenState == LST_NULL__struct) {
 			if(parse_struct(ls, &ctx)) break;

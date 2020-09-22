@@ -10,28 +10,14 @@ struct car
 	name string
 end
 
-frame
-local bar s64
-local baz s64
-local end s64
-set bar 13
-set baz 2
-set end 5
 
-label foo
-; sub bar baz bar
-args bar
-call func
-sub bar baz bar
-
-cond bar > end
-goto foo
-halt
-
-
-label func
-frame
-stack_dump
-unframe
-ret
+func main foo s64 1, bar s64 1
+returns s64
+	
+	local baz s64
+	
+	add bar foo baz
+	
+	ret baz
+end
 
