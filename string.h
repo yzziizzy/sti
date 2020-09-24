@@ -3,6 +3,7 @@
 
 // Public Domain.
 
+#include <string.h>
 
 
 
