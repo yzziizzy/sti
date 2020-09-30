@@ -65,9 +65,9 @@ char** strsplit_inplace(char* src, char delim, size_t* outLen) {
 	char** out = malloc(alloc * sizeof(*out));
 	
 	char* start = src;
+	size_t i;
 	
-	
-	for(size_t i = 0; src[i] != 0; i++) {
+	for(i = 0; src[i] != 0; i++) {
 		if(src[i] == delim) {
 			src[i] = 0; // put in a null terminator
 			
@@ -84,8 +84,11 @@ char** strsplit_inplace(char* src, char delim, size_t* outLen) {
 		}
 	}
 	
-// 	out[len++] = start;
-	out[len++] = NULL;
+	if(i != start) {
+		out[len++] = start;
+	}
+	
+	out[len] = NULL;
 	
 	if(outLen) *outLen = len;
 	
