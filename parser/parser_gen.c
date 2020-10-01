@@ -99,6 +99,11 @@ typedef struct {
 	char* dest_state;
 } state_case_info;
 
+typedef struct strpair {
+	char* key;
+	char* val;
+} strpair;
+
 typedef struct state_info {
 	char* name;
 	VEC(state_case_info) c_cases;
@@ -109,7 +114,7 @@ typedef struct state_info {
 	char* retry_as_cs_name;
 	
 	char is_terminal;
-	char* terminal_data;
+	VEC(strpair) terminal_data;
 } state_info;
 
 
@@ -185,8 +190,8 @@ typedef struct tcontext {
 	VEC(state_info*) terminals;
 	VEC(state_info*) internals;
 	
-	HashTable(state_info*) states;
-	HashTable(charset) csets;
+	HT(state_info*) states;
+	HT(charset*) csets;
 	
 } tcontext;
 
@@ -470,25 +475,45 @@ static int case_cs_sort_fn(void* a_, void* b_) {
 int main(int argc, char* argv[]) {
 	char ac;
 	char print_data = 0;
+	char print_data_defs = 0;
 	char print_enums = 0;
 	char print_enum_names = 0;
+	char print_guards = 0;
+	char print_macros = 0;
 	char print_switch = 0;
 	char print_csets = 0;
 	char* enum_pattern = NULL;
 	char* terminal_pattern = NULL;
 	char* fname = NULL;
 	char* prefix = "LST__";
+	char* guard_prefix = "PARSER_INCLUDE";
+	char* data_def_prefix = "STATE_DATA_DEF_";
 	
-	while((ac = getopt(argc, argv, "cdensE:T:")) != -1) {
+	while((ac = getopt(argc, argv, "cdD:eE:fF:gG:mnsT:")) != -1) {
 		switch(ac) {
 			case 'c': print_csets = 1; break;
 			case 'd': print_data = 1; break;
+			case 'D': 
+				print_data = 1; 
+				data_def_prefix = optarg;
+				break;
 			case 'e': print_enums = 1; break;
-			case 'n': print_enum_names = 1; break;
+			case 'f': print_data_defs = 1; break;
+			case 'F': 
+				print_data_defs = 1; 
+				data_def_prefix = optarg;
+				break;
+			case 'g': print_guards = 1; break;
+			case 'G': 
+				print_guards = 1;
+				guard_prefix = optarg;
+				break;
 			case 'E': 
 				print_enums = 1; 
 				enum_pattern = optarg;
 				break;
+			case 'm': print_macros = 1; break; 
+			case 'n': print_enum_names = 1; break;
 			case 'T': 
 				print_enums = 1; 
 				terminal_pattern = optarg;
@@ -673,7 +698,10 @@ int main(int argc, char* argv[]) {
 // 		}
 		char* retry_as = NULL;
 		char* retry_as_cs_name = NULL;
-		char* terminal_data = NULL;
+		
+		VEC(strpair) terminal_data;
+		VEC_INIT(&terminal_data);
+		
 		case_list extra;
 		VEC_INIT(&extra.cases);
 		while(*s) {
@@ -688,8 +716,25 @@ int main(int argc, char* argv[]) {
 			}
 			
 			if(*s == ':') { // token type
-				end = word_end(++s, &wl);
- 				terminal_data = strndup(s, wl);
+				char* td_key = NULL;
+				char* td_val = NULL;
+				
+				s++;
+				end = strpbrk(s, "= \n\t\r");
+				if(!end) end = s + strlen(s);
+				wl = end - s;
+				td_val = strndup(s, wl);
+				
+				if(*end == '=') { // key pair
+					td_key = td_val;
+					s = end;
+					
+					end = word_end(++s, &wl);
+					td_val = strndup(s, wl);
+				}
+				
+				VEC_PUSH(&terminal_data, ((strpair){td_key, td_val}));
+				
 				s = end;
 				continue;
 			}
@@ -802,10 +847,10 @@ int main(int argc, char* argv[]) {
 		
 		if(cached_word) {
 			state_info* final = expand_word(cached_word, pst, &extra, retry_as, retry_as_cs_name, tctx); 
-			if(terminal_data) final->terminal_data = terminal_data;
+			VEC_COPY(&final->terminal_data, &terminal_data);
 		}
 		else {
-			if(terminal_data) pst->terminal_data = terminal_data;
+			VEC_COPY(&pst->terminal_data, &terminal_data);
 			VEC_EACH(&extra.cases, i, ci) {
 				add_case_cset(pst, ci.cs_name, ci.dest_state, ci.action, ci.invert);
 			}
@@ -815,13 +860,14 @@ int main(int argc, char* argv[]) {
 		
 		VEC_EACH(&extra.cases, i, s) { free(s.cs_name); free(s.dest_state); }
 		VEC_FREE(&extra.cases);
+		VEC_FREE(&terminal_data);
 		if(retry_as) free(retry_as);
 		if(retry_as_cs_name) free(retry_as_cs_name);
 	}
 	
 	
 // 	print_node(root);
-	HT_LOOP(&tctx->states, key, state_info*, si) {
+	HT_EACH(&tctx->states, key, state_info*, si) {
 		VEC_SORT(&si->c_cases, case_sort_fn);
 		VEC_SORT(&si->cs_cases, case_cs_sort_fn);
 
@@ -841,8 +887,131 @@ int main(int argc, char* argv[]) {
 	if(has_case_conflict) exit(1);
 	
 	
+	if(print_macros) {
+		if(print_guards) printf("#ifdef %s_MACROS\n", guard_prefix);
+		printf(
+			"#define push_char_id(_state) \\\n"
+			"do { \\\n"
+			"	st->state = _state; \\\n"
+			"	goto PUSH_CHAR_RET; \\\n"
+			"} while(0)\n"
+			"\n"
+			"\n"
+			"#define discard_char_id(_state) \\\n"
+			"do { \\\n"
+			"	st->state = _state; \\\n"
+			"	return 1; \\\n"
+			"} while(0)\n"
+			"\n"
+			"\n"
+			"#define retry_as(_state) \\\n"
+			"do { \\\n"
+			"	st->state = _state; \\\n"
+			"	goto RETRY; \\\n"
+			"} while(0);\n"
+			"\n"
+			"#define done_zero_move(_state) \\\n"
+			"do { \\\n"
+			"	st->state = _state; \\\n"
+			"	goto TOKEN_DONE; \\\n"
+			"} while(0);\n"
+			"\n"
+			"#define push_char_done(_state) \\\n"
+			"do { \\\n"
+			"	st->state = _state; \\\n"
+			"	goto PUSH_CHAR_DONE; \\\n"
+			"} while(0);\n"
+			"\n"
+			"#define charset_has(cs, c) (c <= cs##_len && !!cs[c])\n"
+		);
+		if(print_guards) printf("#endif // %s_MACROS\n\n\n", guard_prefix);
+	}
+	
+	
+	if(print_enum_names) {
+		if(print_guards) printf("#ifdef %s_ENUM_NAMES\n", guard_prefix);
+		
+		printf("// terminals\n"); 
+		VEC_EACH(&tctx->terminals, i, t) {
+			printf("[%s] = \"%s\",\n", t->name, t->name);
+		}
+		
+		printf("\n// internals\n"); 
+		VEC_EACH(&tctx->internals, i, t) {
+			printf("[%s] = \"%s\",\n", t->name, t->name);
+		}
+		
+		if(print_guards) printf("#endif // %s_ENUM_NAMES\n\n\n", guard_prefix);
+	}
+	
+	if(print_enums) {
+		if(print_guards) printf("#ifdef %s_ENUMS\n", guard_prefix);
+		
+		printf("// terminals\n"); 
+		VEC_EACH(&tctx->terminals, i, t) {
+			printf("%s,\n", t->name);
+		}
+		
+		printf("\n// internals\n"); 
+		VEC_EACH(&tctx->internals, i, t) {
+			printf("%s,\n", t->name);
+		}
+		
+		if(print_guards) printf("#endif // %s_ENUMS\n\n\n", guard_prefix);
+	}
+	
+	if(print_data_defs) {
+		if(print_guards) printf("#ifdef %s_TERMINAL_DATA_DEFS\n", guard_prefix);
+		
+		VEC_EACH(&tctx->terminals, i, t) {
+			if(VEC_LEN(&t->terminal_data)) {
+				printf("char* %s%s[] = {", data_def_prefix, t->name);
+				
+				VEC_EACH(&t->terminal_data, i2, dp) {
+					char* k = dp.key ? dp.key : "";
+					char* v = dp.val ? dp.val : "";
+					printf("\"%s\", \"%s\", ", k, v); // TODO: string escaping
+				}
+				
+				printf("NULL};\n");
+			}
+		}
+		
+		if(print_guards) printf("#endif // %s_TERMINAL_DATA_DEFS\n\n\n", guard_prefix);
+	}
+	
+	if(print_data) {
+		if(print_guards) printf("#ifdef %s_TERMINAL_DATA\n", guard_prefix);
+		
+		VEC_EACH(&tctx->terminals, i, t) {
+			if(VEC_LEN(&t->terminal_data)) {
+				printf("[%s] = %s%s,\n", t->name, data_def_prefix, t->name);
+			}
+		}
+		
+		if(print_guards) printf("#endif // %s_TERMINAL_DATA\n\n\n", guard_prefix);
+	}
+	
+	
+	
+	if(print_csets) {
+		if(print_guards) printf("#ifdef %s_CSETS\n", guard_prefix);
+		
+		HT_EACH(&tctx->csets, key, charset*, cs) {
+			printf("char cset_%s[] = {", cs->name);
+			for(int i = 0; i < cs->minval; i++) printf("0,"); 
+			for(int i = cs->minval; i <= cs->maxval; i++) printf("%d,", !!cs->table[i - cs->minval]); 
+			printf("0};\n");
+			printf("int cset_%s_len = %d;\n", cs->name, cs->maxval);
+		}
+		
+		if(print_guards) printf("#endif // %s_CSETS\n\n\n", guard_prefix);
+	}
+	
 	
 	if(print_switch) {
+		
+		if(print_guards) printf("#ifdef %s_SWITCH\n", guard_prefix);
 		
 		printf("\n// terminals\n");
 		VEC_EACH(&tctx->terminals, i, si) {
@@ -853,62 +1022,15 @@ int main(int argc, char* argv[]) {
 		VEC_EACH(&tctx->internals, i, si) {
 			print_state_switch(si);
 		}
-// 		HT_LOOP(&tctx->states, key, state_info*, si) {
+// 		HT_EACH(&tctx->states, key, state_info*, si) {
 // 			print_state_switch(si);
 // 			
 // 		}
+		if(print_guards) printf("#endif // %s_SWITCH\n\n\n", guard_prefix);
 		
 	}
 	
 	
-	
-	if(print_enum_names) {
-		printf("// terminals\n"); 
-		VEC_EACH(&tctx->terminals, i, t) {
-			printf("[%s] = \"%s\",\n", t->name, t->name);
-		}
-		
-		printf("\n// internals\n"); 
-		VEC_EACH(&tctx->internals, i, t) {
-			printf("[%s] = \"%s\",\n", t->name, t->name);
-		}
-	}
-	
-	if(print_enums) {
-		
-		
-		printf("// terminals\n"); 
-		VEC_EACH(&tctx->terminals, i, t) {
-			printf("%s,\n", t->name);
-		}
-		
-		printf("\n// internals\n"); 
-		VEC_EACH(&tctx->internals, i, t) {
-			printf("%s,\n", t->name);
-		}
-		
-	}
-	
-	if(print_data) {
-		VEC_EACH(&tctx->terminals, i, t) {
-			char* d = t->terminal_data ? t->terminal_data : "NULL" ;
-			printf("[%s] = \"%s\",\n", t->name, d); // TODO: string escaping
-		}
-	}
-	
-	
-	
-	if(print_csets) {
-		
-		HT_LOOP(&tctx->csets, key, charset*, cs) {
-			printf("char cset_%s[] = {", cs->name);
-			for(int i = 0; i < cs->minval; i++) printf("0,"); 
-			for(int i = cs->minval; i <= cs->maxval; i++) printf("%d,", !!cs->table[i - cs->minval]); 
-			printf("0};\n");
-			printf("int cset_%s_len = %d;\n", cs->name, cs->maxval);
-		}
-		
-	}
 	
 	
 	

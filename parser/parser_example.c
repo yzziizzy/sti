@@ -7,18 +7,30 @@
 
 enum LexState {
 	LST_INVALID,
-	
-	#include "./parser_example_enums.h"
-	
+	#define PARSER_INCLUDE_ENUMS
+	#include "./parser_example_generated.h"
+	#undef PARSER_INCLUDE_ENUMS
 	LST_MAXVALUE
 };
 
 char* state_names[] = {
 	[LST_INVALID] = "LST_INVALID",
-	#include "./parser_example_enum_names.h"
+	#define PARSER_INCLUDE_ENUM_NAMES
+	#include "./parser_example_generated.h"
+	#undef PARSER_INCLUDE_ENUM_NAMES
 	[LST_MAXVALUE] = "LST_MAXVALUE",
 };
 
+
+#define PARSER_INCLUDE_TERMINAL_DATA_DEFS
+#include "./parser_example_generated.h"
+#undef PARSER_INCLUDE_TERMINAL_DATA_DEFS
+
+char** state_data[] = {
+	#define PARSER_INCLUDE_TERMINAL_DATA
+	#include "./parser_example_generated.h"
+	#undef PARSER_INCLUDE_TERMINAL_DATA
+};
 
 // this is for the incremental lexing of each token, not the whole stream
 struct lexer_state {
@@ -38,8 +50,9 @@ struct lexer_state {
 
 
 static int eatchar(struct lexer_state* st, int c) {
-
-	#include "./parser_example_csets.c"
+	#define PARSER_INCLUDE_CSETS
+	#include "./parser_example_generated.h"
+	#undef PARSER_INCLUDE_CSETS
 	
 #define push_char_id(_state) \
 do { \
@@ -85,9 +98,9 @@ do { \
 
 RETRY:
 	switch(st->state) {
-
-		#include "./parser_example_switch.c"
-		
+		#define PARSER_INCLUDE_SWITCH
+		#include "./parser_example_generated.h"
+		#undef PARSER_INCLUDE_SWITCH
 		
 		default: 
 			printf("Lexer reached default: %d\n", st->state);

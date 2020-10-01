@@ -84,7 +84,7 @@ char** strsplit_inplace(char* src, char delim, size_t* outLen) {
 		}
 	}
 	
-	if(i != start) {
+	if(src + i != start) {
 		out[len++] = start;
 	}
 	

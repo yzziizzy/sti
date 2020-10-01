@@ -13,146 +13,147 @@
 # single-character transitions can't be inverted yet, but csets can 
 [slash \\
 [star *
+[quote "
+[squote '
 
 
 # keywords
 # : is extra user data to be carried through
 # | is a failover on a character set on discontinuity in the word 
-{alignas :keyword |identifier_chars>LST_identifier
-{alignof :keyword |identifier_chars>LST_identifier
-{_Alignas :keyword |identifier_chars>LST_identifier
-{_Alignof :keyword |identifier_chars>LST_identifier
-{_Atomic :keyword |identifier_chars>LST_identifier
-{break :keyword |identifier_chars>LST_identifier
-{case :keyword |identifier_chars>LST_identifier
-{catch :keyword |identifier_chars>LST_identifier
-{continue :keyword |identifier_chars>LST_identifier
-{const :keyword |identifier_chars>LST_identifier
-{default :keyword |identifier_chars>LST_identifier
-{do :keyword |identifier_chars>LST_identifier
-{else :keyword |identifier_chars>LST_identifier
-{enum :keyword |identifier_chars>LST_identifier
-{extern :keyword |identifier_chars>LST_identifier
-{for :keyword |identifier_chars>LST_identifier
-{_Generic :keyword |identifier_chars>LST_identifier
-{goto :keyword |identifier_chars>LST_identifier
-{if :keyword |identifier_chars>LST_identifier
-{inline :keyword |identifier_chars>LST_identifier
-{new :keyword |identifier_chars>LST_identifier
-{restrict :keyword |identifier_chars>LST_identifier
-{return :keyword |identifier_chars>LST_identifier
-{_Noreturn :keyword |identifier_chars>LST_identifier
-{sizeof :keyword |identifier_chars>LST_identifier
-{_Static_assert :keyword |identifier_chars>LST_identifier
-{static :keyword |identifier_chars>LST_identifier
-{struct :keyword |identifier_chars>LST_identifier
-{switch :keyword |identifier_chars>LST_identifier
-{this :keyword |identifier_chars>LST_identifier
-{typedef :keyword |identifier_chars>LST_identifier
-{union :keyword |identifier_chars>LST_identifier
-{while :keyword |identifier_chars>LST_identifier
+{alignas :cat=keyword |identifier_chars>LST_identifier
+{alignof :cat=keyword |identifier_chars>LST_identifier
+{_Alignas :cat=keyword |identifier_chars>LST_identifier
+{_Alignof :cat=keyword |identifier_chars>LST_identifier
+{_Atomic :cat=keyword |identifier_chars>LST_identifier
+{break :cat=keyword |identifier_chars>LST_identifier
+{case :cat=keyword |identifier_chars>LST_identifier
+{catch :cat=keyword |identifier_chars>LST_identifier
+{continue :cat=keyword |identifier_chars>LST_identifier
+{const :cat=keyword |identifier_chars>LST_identifier
+{default :cat=keyword |identifier_chars>LST_identifier
+{do :cat=keyword |identifier_chars>LST_identifier
+{else :cat=keyword |identifier_chars>LST_identifier
+{enum :cat=keyword |identifier_chars>LST_identifier
+{extern :cat=keyword |identifier_chars>LST_identifier
+{for :cat=keyword |identifier_chars>LST_identifier
+{_Generic :cat=keyword |identifier_chars>LST_identifier
+{goto :cat=keyword |identifier_chars>LST_identifier
+{if :cat=keyword |identifier_chars>LST_identifier
+{inline :cat=keyword |identifier_chars>LST_identifier
+{new :cat=keyword |identifier_chars>LST_identifier
+{restrict :cat=keyword |identifier_chars>LST_identifier
+{return :cat=keyword |identifier_chars>LST_identifier
+{_Noreturn :cat=keyword |identifier_chars>LST_identifier
+{sizeof :cat=keyword |identifier_chars>LST_identifier
+{_Static_assert :cat=keyword |identifier_chars>LST_identifier
+{static :cat=keyword |identifier_chars>LST_identifier
+{struct :cat=keyword |identifier_chars>LST_identifier
+{switch :cat=keyword |identifier_chars>LST_identifier
+{cat=typedef :cat=keyword |identifier_chars>LST_identifier
+{union :cat=keyword |identifier_chars>LST_identifier
+{while :cat=keyword |identifier_chars>LST_identifier
 
 # operators and punctuation
-{+ :operator
-{& :operator
-{+= :operator
-{&= :operator
-{&& :operator
-{== :operator
-{!= :operator
-{( :punct
-{) :punct
-{- :operator
-{| :operator
-{-= :operator
-{|= :operator
-{|| :operator
-{< :operator
-{<= :operator
-{[ :punct
-{] :punct
-{* :operator
-{^ :operator
-{*= :operator
-{^= :operator
-{<- :operator
-{> :operator
-{>= :operator
-{{ :punct
-{} :punct
-{/ :operator
+{+ :cat=operator
+{& :cat=operator
+{+= :cat=operator
+{&= :cat=operator
+{&& :cat=operator
+{== :cat=operator
+{!= :cat=operator
+{( :cat=punct :block=open
+{) :cat=punct :block=close
+{- :cat=operator
+{| :cat=operator
+{-= :cat=operator
+{|= :cat=operator
+{|| :cat=operator
+{< :cat=operator
+{<= :cat=operator
+{[ :cat=punct :block=open
+{] :cat=punct :block=close
+{* :cat=operator
+{^ :cat=operator
+{*= :cat=operator
+{^= :cat=operator
+{<- :cat=operator
+{> :cat=operator
+{>= :cat=operator
+{{ :cat=punct :block=open
+{} :cat=punct :block=close
+{/ :cat=operator
 :LST_NULL___slash @/>LST_sl_comment
 :LST_NULL___slash @*>LST_ml_comment
-{<< :operator
-{/= :operator
-{<<= :operator
-{++ :operator
-{= :operator
-{, :operator
-{; :punct
-{% :operator
-{>> :operator
-{%= :operator
-{>>= :operator
-{-- :operator
-{! :operator
-{? :operator
-{... :operator
-{. :operator +num_chars>LST_float
-{: :operator
+{<< :cat=operator
+{/= :cat=operator
+{<<= :cat=operator
+{++ :cat=operator
+{= :cat=operator
+{, :cat=operator
+{; :cat=punct
+{% :cat=operator
+{>> :cat=operator
+{%= :cat=operator
+{>>= :cat=operator
+{-- :cat=operator
+{! :cat=operator
+{? :cat=operator
+{... :cat=operator
+{. :cat=operator +num_chars>LST_float
+{: :cat=operator
 
 # types
-{_Bool :typespec |identifier_chars>LST_identifier
-{_Imaginary :typespec |identifier_chars>LST_identifier
-{_Thread_local :storespec |identifier_chars>LST_identifier
-{_Complex :typespec |identifier_chars>LST_identifier
-{register :storespec |identifier_chars>LST_identifier
-{thread_local :storespec|identifier_chars>LST_identifier
-{volatile :storespec |identifier_chars>LST_identifier
-{const :typespec |identifier_chars>LST_identifier
-{mutable :typespec |identifier_chars>LST_identifier
-{signed :typespec |identifier_chars>LST_identifier
-{unsigned :typespec |identifier_chars>LST_identifier
-{auto :type |identifier_chars>LST_identifier
-{bool :type |identifier_chars>LST_identifier
-{uint8_t :type |identifier_chars>LST_identifier
-{uint16_t :type |identifier_chars>LST_identifier
-{uint32_t :type |identifier_chars>LST_identifier
-{uint64_t :type |identifier_chars>LST_identifier
-{int8_t :type |identifier_chars>LST_identifier
-{int16_t :type |identifier_chars>LST_identifier
-{int32_t :type |identifier_chars>LST_identifier
-{int64_t :type |identifier_chars>LST_identifier
-{char16_t :type |identifier_chars>LST_identifier
-{char32_t :type |identifier_chars>LST_identifier
-{float :type |identifier_chars>LST_identifier
-{double :type |identifier_chars>LST_identifier
-{char :type |identifier_chars>LST_identifier
-{short :type |identifier_chars>LST_identifier
-{int :type |identifier_chars>LST_identifier
-{long :type |identifier_chars>LST_identifier
-# no support for spaces yet {"long double" :type |identifier_chars>LST_identifier
-# no support for spaces yet {"long long" :type |identifier_chars>LST_identifier
-{intptr_t :type |identifier_chars>LST_identifier
-{ptrdiff_t :type |identifier_chars>LST_identifier
-{size_t :type |identifier_chars>LST_identifier
-{void :type |identifier_chars>LST_identifier
-{wchar_t :type |identifier_chars>LST_identifier
-{__int64 :type |identifier_chars>LST_identifier
-{__m64 :type |identifier_chars>LST_identifier
-{__m128 :type |identifier_chars>LST_identifier
-{__m128i :type |identifier_chars>LST_identifier
-{__m128d :type |identifier_chars>LST_identifier
-{__m256 :type |identifier_chars>LST_identifier
-{__m256i :type |identifier_chars>LST_identifier
-{__m256d :type |identifier_chars>LST_identifier
-{__m512 :type |identifier_chars>LST_identifier
-{__m512i :type |identifier_chars>LST_identifier
-{__m512d :type |identifier_chars>LST_identifier
-{__mmask8 :type |identifier_chars>LST_identifier
-{__mmask16 :type |identifier_chars>LST_identifier
-{__mmask32 :type |identifier_chars>LST_identifier
-{__mmask64 :type |identifier_chars>LST_identifier
+{_Bool :cat=typespec |identifier_chars>LST_identifier
+{_Imaginary :cat=typespec |identifier_chars>LST_identifier
+{_Thread_local :cat=storespec |identifier_chars>LST_identifier
+{_Complex :cat=typespec |identifier_chars>LST_identifier
+{register :cat=storespec |identifier_chars>LST_identifier
+{thread_local :cat=storespec |identifier_chars>LST_identifier
+{volatile :cat=storespec |identifier_chars>LST_identifier
+{const :cat=typespec |identifier_chars>LST_identifier
+{mutable :cat=typespec |identifier_chars>LST_identifier
+{signed :cat=typespec |identifier_chars>LST_identifier
+{unsigned :cat=typespec |identifier_chars>LST_identifier
+{auto :cat=type |identifier_chars>LST_identifier
+{bool :cat=type |identifier_chars>LST_identifier
+{uint8_t :cat=type |identifier_chars>LST_identifier
+{uint16_t :cat=type |identifier_chars>LST_identifier
+{uint32_t :cat=type |identifier_chars>LST_identifier
+{uint64_t :cat=type |identifier_chars>LST_identifier
+{int8_t :cat=type |identifier_chars>LST_identifier
+{int16_t :cat=type |identifier_chars>LST_identifier
+{int32_t :cat=type |identifier_chars>LST_identifier
+{int64_t :cat=type |identifier_chars>LST_identifier
+{char16_t :cat=type |identifier_chars>LST_identifier
+{char32_t :cat=type |identifier_chars>LST_identifier
+{float :cat=type |identifier_chars>LST_identifier
+{double :cat=type |identifier_chars>LST_identifier
+{char :cat=type |identifier_chars>LST_identifier
+{short :cat=type |identifier_chars>LST_identifier
+{int :cat=type |identifier_chars>LST_identifier
+{long :cat=type |identifier_chars>LST_identifier
+# no support for spaces yet {"long double" :cat=type |identifier_chars>LST_identifier
+# no support for spaces yet {"long long" :cat=type |identifier_chars>LST_identifier
+{intptr_t :cat=type |identifier_chars>LST_identifier
+{ptrdiff_t :cat=type |identifier_chars>LST_identifier
+{size_t :cat=type |identifier_chars>LST_identifier
+{void :cat=type |identifier_chars>LST_identifier
+{wchar_t :cat=type |identifier_chars>LST_identifier
+{__int64 :cat=type |identifier_chars>LST_identifier
+{__m64 :cat=type |identifier_chars>LST_identifier
+{__m128 :cat=type |identifier_chars>LST_identifier
+{__m128i :cat=type |identifier_chars>LST_identifier
+{__m128d :cat=type |identifier_chars>LST_identifier
+{__m256 :cat=type |identifier_chars>LST_identifier
+{__m256i :cat=type |identifier_chars>LST_identifier
+{__m256d :cat=type |identifier_chars>LST_identifier
+{__m512 :cat=type |identifier_chars>LST_identifier
+{__m512i :cat=type |identifier_chars>LST_identifier
+{__m512d :cat=type |identifier_chars>LST_identifier
+{__mmask8 :cat=type |identifier_chars>LST_identifier
+{__mmask16 :cat=type |identifier_chars>LST_identifier
+{__mmask32 :cat=type |identifier_chars>LST_identifier
+{__mmask64 :cat=type |identifier_chars>LST_identifier
 
 
 # mark some terminal states
@@ -166,7 +167,7 @@
 
 # all other identifiers
 # + is transition on a character set
-:LST_identifier +identifier_chars>LST_identifier
+:LST_identifier :cat=identifier +identifier_chars>LST_identifier
 :LST_NULL +identifier_schars>LST_identifier
 
 # ignore whitespace
@@ -180,7 +181,7 @@
 &LST_string_end
 :LST_string @\\>LST_string_esc
 :LST_string !+slash>LST_string
-:LST_string_esc @">LST_string
+:LST_string_esc !+quote>LST_string
 
 # char literals
 :LST_charlit @'=LST_charlit
@@ -188,7 +189,7 @@
 &LST_charlit_end
 :LST_charlit @\\>LST_charlit_esc
 :LST_charlit !+slash>LST_charlit
-:LST_charlit_esc @'>LST_charlit
+:LST_charlit_esc !+squote>LST_charlit
 
 # numbers
 :LST_NULL @0>LST_probenum
@@ -240,3 +241,9 @@
 :LST_ml_comment !+star>LST_ml_comment
 :LST_ml_comment_star @/=LST_ml_comment
 :LST_ml_comment_star !+slash>LST_ml_comment
+
+&LST_preproc
+:LST_NULL @#>LST_preproc
+:LST_preproc !+endl>LST_preproc
+:LST_preproc @\r~LST_preproc
+:LST_preproc @\n~LST_preproc
