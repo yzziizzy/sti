@@ -140,22 +140,11 @@ do { \
 	VEC_ALLOC(x) = 0; \
 } while(0)
 
-#define VEC_COPY(copy, orig) \
-do { \
-	void* tmp; \
-	tmp = realloc(VEC_DATA(copy), VEC_ALLOC(orig) * sizeof(*VEC_DATA(orig)) ); \
-	if(!tmp) { \
-		fprintf(stderr, "Out of memory in vector copy"); \
-		exit(1); \
-	} \
-	\
-	VEC_DATA(copy) = tmp; \
-	VEC_LEN(copy) = VEC_LEN(orig); \
-	VEC_ALLOC(copy) = VEC_ALLOC(orig); \
-	\
-	memcpy(VEC_DATA(copy), VEC_DATA(orig),  VEC_LEN(orig) * sizeof(*VEC_DATA(orig))); \
-} while(0)
-
+#define VEC_COPY(dst, src) vec_copy( \
+	(char**)&VEC_DATA(dst), (char*)VEC_DATA(src), \
+	&VEC_ALLOC(dst), VEC_ALLOC(src), \
+	&VEC_LEN(dst), VEC_LEN(src), \
+	sizeof(*VEC_DATA(src)))
 
 #define VEC_REVERSE(x) \
 do { \
@@ -374,12 +363,17 @@ else \
 
 
 
-
+// Do not use these directly.
 void vec_resize(void** data, size_t* size, size_t elem_size);
 ptrdiff_t vec_find(void* data, size_t len, size_t stride, void* search);
 ptrdiff_t vec_rm_val(char* data, size_t* len, size_t stride, void* search);
 void vec_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size);
-
+void vec_copy(
+	char** dst_data, char* src_data, 
+	size_t* dst_alloc, size_t src_alloc, 
+	size_t* dst_len, size_t src_len, 
+	size_t elem_size
+);
 
 
 

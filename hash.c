@@ -284,6 +284,7 @@ int oaht_delete(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 	} while(1);
 	
 	E_BK->key = NULL;
+	(*fill)--;
 	
 	return 0;
 }
@@ -346,14 +347,13 @@ int oaht_next(char* buckets, size_t stride, size_t alloc_size, void** iter, char
 		b += stride;
 		if(b >= buckets + (alloc_size * stride)) {
 			// end of the list
-			*val = NULL;
 			*key = NULL;
 			return 0;
 		}
 	} while(!B->key);
 	
 	*key = B->key;
-	memcpy(*val, &B->value, stride - sizeof(uint64_t) - sizeof(char*));
+	memcpy(val, &B->value, stride - sizeof(uint64_t) - sizeof(char*));
 	*iter = b;
 	
 	return 1;
@@ -633,6 +633,7 @@ int PHT_delete(PointerHashTable* obj, char* key) {
 	} while(1);
 	
 	obj->buckets[empty_bi].key = NULL;
+	obj->fill--;
 	
 	return 0;
 }

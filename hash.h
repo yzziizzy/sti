@@ -6,19 +6,35 @@
 #include <stdint.h>
 
 
+// super nifty site:
+// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+inline static size_t HT_nextPOT(size_t in) {
+	
+	in--;
+	in |= in >> 1;
+	in |= in >> 2;
+	in |= in >> 4;
+	in |= in >> 8;
+	in |= in >> 16;
+	in++;
+	
+	return in;
+}
 
 
 // shrink_ratio: set greater than 1.0 to entirely disable, default 99.0
 #define HT(Type) \
 struct { \
 	size_t alloc_size; \
-	size_t fill; \
+	union { \
+		size_t fill; \
+		Type* dummyPtr; \
+	}; \
 	struct { \
 		uint64_t hash; \
 		char* key; \
 		Type value; \
 	} *buckets; \
-	Type* dummyPtr[0]; \
 }
 
 // this must be calculated manually because compilers might 
@@ -27,7 +43,7 @@ struct { \
 
 #define HT_init(h, sz) \
 do { \
-	(h)->alloc_size = nextPOT(sz);\
+	(h)->alloc_size = HT_nextPOT(sz);\
 	(h)->fill = 0;\
 	(h)->buckets = calloc(1, HT_STRIDE(h) * (h)->alloc_size);\
 } while(0)
@@ -37,7 +53,7 @@ int oaht_resize(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 int oaht_getp(char* buckets, size_t stride, size_t alloc_size, char* key, char** valp);
 int oaht_get(char* buckets, size_t stride, size_t alloc_size, char* key, char* val);
 
-#define HT_getp(h, key, valp) oaht_getp((char*)(h)->buckets, HT_STRIDE(h), (h)->alloc_size, key, (char**)(1 ? valp : &((h)->dummyPtr[0])))
+#define HT_getp(h, key, valp) oaht_getp((char*)(h)->buckets, HT_STRIDE(h), (h)->alloc_size, key, (char**)(1 ? valp : &((h)->dummyPtr)))
 #define HT_get(h, key, valp) oaht_get((char*)(h)->buckets, HT_STRIDE(h), (h)->alloc_size, key, (char*)(1 ? valp : &((h)->buckets->value)))
 
 int oaht_set(char** buckets, size_t stride, size_t* fill, size_t* alloc_size, char* key, char* val);

@@ -82,3 +82,23 @@ ptrdiff_t vec_rm_val(char* data, size_t* len, size_t stride, void* search) {
 	
 	return 1;
 }
+
+void vec_copy(
+	char** dst_data, char* src_data, 
+	size_t* dst_alloc, size_t src_alloc, 
+	size_t* dst_len, size_t src_len, 
+	size_t elem_size
+) {
+	if(*dst_alloc < src_alloc) {
+		*dst_alloc = src_alloc;
+		if(*dst_alloc == 0) {
+			*dst_data = malloc(elem_size * src_alloc);
+		}
+		else {
+			*dst_data = realloc(*dst_data, elem_size * src_alloc);
+		}
+	}
+	
+	*dst_len = src_len;
+	memcpy(*dst_data, src_data, elem_size * src_len);
+}
