@@ -5,7 +5,8 @@
 
 #include "fs.c"
 #include "hash.c"
-#include "MurmurHash3.c"
+#include "hash_fns/MurmurHash3.c"
+#include "hash_fns/sha.c"
 #include "misc.c"
 #include "sets.c"
 #include "sexp.c"

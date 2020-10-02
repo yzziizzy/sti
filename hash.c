@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "MurmurHash3.h"
+#include "hash_fns/MurmurHash3.h"
 #include "hash.h"
 
 
