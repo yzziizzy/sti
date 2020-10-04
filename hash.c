@@ -194,7 +194,7 @@ int oaht_resize(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 	if(!*buckets) return 1;
 	
 	for(i = 0, n = 0; i < oldlen && n < (int64_t)*fill; i++) {
-		#define OP ((struct bucket*)(*op + (stride * i))) 
+		#define OP ((struct bucket*)(op + (stride * i))) 
 		
 		if(OP->key == NULL) {
 			continue;
