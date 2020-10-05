@@ -1,0 +1,92 @@
+html {
+	font-family: 'Sans Serif';
+	font-size: 20px;
+	width: 8000px;
+}
+.key {
+	height: 50px;
+	width: 60px;
+	display: block;
+	text-align: center;
+	vertical-align: middle;
+	left: 50%;
+	margin-left: -30px;
+	position: absolute;
+	border-radius: 20px;
+	line-height:46px;
+}
+
+.lines {
+	height: 15px;
+	width: 50%;
+	display: block;
+	border: 2px solid black;
+	border-bottom: none;
+	left: 25%;
+	position: absolute;
+	top: 64px;
+}
+.lines::before{
+	content: " "; 
+	height: 15px;
+	width: 10px;
+	display: block;
+	border-left: 2px solid black;
+	left: 50%;
+	position: absolute;
+	top: -17px;
+}
+
+
+.key:after {
+	float: left;
+	clear: both;
+}
+
+.node {
+	position: relative;
+	min-width: 60px;
+/* 	width: 100%; */
+	float: left;
+	clear: both;
+	padding-left: 5px;
+	padding-right: 5px;
+}
+
+.black > .key {
+	background-color: black;
+	color: silver;
+}
+
+.red > .key{
+	background-color: maroon;
+	color: silver;
+}
+.dummy > .key{
+	border: 1px solid silver;
+}
+.dummy .dummy > .key{
+	border: none;
+}
+.dummy > .lines, .dummy > .lines::before {
+	border: none;
+}
+
+.barren .key{
+	border: none;
+}
+.barren > .lines, .barren > .lines::before {
+	border: none;
+}
+
+
+
+.child {
+	float: left;
+	margin-top: 80px;
+}
+
+hr {
+	margin: 30px;
+	clear: both;
+}

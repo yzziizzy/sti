@@ -13,6 +13,7 @@
 #include "string.c"
 #include "utf.c"
 #include "vec.c"
+#include "rb.c"
 #include "rpn.c"
 
 // heavily dependent on Linux

@@ -13,6 +13,7 @@
 #include "sexp.h"
 #include "string.h"
 #include "utf.h"
+#include "rb.h"
 #include "vec.h"
 #include "ring.h"
 
