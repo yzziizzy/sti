@@ -322,6 +322,7 @@ int oaht_nextp(char* buckets, size_t stride, size_t alloc_size, void** iter, cha
 	*key = B->key;
 	*valp = &B->value;
 	*iter = b;
+	#undef B
 	
 	return 1;
 }
@@ -355,6 +356,7 @@ int oaht_next(char* buckets, size_t stride, size_t alloc_size, void** iter, char
 	*key = B->key;
 	memcpy(val, &B->value, stride - sizeof(uint64_t) - sizeof(char*));
 	*iter = b;
+	#undef B
 	
 	return 1;
 }

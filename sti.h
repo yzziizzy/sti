@@ -3,6 +3,7 @@
 // single file to include everything
 
 
+#include "talloc.h"
 #include "fs.h"
 #include "hash.h"
 #include "hash_fns/MurmurHash3.h"

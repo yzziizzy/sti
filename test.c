@@ -9,6 +9,7 @@
 
 #include <math.h>
 #include <search.h> // for other testing
+#include <time.h>
 
 #include <float.h> // for float limts of conversion testing
 
@@ -16,6 +17,23 @@
 #include "sti.h"
 #include "./string.h"
 
+
+double getCurrentTime() { // in seconds
+	double now;
+	struct timespec ts;
+	static double offset = 0;
+	
+	// CLOCK_MONOTONIC_RAW is linux-specific.
+	clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+	
+	now = (double)ts.tv_sec + ((double)ts.tv_nsec / 1000000000.0);
+	if(offset == 0) offset = now;
+	
+	return now - offset;
+}
+
+
+char** generate_random_strings(size_t len, size_t block_size);
 
 // temp, will be static later
 int flt_r_cvt_str(float f, int base, char* buf, char* charset);
@@ -35,6 +53,80 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args);
 // 	return bi - ai;
 // }
 
+void mergesort_strings(char* arr, int len, int bs, int (*compar)(const void *, const void *));
+
+static int str_sort(const void* a, const void* b) {
+	char* c = *((char**)a);
+	char* d = *((char**)b);
+	return strcmp(c, d);
+}
+
+struct trav_data {
+	char* arr;
+	char* cpy;
+	int n;
+	int bs;
+};
+
+static long rb_trav_fn(char* key, void* data, void* user_data) {
+	struct trav_data* td = (struct trav_data*)user_data;
+	memcpy(
+		td->cpy + (td->n * td->bs),
+		td->arr + ((int)data * td->bs),
+		td->bs
+	);
+	td->n++;
+	return 0;
+}
+
+void bench_sort(int n, int bs) {
+	double s, e;
+	char** arr = generate_random_strings(n, bs);
+	char* arr2 = malloc(bs * n);
+	char** arr3 = malloc(bs * n);
+	memcpy(arr2, arr, bs * n);
+	memcpy(arr3, arr, bs * n);
+	
+// 	qsort(arr3, n, sizeof(*arr2), str_sort);
+// 	qsort(arr2, n, sizeof(*arr2), str_sort);
+// 	qsort(arr, n, sizeof(*arr2), str_sort);
+	
+	printf("\nN = %d\n", n);
+	
+	s = getCurrentTime();
+	mergesort_strings(arr, n, bs, str_sort);
+	e = getCurrentTime();
+	printf(" Merge Sort:  %fms\n", (e - s) * 1000);
+	
+	
+	s = getCurrentTime();
+	RB(int) rb;
+	char* cpy = malloc(bs * n);
+	struct trav_data td = {arr2, cpy, 0, bs};
+	RB_init(&rb);
+	for(size_t i = 0; i < n; i++) 
+		RB_insert(&rb, 
+			*((char**)(arr2 + i*bs))
+			, i);
+	RB_traverse(&rb, rb_trav_fn, &td);
+	RB_trunc(&rb);
+	memcpy(arr2, cpy, bs * n);
+	free(cpy);
+	e = getCurrentTime();
+	printf(" RB Traverse: %fms\n", (e - s) * 1000);
+	
+	
+	s = getCurrentTime();
+	qsort(arr3, n, bs, str_sort);
+	e = getCurrentTime();
+	printf(" libc qsort:  %fms\n", (e - s) * 1000);
+	
+	free(arr);
+	free(arr2);
+	free(arr3);
+}
+
+
 
 int main(int argc, char* argv[]) {
 	char c;
@@ -47,12 +139,16 @@ int main(int argc, char* argv[]) {
 	char test_Iprintf = 0;
 	char test_commas = 0;
 	char test_ring = 0;
+	char test_sort = 0;
+	char test_talloc = 0;
 	
 	
-	while ((c = getopt (argc, argv, "csvf1piIr")) != -1) {
+	while ((c = getopt (argc, argv, "tchsSvf1piIr")) != -1) {
 		switch(c) {
+			case 't': test_talloc = 1; break;
 			case 's': test_sets = 1; break;
 			case 'v': test_vec = 1; break;
+			case 'S': test_sort = 1; break;
 			case 'f': test_fs = 1; break;
 			case '1': test_b_vs_t = 1; break;
 			case 'p': test_rpn = 1; break;
@@ -64,6 +160,33 @@ int main(int argc, char* argv[]) {
 	}
 	
 	
+	
+	
+	if(test_talloc) {
+		void* a = talloc(NULL, 503);
+		void* aa = talloc(a, 3);
+		void* ab = talloc(a, 53);
+		void* ac = talloc(a, 5);
+		void* aba = talloc(ab, 45);
+		void* abb = talloc(ab, 45);
+		void* abc = talloc(ab, 45);
+		
+		trealloc(ab, 7435);
+		
+		tfree(a);
+		return 0;
+	}
+	
+	if(test_sort) {
+		int block_size = 4*16;
+		bench_sort(10, block_size);
+		bench_sort(100, block_size);
+		bench_sort(1000, block_size);
+		bench_sort(10000, block_size);
+		bench_sort(100000, block_size);
+		bench_sort(1000000, block_size);
+		
+	}
 	
 	
 	if(test_ring) {
@@ -326,4 +449,35 @@ int main(int argc, char* argv[]) {
 	
 	
 	return 0;
+}
+
+
+
+
+char rand_char() {
+	static char* chars = "QWERTYUIOPASDFGHJKLZXCVBNM";
+	return chars[rand() % 26];
+}
+
+char** generate_random_strings(size_t len, size_t block_size) {
+	char* out = malloc(len * block_size);
+	int cl = 0;
+	
+	for(int i = 0; i < len; i++) {
+		char* k = malloc(5);
+	TRY_AGAIN:
+		k[0] = rand_char();
+		k[1] = rand_char();
+		k[2] = rand_char();
+		k[3] = rand_char();
+		k[4] = 0;
+		
+		for(int j = 0; j < cl; j++) {
+			if(0 == strcmp(k, out[j])) goto TRY_AGAIN;
+		}
+		
+		*((char**)(out + (i * block_size))) = k;
+	}
+	
+	return (char**)out;
 }
