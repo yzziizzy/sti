@@ -4,6 +4,7 @@
 
 
 #include "talloc.h"
+#include "heap.h"
 #include "fs.h"
 #include "hash.h"
 #include "hash_fns/MurmurHash3.h"

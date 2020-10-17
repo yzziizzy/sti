@@ -127,6 +127,11 @@ void bench_sort(int n, int bs) {
 }
 
 
+int intcmp(void* a_, void* b_) {
+	int* a = (int*)a_;
+	int* b = (int*)b_;
+	return *b - *a;
+}
 
 int main(int argc, char* argv[]) {
 	char c;
@@ -141,6 +146,7 @@ int main(int argc, char* argv[]) {
 	char test_ring = 0;
 	char test_sort = 0;
 	char test_talloc = 0;
+	char test_heap = 0;
 	
 	
 	while ((c = getopt (argc, argv, "tchsSvf1piIr")) != -1) {
@@ -156,10 +162,50 @@ int main(int argc, char* argv[]) {
 			case 'I': test_Iprintf = 1; break;
 			case 'c': test_commas = 1; break;
 			case 'r': test_ring = 1; break;
+			case 'h': test_heap = 1; break;
 		}
 	}
 	
 	
+	
+	
+	if(test_heap) {
+		HEAP(char*) h;
+		HEAP_init(&h, str_sort);
+		
+		int i = 80;
+		char* k;
+		int len = 8000;
+		
+		char** arr = generate_random_strings(len, 8);
+		
+		for(i = 0; i < len; i++)
+			HEAP_insert(&h, &arr[i]); 
+// 		heap_insert_(&h, &j, intcmp, 4); 
+// 		heap_insert_(&h, &k, intcmp, 4); 
+// 		heap_insert_(&h, &l, intcmp, 4); 
+// 		heap_insert_(&h, &m, intcmp, 4); 
+// 		heap_print_(&h, 4);
+		printf("\n");
+		
+		
+		for(i = 0; i < len; i++) {
+			HEAP_pop(&h, &k); 
+// 			heap_print_(&h, 4);
+			printf("%s\n", k);
+		}
+		
+		HEAP_free(&h);
+		/*
+		heap_pop_(&h, &k, intcmp, 4); 
+		heap_print_(&h, 4);
+		printf("\n");
+		
+		heap_pop_(&h, &k, intcmp, 4); 
+		heap_print_(&h, 4);*/
+		
+		return;
+	}
 	
 	
 	if(test_talloc) {

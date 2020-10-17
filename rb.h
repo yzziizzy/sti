@@ -46,9 +46,9 @@ void rb_trunc_(rb_tree_* t);
 
 typedef long (*rb_traverse_fn)(char* key, void* value, void* user_data);
 
-#define RB_traverse_(t, f, u) rb_traverse_((t)->tree, f, u)
+#define RB_traverse(t, f, u) rb_traverse_(&(t)->tree, f, u)
 long rb_traverse_(rb_tree_* tree, rb_traverse_fn fn, void* user_data);
-#define RB_r_traverse_(t, f, u) rb_r_traverse_((t)->tree, f, u)
+#define RB_r_traverse_(t, f, u) rb_r_traverse_(&(t)->tree, f, u)
 long rb_r_traverse_(rb_tree_* tree, rb_traverse_fn fn, void* user_data);
 
 
