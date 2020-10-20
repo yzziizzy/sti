@@ -44,6 +44,17 @@ void heap_insert_(heap_* h, char* elem, size_t elem_sz) {
 }
 
 
+int heap_peek_(heap_* h, char* out, size_t elem_sz) {
+	if(h->len == 0) {
+		return 1;
+	}
+	// copy the top element
+	memcpy(out, h->data, elem_sz);
+	
+	return 0;
+}
+
+
 int heap_pop_(heap_* h, char* out, size_t elem_sz) {
 	if(h->len == 0) {
 		return 1;
@@ -62,6 +73,18 @@ int heap_pop_(heap_* h, char* out, size_t elem_sz) {
 	return 0;
 }
 
+void heap_insert_pop_(heap_* h, char* in, char* out, size_t elem_sz) {
+	
+	// copy the top element out and the new element in
+	if(h->len == 0) {
+		memcpy(out, h->data, elem_sz);
+		h->len++;
+	}
+	
+	memcpy(h->data, in, elem_sz);
+	
+	heap_down_(h, 0, elem_sz);
+}
 
 void heap_free_(heap_* h) {
 	if(h->data) free(h->data);
