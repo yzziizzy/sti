@@ -96,6 +96,81 @@ char** strsplit_inplace(char* src, char delim, size_t* outLen) {
 }
 
 
+char** strsplit(char* src, char delim, size_t* outLen) {
+	size_t alloc = 8;
+	size_t len = 0;
+	char** out = malloc(alloc * sizeof(*out));
+	
+	size_t start_i = 0;
+	size_t i;
+	
+	for(i = 0; src[i] != 0; i++) {
+		if(src[i] == delim) {
+			
+			out[len++] = strndup(src + start_i, i - start_i);
+			start_i = i + 1;
+			
+			// always have two extra for the end
+			if(len + 1 >= alloc){
+				alloc *= 2;
+				out = realloc(out, alloc * sizeof(*out));
+			}
+			
+		}
+	}
+	
+	if(i >= start_i) {
+		out[len++] = strdup(src + start_i);
+	}
+	
+	out[len] = NULL;
+	
+	if(outLen) *outLen = len;
+	
+	return out;
+}
+
+
+size_t strrspn(const char* s, const char* accept) {
+	char* e, *r;
+	
+	e = s;
+	while(*e) e++;
+	
+	r = e - 1;
+	while(r >= s && NULL != strchr(accept, *r)) 
+		r--;
+	
+	return e - r - 1;
+}
+
+
+size_t strtriml(char* s, const char* trim) {
+	size_t n, l;
+	
+	n = strspn(s, trim);
+	l = strlen(s + n);
+	memmove(s, s + n, l + 1);
+	
+	return l;
+}
+
+size_t strtrimr(char* s, const char* trim) {
+	size_t n = strrspn(s, trim);
+	s[strlen(s) - n] = NULL;
+	
+	return n;
+}
+
+// left and right
+size_t strtrim(char* s, const char* trim) {
+	size_t n;
+	
+	strtriml(s, trim);
+	n = strtrimr(s, trim);
+	
+	return n;
+}
 
 
 

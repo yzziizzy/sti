@@ -5,6 +5,8 @@
 
 #include <string.h>
 
+// reverse strspn
+size_t strrspn(const char* s, const char* accept);
 
 
 // length of the line, or length of the string if no \n found
@@ -23,6 +25,17 @@ char* strappend(const char* a, const char* const b);
 // mutates the source (replaces newlines with nulls)
 char** strsplit_inplace(char* src, char delim, size_t* outLen);
 
+// allocates individual memory chunks for each split pointer
+char** strsplit(char* src, char delim, size_t* outLen);
+
+// trim left
+size_t strtriml(char* s, const char* trim);
+
+// trim right
+size_t strtrimr(char* s, const char* trim);
+
+// both left and right
+size_t strtrim(char* s, const char* trim);
 
 // handy shortcut
 static inline char* strskip(char* s, char* skip) {
@@ -50,6 +63,6 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args);
 // collapse ws to a single ' '
 // VA fn to join arbitrary number of strings
 // compare functions for natural interpretations of strings (version sort)
-
+// sprintfdup()
 
 #endif // __sti__string_h__
