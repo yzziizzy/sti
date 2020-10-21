@@ -61,6 +61,7 @@ inline static int   strncmp8(const char* a, const char* b, size_t len) { return 
 inline static char* strstr8(const char* a, const char* b) { return strstr(a, b); }
 inline static char* strdup8(const char* const s) { return strdup(s); }
 inline static char* strndup8(const char* const s, size_t len) { return strndup(s, len); }
+// inline static char* strtok_r8(const char* const s, size_t len) { return strndup(s, len); }
 
 
 // strtok intentionally not implemented
@@ -87,29 +88,44 @@ size_t strlen32(const uint32_t* const s);
 size_t charlen32(const uint32_t* const s);
 
 
-// uint32_t* strcat32(uint32_t* dst, const uint32_t* src);
-// uint32_t* strncat32(uint32_t* dst, const uint32_t* src, size_t len);
-// uint32_t* strcpy32(uint32_t* dst, const uint32_t* src);
-// uint32_t* strncpy32(uint32_t* dst, const uint32_t* src, size_t len);
-// uint32_t* strchr32(const uint32_t* s, uint32_t c);
-// int       strcmp32(const uint32_t* a, const uint32_t* b);
-// int       strncmp32(const uint32_t* a, const uint32_t* b, size_t len);
-// size_t    strcspn32(const uint32_t* a, const uint32_t* b);
+uint32_t* strcat32(uint32_t* dst, const uint32_t* src);
+uint32_t* strncat32(uint32_t* dst, const uint32_t* src, size_t len);
+uint32_t* strcpy32(uint32_t* dst, const uint32_t* src);
+uint32_t* strncpy32(uint32_t* dst, const uint32_t* src, size_t len);
+uint32_t* strchr32(const uint32_t* s, uint32_t c);
+uint32_t* strrchr32(const uint32_t* s, uint32_t c);
+uint32_t* strchrnul32(uint32_t* s, uint32_t c);
+int       strcmp32(const uint32_t* a, const uint32_t* b);
+int       strncmp32(const uint32_t* a, const uint32_t* b, size_t len);
+size_t    strspn32(const uint32_t* s, const uint32_t* accept);
+size_t    strcspn32(const uint32_t* s, const uint32_t* reject);
 // uint32_t* strpbrk32(const uint32_t* a, const uint32_t* b);
 // uint32_t* strstr32(const uint32_t* a, const uint32_t* b);
 // uint32_t* strnstr32(const uint32_t* a, const uint32_t* b);
 uint32_t* strdup32(const uint32_t* const s);
 // uint32_t* strndup32(const uint32_t* const s);
-// uint32_t* strtok32_r(uint32_t* s, const uint32_t* delim, uint32_t** saveptr);
+// uint32_t* strtok_r32(uint32_t* s, const uint32_t* delim, uint32_t** saveptr);
 
 
 // strtok intentionally not implemented
 inline static uint32_t* strtok32(uint32_t* s, const uint32_t* delim) {
 	(void)s;
 	(void)delim;
-	*((int*)0) = 1; // segfault on purpose because non-reentrant fns are bad. use strtok_r. 
+	*((int*)0) = 0xBadBad; // segfault on purpose because non-reentrant fns are bad. use strtok_r. 
 	return NULL;
 }
 
+
+
+
+// http://www.unicode.org/reports/tr44/#UnicodeData.txt
+
+// TODO:
+//   toupper/tolower/totitle for whole strings
+//   Capitalize words
+//   Character class info
+//   Strip emoji
+//   Convert all emoji to random list of supplied emoji
+//   printf
 
 #endif // __sti__utf_h__

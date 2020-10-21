@@ -116,9 +116,121 @@ size_t charlen32(const uint32_t* s) {
 }
 
 
+uint32_t* strcat32(uint32_t* dst, const uint32_t* src) {
+	uint32_t* d = dst;
+	const uint32_t* s = src;
+	while(*d) d++;
+	
+	while(*s) *d++ = *s++;
+	*d = 0;
+	
+	return dst;
+}
+
+uint32_t* strncat32(uint32_t* dst, const uint32_t* src, size_t len) {
+	uint32_t* d = dst;
+	const uint32_t* s = src;
+	while(*d) d++;
+	
+	while(*s && len--) *d++ = *s++;
+	*d = 0;
+	
+	return dst;
+}
+
+uint32_t* strcpy32(uint32_t* dst, const uint32_t* src) {
+	uint32_t* d = dst;
+	const uint32_t* s = src;
+	
+	while(*s) *d++ = *s++;
+	*d = 0;
+	
+	return dst;
+}
+
+uint32_t* strncpy32(uint32_t* dst, const uint32_t* src, size_t len) {
+	uint32_t* d = dst;
+	const uint32_t* s = src;
+	
+	while(*s && len--) *d++ = *s++;
+	*d = 0;
+	
+	return dst;
+}
+
+uint32_t* strchr32(const uint32_t* s, uint32_t c) {
+	for(; *s; s++) if(*s == c) return s;
+	return NULL;
+}
+
+uint32_t* strrchr32(const uint32_t* s, uint32_t c) {
+	uint32_t* p = NULL;
+	for(; *s; s++) if(*s == c) p = s;
+	return p;
+}
+
+uint32_t* strchrnul32(uint32_t* s, uint32_t c) {
+	for(; *s; s++) if(*s == c) return s;
+	return s;
+}
+
+int strcmp32(const uint32_t* a, const uint32_t* b) {
+	for(; *a || *b; a++, b++) {
+		if(*a < *b) return -1;
+		if(*a > *b) return 1;
+	}
+	
+	return 0;
+}
+
+int strncmp32(const uint32_t* a, const uint32_t* b, size_t len) {
+	for(; (*a || *b) && len--; a++, b++) {
+		if(*a < *b) return -1;
+		if(*a > *b) return 1;
+	}
+	
+	return 0;
+}
+
+size_t strspn32(const uint32_t* s, const uint32_t* accept) {
+	uint32_t* start, *a;;
+	for(start = s; *s; ) {
+		for(a = accept; *a; a++) {
+			if(*a == *s) goto CONT;
+		}
+		goto END;
+	CONT:
+		s++;
+	}
+END:
+	return s - start;
+}
+
+size_t strcspn32(const uint32_t* s, const uint32_t* accept) {
+	uint32_t* start, *a;;
+	for(start = s; *s; ) {
+		for(a = accept; *a; a++) {
+			if(*a == *s) goto END;
+		}
+		s++;
+	}
+END:
+	return s - start;
+}
+
+
 uint32_t* strdup32(const uint32_t* const s) {
 	size_t l = strlen32(s);
 	uint32_t* o = malloc(l + sizeof(*s)); // +sz for the null terminator
 	memcpy(o, s, (l + 1) * sizeof(*s));
 	return o;
 }
+
+
+
+
+
+
+
+
+
