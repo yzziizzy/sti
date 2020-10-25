@@ -10,6 +10,7 @@
 
 
 #include "elf.h"
+#include "dwarf.h"
 
 
 
@@ -72,7 +73,7 @@ void main(int argc, char* argv[]) {
 	elf.shl_cnt = elf.h2->section_h_num;
 	elf.shl = elf.m + elf.h2->section_h_off;
 	
-	
+	// section name pointers
 	elf.names = elf.m + elf.shl[elf.h2->section_name_index].file_offset;
 
 	
@@ -83,18 +84,18 @@ void main(int argc, char* argv[]) {
 			   name,
 			   elf.shl[i].type, elf.shl[i].file_offset, elf.shl[i].size);
 		
-		if(0 == strcmp(name, ".debug_line") {
+		if(0 == strcmp(name, ".debug_line")) {
 			elf.dw_line = elf.m + elf.shl[i].file_offset;
 			elf.dw_line_sz = elf.shl[i].size;
 		}
-		else if(0 == strcmp(name, ".debug_info") {
+		else if(0 == strcmp(name, ".debug_info")) {
 			elf.dw_info = elf.m + elf.shl[i].file_offset;
 			elf.dw_info_sz = elf.shl[i].size;
 		}
 	}
 	
 	
-	// read the string section
+	line_num_machine(elf.dw_line, elf.dw_line_sz);
 	
 	
 }
