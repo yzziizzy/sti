@@ -95,9 +95,9 @@ void main(int argc, char* argv[]) {
 	}
 	
 	
-	line_num_machine(elf.dw_line, elf.dw_line_sz);
+// 	line_num_machine(elf.dw_line, elf.dw_line_sz);
 	
-	
+	debug_info_parse(elf.dw_info, elf.dw_info_sz);
 }
 
 

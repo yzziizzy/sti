@@ -169,6 +169,7 @@ X(LNS, set_epilogue_begin, 0x0b)  \
 X(LNS, set_isa, 0x0c)  \
 X(LNE, end_sequence, 0x01)  \
 X(LNE, set_address, 0x02)  \
+X(LNE, define_file, 0x03)  \
 X(LNE, set_discriminator, 0x04)  \
 X(LNE, lo_user, 0x80)  \
 X(LNE, hi_user, 0xff)  \

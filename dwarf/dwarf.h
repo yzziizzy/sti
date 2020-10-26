@@ -57,7 +57,7 @@ int64_t leb128_decode(uint8_t* in , uint8_t** end);
 int uleb128_encode(uint64_t n, uint8_t* out);
 int leb128_encode(int64_t n, uint8_t* out);
 
-void line_num_machine(uint8_t* raw, size_t len);
-
+void* line_num_machine(uint8_t* raw, size_t len);
+void* debug_info_parse(uint8_t* raw, size_t raw_len);
 
 #endif // __sti_dwarf_dwarf_h__
