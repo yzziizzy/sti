@@ -17,7 +17,11 @@
 #include "vec.c"
 #include "rb.c"
 #include "rpn.c"
+#include "ring.c"
 #include "sort.c"
+
+// semi-platform-dependent
+#include "objdump.c"
 
 // heavily dependent on Linux
 #include "memarena.c"

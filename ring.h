@@ -115,6 +115,9 @@ do { \
 } while(0)
 
 
+void ring_rm_(void* data, size_t stride, size_t* len, size_t* first, size_t alloc, size_t i);
+#define RING_RM(x, i) \
+ring_rm_((x)->data, sizeof(*((x)->data)), &((x)->len), &((x)->first), (x)->alloc, (i));
 
 
 #define RING_FREE(x) \

@@ -149,6 +149,24 @@ int main(int argc, char* argv[]) {
 	char test_heap = 0;
 	
 	
+	char* source = readWholeFile("./objtext.txt", NULL);
+	objdp_text(source);
+	
+// 	uint32_t* u = utf8_to_utf32("bafoooo", NULL); 
+// 	uint32_t* v = utf8_to_utf32("fooaarZZZ", NULL); 
+// 	uint32_t* w = malloc(500);
+// 	
+//  	printf("d: %d\n", strcspn32(u, utf8_to_utf32("ba", NULL)));
+// // 	printf("r: %d\n", strspn("foooobar", "fo"));
+	
+	
+// 	uint32_t* x = strchrnul32(w, 'a');
+	
+// 	printf("c: %d\n", );
+	
+// 	for(int i = 0; x[i]; i++) printf("%c", x[i]);
+	
+	
 	while ((c = getopt (argc, argv, "tchsSvf1piIr")) != -1) {
 		switch(c) {
 			case 't': test_talloc = 1; break;
@@ -240,28 +258,36 @@ int main(int argc, char* argv[]) {
 		
 		RING_INIT(&r, 10);
 		
-		for(int j = 0; j < 11; j++) {
+		for(int j = 0; j < 15; j++) {
 			RING_PUSH(&r, 50 + j);
 		}
 		
 		
-		for(int i = 0; i < 10; i++) {
-			printf("%d: %d\n", i, r.data[i]);
+		
+		RING_EACH(&r, i, v) {
+			printf("each: %ld - %d\n", i, v);
 		}
+		printf("--\n");
+		
+		//for(int i = 0; i < 10; i++) {
+		//	printf("%d: %d\n", i, r.data[i]);
+		//}
 		
 		int a = -99;
-		RING_POP(&r, a);
-		printf("\na: %d, len: %ld\n", a, r.len);
+		//RING_POP(&r, a);
+		//printf("\na: %d, len: %ld\n", a, r.len);
+	
+		RING_RM(&r, 9);	
 		
 		int b = -99;
-		RING_POP(&r, b);
-		printf("\nb: %d, len: %ld\n", b, r.len);
+		//RING_POP(&r, b);
+		//printf("\nb: %d, len: %ld\n", b, r.len);
 		
-		RING_PUSH(&r, 70);
+		//RING_PUSH(&r, 70);
 		
 		int c = -99;
-		RING_POP(&r, c);
-		printf("\nc: %d, len: %ld\n", c, r.len);
+		//RING_POP(&r, c);
+		//printf("\nc: %d, len: %ld\n", c, r.len);
 		
 		RING_EACH(&r, i, v) {
 			printf("each: %ld - %d\n", i, v);
