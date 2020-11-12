@@ -21,7 +21,7 @@
 #include "sort.c"
 
 // semi-platform-dependent
-#include "objdump.c"
+//#include "objdump.c"
 
 // heavily dependent on Linux
 #include "memarena.c"

@@ -302,12 +302,12 @@ Give a char set as long as your base.
 	uint32_t nf = *((uint32_t*)&f); 
 	
 	if(nf == 0x7f800000) { // infinity
-		strncpy(buf, "infinity", strlen("infinity"));
+		strcpy(buf, "infinity");
 		return strlen("infinity");
 	}
 	if(nf == 0xff800000) { // -infinity
-		strncpy(buf, "infinity", strlen("infinity"));
-		return strlen("infinity") + 1;
+		strcpy(buf, "-infinity");
+		return strlen("-infinity");
 	}
 	
 	uint32_t sign =  (nf & 0x80000000) >> 31;
