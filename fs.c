@@ -5,6 +5,7 @@
 #include <stddef.h> // offsetof
 #include <stdio.h> // fprintf, fopen et al.
 #include <string.h> // strerror
+#include <ctype.h> // isspace
 #include <errno.h>
 
 
@@ -201,3 +202,38 @@ char* readWholeFileExtra(char* path, size_t extraAlloc, size_t* srcLen) {
 	
 	return contents;
 }
+
+
+// works like realpath(), except also handles ~/
+char* resolve_path(char* in) {
+	int tmp_was_malloced = 0;
+	char* out, *tmp;
+	
+	if(!in) return NULL;
+	
+	// skip leading whitespace
+	while(isspace(*in)) in++;
+	
+	// handle home dir shorthand
+	if(in[0] == '~') {
+		char* home = getenv("HOME");
+		
+		tmp_was_malloced = 1;
+		tmp = malloc(sizeof(*tmp) * (strlen(home) + strlen(in) + 2));
+		
+		strcpy(tmp, home);
+		strcat(tmp, "/"); // just in case
+		strcat(tmp, in + 1);
+	}
+	else tmp = in;
+	
+	out = realpath(tmp, NULL);
+	
+	if(tmp_was_malloced) free(tmp);
+	
+	return out;
+}
+
+
+
+

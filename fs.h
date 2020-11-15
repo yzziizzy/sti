@@ -49,4 +49,9 @@ int recurseDirs(
 
 
 
+// works like realpath(), except also handles ~/
+char* resolve_path(char* in);
+
+
+
 #endif // __sti__fs_h__

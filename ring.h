@@ -34,7 +34,7 @@ do { \
 #define RING_DATA(x) ((x)->data)
 #define RING_ITEM(x, i) (RING_DATA(x)[((x)->first + (i)) % (x)->alloc])
 
-#define RING_TAIL(x) (RING_DATA(x)[((x)->first + (x)->len - 1) % (x)->len])
+#define RING_TAIL(x) (RING_DATA(x)[((x)->first + (x)->len - 1) % (x)->alloc])
 #define RING_HEAD(x) (RING_DATA(x)[(x)->first])
 
 // #define RING_FIND(x, ptr_o) vec_find(RING_DATA(x), RING_LEN(x), sizeof(*RING_DATA(x)), ptr_o)
