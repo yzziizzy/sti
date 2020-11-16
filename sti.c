@@ -18,7 +18,7 @@
 #include "rb.c"
 #include "rpn.c"
 #include "ring.c"
-#include "sort.c"
+//#include "sort.c"
 
 // semi-platform-dependent
 //#include "objdump.c"
