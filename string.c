@@ -157,7 +157,7 @@ size_t strtriml(char* s, const char* trim) {
 
 size_t strtrimr(char* s, const char* trim) {
 	size_t n = strrspn(s, trim);
-	s[strlen(s) - n] = NULL;
+	s[strlen(s) - n] = 0;
 	
 	return n;
 }

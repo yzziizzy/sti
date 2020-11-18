@@ -1,8 +1,5 @@
-#ifndef __sti__mempool_h__
-#define __sti__mempool_h__
-
-// Public Domain.
-
+#ifndef __EACSMB_mempool_h__
+#define __EACSMB_mempool_h__
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -11,15 +8,10 @@
 //  There are no system calls during allocation or freeing, though the kernel may run
 //  interrupts when a new page of virtual memory is written to for the first time.
 
-// This is written for Linux, version >= not ancient.
-
-// This code assumes that size_t is at least big enough to store a pointer. 
-//   Weird systems get wrecked.
-
 // Does not:
 //   Handle double free()'s. Only call free once.
 //   Handle threads. Manage synchronization yourself.
-//   Grow the pool dynamically. Request enough virtual address space from the start.
+//   Grow the pool dynamically. Request enough space from the start.
 //   Reserve physical memory with the OS. It's purely virtual until you use it.
 //   Check if the pointer you feed to free belongs to this pool. Be careful.
 
@@ -36,6 +28,7 @@ typedef struct MemPool {
 	size_t firstFree;
 	
 	void* pool;
+	
 	
 } MemPool;
 
@@ -113,9 +106,13 @@ static inline size_t MemPoolT_maxIndex(MemPoolT* mp) {
 }
 
 static inline void* MemPoolT_getIndex(MemPoolT* mp, size_t index) { 
-	return (char*)mp->pool + (index * mp->itemSize);
+	return mp->pool + (index * mp->itemSize);
 }
 
+// garbage in, garbage out. you have been warned.
+static inline size_t MemPoolT_indexOf(MemPoolT* mp, void* ptr) { 
+       return (ptr - mp->pool) / mp->itemSize;
+}
 
 
 // VECMP is a set of typesafe vector macros built around a tracked mempool
@@ -133,7 +130,7 @@ struct { \
 #define VECMP_INIT(x, maxItems) \
 do { \
 	(x)->lastInsert = NULL; \
-	MemPoolT_init(&(x)->pool, sizeof(*(x)->lastInsert), maxItems); \
+	MemPoolT_init(&(x)->pool, sizeof(*((x)->lastInsert)), maxItems); \
 } while(0)
 
 
@@ -161,6 +158,12 @@ do { \
 
 #define VECMP_LEN(x) ((x)->pool.fill) 
 #define VECMP_OWNS_PTR(x, ptr) (MemPoolT_ownsPointer(&(x)->pool, ptr)) 
+
+#define VECMP_DATA(x) ( (typeof((x)->lastInsert)) ((x)->pool.pool) )
+#define VECMP_ITEM(x, index) (VECMP_DATA(x)[index])
+
+#define VECMP_INDEXOF(x, ptr) (MemPoolT_indexOf(&(x)->pool, ptr))
+#define VECMP_LAST_INS_INDEX(x) (MemPoolT_indexOf(&(x)->pool, (x)->lastInsert))
 
 
 
@@ -199,4 +202,4 @@ else \
 
 
 
-#endif //__sti__mempool_h__
+#endif //__EACSMB_mempool_h__

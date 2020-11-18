@@ -285,6 +285,31 @@ else \
 							VEC__MAINLOOP(index, val) :
 							
 							//	{ user block; not in macro }
+							
+							
+// pointer version
+#define VEC_EACHP(obj, index, valname) \
+if(0) \
+	VEC__FINISHED(index, val): ; \
+else \
+	for(typeof(*VEC_DATA(obj))* valname ;;) \
+	for(size_t index = 0;;) \
+		if(index < VEC_LEN(obj) && (valname = &VEC_ITEM(obj, index), 1)) \
+			goto VEC__MAINLOOP(index, val); \
+		else \
+			while(1) \
+				if(1) { \
+					goto VEC__FINISHED(index, val); \
+				} \
+				else \
+					while(1) \
+						if(++index >= VEC_LEN(obj) || (valname = &VEC_ITEM(obj, index), 0)) { \
+							goto VEC__FINISHED(index, val); \
+						} \
+						else \
+							VEC__MAINLOOP(index, val) :
+							
+							//	{ user block; not in macro }
 
 // reverse
 #define VEC_R_EACH(obj, index, valname) \

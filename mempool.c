@@ -1,4 +1,4 @@
-// Public Domain.
+// Public Domain
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -56,7 +56,7 @@ void* MemPool_malloc(MemPool* mp) {
 	}
 	
 	size_t off = mp->itemSize * (mp->firstFree - 1);
-	size_t next = (size_t)mp->pool + off;
+	size_t next = *(size_t*)(mp->pool + off);
 	if(next == 0) next = mp->firstFree + 1;
 	mp->firstFree = next;
 	
@@ -130,34 +130,33 @@ void MemPoolT_init(MemPoolT* mp, size_t itemSize, size_t maxItems) {
 
 static inline void mpt_check_bitfield(MemPoolT* mp) {
 	if((mp->fill / 64) + ((mp->fill % 64) > 0) >= mp->bitfieldAlloc) {
-		printf("bf alloc: %ld\n", mp->bitfieldAlloc);
 		mp->bitfieldAlloc = mp->bitfieldAlloc < 8 ? 8 : mp->bitfieldAlloc * 2;
 		mp->bitfield = realloc(mp->bitfield, sizeof(*mp->bitfield) * mp->bitfieldAlloc);
 	}
 }
 
-static inline size_t mpt_get_bf_index(size_t index) {
+static inline size_t mpt_get_bf_index(MemPoolT* mp, size_t index) {
 	return ((index - 1) / 64);
 }
 
-static inline int mpt_get_bf_bit(size_t index) {
+static inline int mpt_get_bf_bit(MemPoolT* mp, size_t index) {
 	return ((index - 1) % 64);
 }
 
-static inline uint64_t mpt_get_bf_mask(size_t index) {
-	return ((uint64_t)1) << mpt_get_bf_bit(index);
+static inline uint64_t mpt_get_bf_mask(MemPoolT* mp, size_t index) {
+	return ((uint64_t)1) << mpt_get_bf_bit(mp, index);
 }
 
 static inline void mpt_set_bit(MemPoolT* mp, size_t index) {
-	uint64_t mask = mpt_get_bf_mask(index);
-	int i = mpt_get_bf_index(index);
+	uint64_t mask = mpt_get_bf_mask(mp, index);
+	int i = mpt_get_bf_index(mp, index);
 	mp->bitfield[i] |= mask;
 }
 static inline void mpt_clear_bit(MemPoolT* mp, size_t index) {
-	mp->bitfield[mpt_get_bf_index(index)] &= ~mpt_get_bf_mask(index);
+	mp->bitfield[mpt_get_bf_index(mp, index)] &= ~mpt_get_bf_mask(mp, index);
 }
 static inline int mpt_get_bit(MemPoolT* mp, size_t index) {
-	return 0 != (mp->bitfield[mpt_get_bf_index(index)] & mpt_get_bf_mask(index));
+	return 0 != (mp->bitfield[mpt_get_bf_index(mp, index)] & mpt_get_bf_mask(mp, index));
 }
 
 
@@ -173,7 +172,7 @@ void* MemPoolT_malloc(MemPoolT* mp) {
 	mpt_check_bitfield(mp);
 	
 	size_t off = mp->itemSize * (mp->firstFree - 1);
-	size_t next = (size_t)mp->pool + off;
+	size_t next = *(size_t*)((char*)mp->pool + off);
 	if(next == 0) next = mp->firstFree + 1;
 	
 	mpt_set_bit(mp, mp->firstFree);
@@ -217,10 +216,10 @@ void* MemPoolT_getNextUsedIndex(MemPoolT* mp, size_t* index) {
 			return NULL;
 		}
 	}
-
+	
 	if(*index >= mp->highestUsed - 1) return NULL;
 	
-	return (char*)mp->pool + (*index * mp->itemSize);
+	return (char*)mp->pool + ((*index) * mp->itemSize);
 }
 
 
