@@ -476,6 +476,8 @@ int main(int argc, char* argv[]) {
 	char ac;
 	char print_data = 0;
 	char print_data_defs = 0;
+	char print_unique_data = 0;
+	char print_triplet_data = 0;
 	char print_enums = 0;
 	char print_enum_names = 0;
 	char print_guards = 0;
@@ -489,7 +491,7 @@ int main(int argc, char* argv[]) {
 	char* guard_prefix = "PARSER_INCLUDE";
 	char* data_def_prefix = "STATE_DATA_DEF_";
 	
-	while((ac = getopt(argc, argv, "cdD:eE:fF:gG:mnsT:")) != -1) {
+	while((ac = getopt(argc, argv, "cdD:eE:fF:gG:mnsT:uv")) != -1) {
 		switch(ac) {
 			case 'c': print_csets = 1; break;
 			case 'd': print_data = 1; break;
@@ -514,11 +516,13 @@ int main(int argc, char* argv[]) {
 				break;
 			case 'm': print_macros = 1; break; 
 			case 'n': print_enum_names = 1; break;
+			case 's': print_switch = 1; break;
 			case 'T': 
 				print_enums = 1; 
 				terminal_pattern = optarg;
 				break;
-			case 's': print_switch = 1; break;
+			case 'u': print_unique_data = 1; break;
+			case 'v': print_triplet_data = 1; break;
 			/* TODO: 
 			combine like states into one fall-through case.
 			default start state name
@@ -573,6 +577,9 @@ int main(int argc, char* argv[]) {
 		if(c == 0) continue; // empty line
 		if(c == '#') continue; // comments
 		
+		VEC(strpair) terminal_data;
+		VEC_INIT(&terminal_data);
+		
 		// mark state as terminal
 		if(c == '&') {
 			s = lines[i] + 1;
@@ -584,9 +591,41 @@ int main(int argc, char* argv[]) {
 			state_info* si = induce_state(sname, tctx);
 			si->is_terminal = 1;
 			
+			s = end;
+			
+			// save any terminal data
+			while(*s) {
+				while(*s && *s == ' ') s++;
+				if(!*s || *s == '\r' || *s == '\n') break;
+				
+				if(*s == ':') { // token type
+					
+					char* td_key = NULL;
+					char* td_val = NULL;
+					
+					s++;
+					end = strpbrk(s, "= \n\t\r");
+					if(!end) end = s + strlen(s);
+					wl = end - s;
+					td_val = strndup(s, wl);
+					
+					if(*end == '=') { // key pair
+						td_key = td_val;
+						s = end;
+						
+						end = word_end(++s, &wl);
+						td_val = strndup(s, wl);
+					}
+					
+					VEC_PUSH(&si->terminal_data, ((strpair){td_key, td_val}));
+					
+					s = end;
+				}
+			}
+			
+			
 			free(sname);
 			
-			s = end;
 			continue;
 		}
 		
@@ -699,8 +738,6 @@ int main(int argc, char* argv[]) {
 		char* retry_as = NULL;
 		char* retry_as_cs_name = NULL;
 		
-		VEC(strpair) terminal_data;
-		VEC_INIT(&terminal_data);
 		
 		case_list extra;
 		VEC_INIT(&extra.cases);
@@ -847,10 +884,10 @@ int main(int argc, char* argv[]) {
 		
 		if(cached_word) {
 			state_info* final = expand_word(cached_word, pst, &extra, retry_as, retry_as_cs_name, tctx); 
-			VEC_COPY(&final->terminal_data, &terminal_data);
+			VEC_CAT(&final->terminal_data, &terminal_data);
 		}
 		else {
-			VEC_COPY(&pst->terminal_data, &terminal_data);
+			VEC_CAT(&pst->terminal_data, &terminal_data);
 			VEC_EACH(&extra.cases, i, ci) {
 				add_case_cset(pst, ci.cs_name, ci.dest_state, ci.action, ci.invert);
 			}
@@ -990,6 +1027,55 @@ int main(int argc, char* argv[]) {
 		}
 		
 		if(print_guards) printf("#endif // %s_TERMINAL_DATA\n\n\n", guard_prefix);
+	}
+	
+	
+	if(print_unique_data) {
+		if(print_guards) printf("#ifdef %s_UNIQUE_TERMINAL_PAIRS\n", guard_prefix);
+		
+		struct strtrip {
+			char* sname, *key, *val;
+		};
+		
+		HT(struct strpair*) table;
+		HT_init(&table, VEC_LEN(&tctx->terminals) * 1.5);
+		
+		VEC_EACH(&tctx->terminals, i, t) {
+			VEC_EACHP(&t->terminal_data, i2, tp) {
+				
+				char* k = malloc(strlen(tp->key) + 2 + strlen(tp->val));
+				strcpy(k, tp->key);
+				strcat(k, "=");
+				strcat(k, tp->val);
+				
+				HT_set(&table, k, tp);
+				free(k);
+//				printf("[%s] = %s%s,\n", t->name, data_def_prefix, t->name);
+			}
+		}
+		
+		HT_EACH(&table, k, strpair*, tp) {
+			printf("TDX(%s, %s)\n", tp->key, tp->val);
+		}
+		
+		HT_destroy(&table);
+		
+		if(print_guards) printf("#endif // %s_UNIQUE_TERMINAL_PAIRS\n\n\n", guard_prefix);
+	}
+	
+	
+	
+	if(print_triplet_data) {
+		if(print_guards) printf("#ifdef %s_TERMINAL_TRIPLETS\n", guard_prefix);
+		
+		VEC_EACH(&tctx->terminals, i, t) {
+			VEC_EACHP(&t->terminal_data, i2, tp) {
+				
+				printf("TDX(%s, %s, %s)\n", t->name, tp->key, tp->val);
+			}
+		}
+		
+		if(print_guards) printf("#endif // %s_TERMINAL_TRIPLETS\n\n\n", guard_prefix);
 	}
 	
 	

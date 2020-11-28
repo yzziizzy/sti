@@ -31,11 +31,11 @@ void vec_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size)
 	
 	if(*size >= new_size) return;
 	
-	*size *= nextPOT(new_size);
+	*size = nextPOT(new_size);
 	
 	tmp = realloc(*data, *size * elem_size);
 	if(!tmp) {
-		fprintf(stderr, "Out of memory in vector resize");
+		fprintf(stderr, "Out of memory in vector resize, %ld bytes requested\n", *size);
 		return;
 	}
 	

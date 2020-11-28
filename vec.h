@@ -164,13 +164,28 @@ do { \
 		vec_resize_to((void**)&VEC_DATA(x), &VEC_ALLOC(x), sizeof(*VEC_DATA(x)), VEC_LEN(x) + VEC_LEN(y)); \
 	} \
 	\
-	memcpy( /* move the rest of x forward */ \
+	memmove( /* move the rest of x forward */ \
 		VEC_DATA(x) + where + VEC_LEN(y), \
 		VEC_DATA(x) + where,  \
 		(VEC_LEN(x) - where) * sizeof(*VEC_DATA(x)) \
 	); \
 	memcpy( /* copy y into the space created */ \
 		VEC_DATA(x) + where, \
+		VEC_DATA(y),  \
+		VEC_LEN(y) * sizeof(*VEC_DATA(y)) \
+	); \
+	VEC_LEN(x) += VEC_LEN(y); \
+} while(0)
+
+
+// concatenate y onto the end of x
+#define VEC_CAT(x, y) \
+do { \
+	if(VEC_ALLOC(x) < VEC_LEN(x) + VEC_LEN(y)) { \
+		vec_resize_to((void**)&VEC_DATA(x), &VEC_ALLOC(x), sizeof(*VEC_DATA(x)), VEC_LEN(x) + VEC_LEN(y)); \
+	} \
+	memcpy( \
+		VEC_DATA(x) + VEC_LEN(x), \
 		VEC_DATA(y),  \
 		VEC_LEN(y) * sizeof(*VEC_DATA(y)) \
 	); \
