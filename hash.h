@@ -48,6 +48,15 @@ do { \
 	(h)->buckets = calloc(1, HT_STRIDE(h) * (h)->alloc_size);\
 } while(0)
 
+#define HT_destroy(h) \
+do { \
+	(h)->alloc_size = 0; \
+	(h)->fill = 0; \
+	if((h)->buckets) free((h)->buckets); \
+} while(0)
+
+
+
 int oaht_resize(char** buckets, size_t stride, size_t* fill, size_t* alloc_size, size_t newSize);
 
 int oaht_getp(char* buckets, size_t stride, size_t alloc_size, char* key, char** valp);

@@ -426,7 +426,10 @@ static void print_state_switch(state_info* si) {
 	}
 	
 	
-	if(si->is_terminal) {
+	if(si->fail_to) {
+		printf("push_char_id(%s);\n", si->fail_to);
+	}
+	else if(si->is_terminal) {
 		if(si->retry_as) printf("\tif(charset_has(cset_%s, c)) { retry_as(%s); }\n", si->retry_as_cs_name, si->retry_as);
 		printf("\tdone_zero_move(%s);\n", si->name);
 
@@ -779,7 +782,11 @@ int main(int argc, char* argv[]) {
 			
 			// go-to
 			if(*s == '>') {
-				// TODO this one is wrong
+				s++;
+				end = word_end(s, &wl);
+				char* fail_to = strndup(s, wl);
+				pst->fail_to = fail_to;
+				
 				break;
 			}
 			

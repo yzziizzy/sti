@@ -89,6 +89,7 @@ typedef struct MemPoolT /* tracked */ {
 // these allocate the pool itself
 MemPoolT* MemPoolT_alloc(size_t itemSize, size_t maxItems);
 void MemPoolT_init(MemPoolT* mp, size_t itemSize, size_t maxItems);
+void MemPoolT_destroy(MemPoolT* mp);
 
 // USE THIS:
 // these allocate chunks of memory from the pool
@@ -133,6 +134,11 @@ do { \
 	MemPoolT_init(&(x)->pool, sizeof(*((x)->lastInsert)), maxItems); \
 } while(0)
 
+#define VECMP_FREE(x) \
+do { \
+	(x)->lastInsert = NULL; \
+	MemPoolT_destroy(&(x)->pool); \
+} while(0)
 
 #define VECMP_INSERT(x, e) \
 do { \

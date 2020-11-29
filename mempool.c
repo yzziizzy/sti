@@ -48,6 +48,14 @@ void MemPool_init(MemPool* mp, size_t itemSize, size_t maxItems) {
 }
 
 
+void MemPoolT_destroy(MemPoolT* mp) {
+	free(mp->bitfield);
+	munmap(mp->pool, mp->itemSize * mp->maxItems);
+	mp->maxItems = 0;
+	mp->fill = 0;
+	mp->firstFree = 0;
+}
+
 
 void* MemPool_malloc(MemPool* mp) {
 	if(mp->fill >= mp->maxItems) {
