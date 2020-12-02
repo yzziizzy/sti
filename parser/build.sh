@@ -2,7 +2,7 @@
 
 # Public Domain.
 
-CFLAGS="-Wall -Werror -Wextra -pedantic"
+CFLAGS="-Wall  -Wextra -pedantic"
 
 gcc -o parser_gen parser_gen.c ../sti.c \
 	-lm \

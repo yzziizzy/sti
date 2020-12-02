@@ -847,7 +847,7 @@ int main(int argc, char* argv[]) {
 			// charset fail-to
 			if(*s == '+') {
 				s++;
-				end = strpbrk(s, ">^");
+				end = strpbrk(s, ">^~");
 				
 				char* set_name = strndup(s, end - s);
 				
@@ -865,11 +865,17 @@ int main(int argc, char* argv[]) {
 // 				}
 				// TODO: state transition info
 				
+				int action = 0;
+				if(type == '>') action = 0;
+				else if(type == '=') action = 1;
+				else if(type == '~') action = 2;
+				
+				
 				VEC_PUSH(&extra.cases, ((state_case_info){
 					.type = 1,
 					.cs_name = set_name,
 					.dest_state = fail_to,
-					.action = type,
+					.action = action,
 					.invert = invert,
 				}));
 				
