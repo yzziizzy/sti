@@ -4,10 +4,10 @@
 // Public Domain.
 
 #include <string.h>
+#include "macros.h"
 
 // reverse strspn
 size_t strrspn(const char* s, const char* accept);
-
 
 // length of the line, or length of the string if no \n found
 size_t strlnlen(const char* s);
@@ -18,8 +18,17 @@ char* strlndup(const char* s);
 // line count;
 size_t strlinecnt(const char* s);
 
-// append b to a in a new buffer
-char* strappend(const char* a, const char* const b);
+// allocates a new buffer and calls sprintf with it
+char* sprintfdup(char* fmt, ...);
+
+// concatenate all argument strings together in a new buffer
+#define strcatdup(...) strcatdup_(PP_NARG(__VA_ARGS__), __VA_ARGS__)
+char* strcatdup_(size_t nargs, ...);
+
+// concatenate all argument strings together in a new buffer,
+//    with the given joining string between them
+#define strjoin(j, ...) strjoin_(j, PP_NARG(__VA_ARGS__), __VA_ARGS__)
+char* strjoin_(char* joiner, size_t nargs, ...);
 
 // returns a null-terminated list of pointers to each line.
 // mutates the source (replaces newlines with nulls)
@@ -43,7 +52,7 @@ static inline char* strskip(char* s, char* skip) {
 }
 
 
-// returns the numerical calue of a single hex digit
+// returns the numerical value of a single hex digit
 unsigned int decodeHexDigit(char c);
 
 // returns rgba, with r in most significant bits and a in the least
@@ -58,11 +67,9 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args);
 
 
 // TODO:
-// trim whitespace
 // collapse whitespace
 // collapse ws to a single ' '
-// VA fn to join arbitrary number of strings
 // compare functions for natural interpretations of strings (version sort)
-// sprintfdup()
+
 
 #endif // __sti__string_h__

@@ -187,8 +187,6 @@ int main(int argc, char* argv[]) {
 	}
 	
 	
-	
-	
 	if(test_heap) {
 		HEAP(char*) h;
 		HEAP_init(&h, str_sort);
