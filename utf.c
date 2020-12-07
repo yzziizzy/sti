@@ -159,14 +159,14 @@ uint32_t* strncpy32(uint32_t* dst, const uint32_t* src, size_t len) {
 }
 
 uint32_t* strchr32(const uint32_t* s, uint32_t c) {
-	for(; *s; s++) if(*s == c) return s;
+	for(; *s; s++) if(*s == c) return (uint32_t*)s;
 	return NULL;
 }
 
 uint32_t* strrchr32(const uint32_t* s, uint32_t c) {
-	uint32_t* p = NULL;
+	const uint32_t* p = NULL;
 	for(; *s; s++) if(*s == c) p = s;
-	return p;
+	return (uint32_t*)p;
 }
 
 uint32_t* strchrnul32(uint32_t* s, uint32_t c) {
@@ -193,7 +193,7 @@ int strncmp32(const uint32_t* a, const uint32_t* b, size_t len) {
 }
 
 size_t strspn32(const uint32_t* s, const uint32_t* accept) {
-	uint32_t* start, *a;;
+	const uint32_t* start, *a;;
 	for(start = s; *s; ) {
 		for(a = accept; *a; a++) {
 			if(*a == *s) goto CONT;
@@ -207,7 +207,7 @@ END:
 }
 
 size_t strcspn32(const uint32_t* s, const uint32_t* accept) {
-	uint32_t* start, *a;;
+	const uint32_t* start, *a;;
 	for(start = s; *s; ) {
 		for(a = accept; *a; a++) {
 			if(*a == *s) goto END;

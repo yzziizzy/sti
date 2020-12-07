@@ -25,4 +25,17 @@ int infix_to_rpn(sti_op_prec_rule* rules, char** infix, char*** rpn, size_t* rpn
 int64_t rpn_eval_int_str(char** rpn);
 double rpn_eval_double_str(char** rpn);
 
+
+/*
+typedef struct sti_shunting_context {
+	void* user_data;
+	
+	char* (get_token_fn*)(void*);
+	void (output_fn*)(void*, char*);
+	
+	
+	VEC(sti_op_prec_rule*) stack;
+} sti_shunting_context;
+*/
+
 #endif // __sti__rpn_h__

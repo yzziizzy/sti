@@ -176,7 +176,7 @@ char* readWholeFile(char* path, size_t* srcLen) {
 // reserves extra space in memory just in case you want to append a \n or something
 // srcLen reflects the length of the content, not the allocation
 char* readWholeFileExtra(char* path, size_t extraAlloc, size_t* srcLen) {
-	size_t fsize;
+	size_t fsize, total_read = 0, bytes_read;
 	char* contents;
 	FILE* f;
 	
@@ -193,7 +193,11 @@ char* readWholeFileExtra(char* path, size_t extraAlloc, size_t* srcLen) {
 	
 	contents = malloc(fsize + extraAlloc + 1);
 	
-	fread(contents, sizeof(char), fsize, f);
+	while(total_read < fsize) {
+		bytes_read = fread(contents + total_read, sizeof(char), fsize - total_read, f);
+		total_read += bytes_read;
+	}
+	
 	contents[fsize] = 0;
 	
 	fclose(f);

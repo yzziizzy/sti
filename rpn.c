@@ -1,5 +1,6 @@
 // Public Domain
 
+#include <math.h>
 #include <ctype.h>
 
 #include "err.h"
@@ -231,11 +232,17 @@ int64_t rpn_eval_int_str(char** rpn) {
 			case '/': oper(c = a / b);
 			case '%': oper(c = a % b);
 			case '*': 
-				if((*r)[1] == '*') oper(c = a; for(int64_t n = abs(b); n > 1; n--) c *= a)
+				if((*r)[1] == '*') oper(c = a; for(int64_t n = labs(b); n > 1; n--) c *= a)
 				else oper(c = a * b);
 			case '&': oper(c = a & b);
 			case '|': oper(c = a | b);
 			case '^': oper(c = a ^ b);
+			case '<': 
+				if((*r)[1] == '<') oper(c = a << b);
+				break;
+			case '>': 
+				if((*r)[1] == '>') oper(c = a << b);
+				break;
 		}
 	}
 	
@@ -264,6 +271,7 @@ double rpn_eval_double_str(char** rpn) {
 			case '-': oper(c = a - b);
 			case '/': oper(c = a / b);
 			case '*': oper(c = a * b);
+			case '%': oper(c = fmod(a, b));
 		}
 	}
 	

@@ -132,7 +132,7 @@ char** strsplit(char* src, char delim, size_t* outLen) {
 
 
 size_t strrspn(const char* s, const char* accept) {
-	char* e, *r;
+	const char* e, *r;
 	
 	e = s;
 	while(*e) e++;

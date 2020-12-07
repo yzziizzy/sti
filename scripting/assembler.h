@@ -29,8 +29,8 @@ type conversions, swizzles, unpacks
 	IT(func, -1, "") \
 	IT(args, -1, "") \
 	IT(returns, -1, "") \
-	IT(end, 3, "reserve stack space for a local variable") \
 	IT(local, 3, "reserve stack space for a local variable") \
+	IT(disfunc, 0, "mark the absolute end of the current function") \
 	\
 	IT(set, 2, "set a local variable's value") \
 	\

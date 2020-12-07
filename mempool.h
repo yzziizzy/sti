@@ -107,12 +107,12 @@ static inline size_t MemPoolT_maxIndex(MemPoolT* mp) {
 }
 
 static inline void* MemPoolT_getIndex(MemPoolT* mp, size_t index) { 
-	return mp->pool + (index * mp->itemSize);
+	return (char*)mp->pool + (index * mp->itemSize);
 }
 
 // garbage in, garbage out. you have been warned.
 static inline size_t MemPoolT_indexOf(MemPoolT* mp, void* ptr) { 
-       return (ptr - mp->pool) / mp->itemSize;
+       return ((char*)ptr - (char*)mp->pool) / mp->itemSize;
 }
 
 

@@ -716,6 +716,9 @@ void* debug_info_parse(uint8_t* raw, size_t raw_len) {
 	uint64_t debug_abbrev_offset;
 	uint8_t address_bytes;
 	
+	
+	// compilation unit header
+	
 // 	h.raw = raw;
 // 	h.raw_len = len;
 	uint64_t initial_length = PEEK_u32(r);
@@ -753,6 +756,114 @@ void* debug_info_parse(uint8_t* raw, size_t raw_len) {
 	address_bytes = PEEK_u8(r);
 	r++;
 	
+	
+	// debug info records
+	
+	uint64_t abbrcode = uleb128_decode(r, &r);
+	// 0 is invalid and should be skipped
+	
+	// attributes
+	
+	
+	
+}
+
+void read_abbr(uint8_t* raw, size_t raw_len) {
+	
+	uint8_t* r = raw;
+	
+	uint64_t abbr_code = uleb128_decode(r, &r);
+	uint64_t tag = uleb128_decode(r, &r);
+	
+	uint8_t has_childen = PEEK_u8(r)
+	r++;
+	
+// 	DW_CHILDREN_yes = next DIE entry is a child
+// 	DW_CHILDREN_no = next DIE entry is a sibling
+	// sibling chains are terminated by a null entry
+	
+	// attributes
+	while(1) {
+		uint64_t name = uleb128_decode(r, &r);
+		uint64_t form = uleb128_decode(r, &r);
+		
+// 		DW_FORM_indirect = each attr instance defines its own form inline
+		
+		if(name == 0 && form == 0) break; // null terminated
+	}
+	
+	
+// 	abbrev table ends with 0 for abbr_code
+	
+	
+	
+	
+}
+
+
+
+void* debug_types_parse(uint8_t* raw, size_t raw_len) {
+	
+	int filebits;
+	uint8_t* r = raw;
+	uint64_t debug_abbrev_offset;
+	uint8_t address_bytes;
+	
+	
+	// type header
+	
+// 	h.raw = raw;
+// 	h.raw_len = len;
+	uint64_t initial_length = PEEK_u32(r);
+	r += 4;
+	
+	if(initial_length >= 0xfffffff0) {
+		// 64 bit header
+		h.filebits = 64;
+// 		h.initial_length = PEEK_u64(r);
+		r += 8;
+	}
+	else {
+		// 32 bit header
+		filebits = 32;
+	}
+	
+	uint16_t version = PEEK_u16(r);
+	r += 2;
+	printf("debug type version: %d \n", version);
+	
+	if(version != 4) {
+		printf("unsupported debug type version: %d\n", version);
+		return NULL;
+	}
+	
+	if(filebits == 64) {
+		debug_abbrev_offset = PEEK_u64(r);
+		r += 8;
+	}
+	else {
+		debug_abbrev_offset = PEEK_u32(r);
+		r += 4;
+	}
+	
+	address_bytes = PEEK_u8(r);
+	r++;
+	
+	uint64_t type_sig = PEEK_u64(r);
+	r += 8;
+	
+	uint64_t type_offset;
+	if(filebits == 64) {
+		type_offset = PEEK_u64(r);
+		r += 8;
+	}
+	else {
+		type_offset = PEEK_u32(r);
+		r += 4;
+	}
+	
+	
+	// type info
 	
 	
 }

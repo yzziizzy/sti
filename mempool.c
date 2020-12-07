@@ -64,7 +64,7 @@ void* MemPool_malloc(MemPool* mp) {
 	}
 	
 	size_t off = mp->itemSize * (mp->firstFree - 1);
-	size_t next = *(size_t*)(mp->pool + off);
+	size_t next = *(size_t*)((char*)mp->pool + off);
 	if(next == 0) next = mp->firstFree + 1;
 	mp->firstFree = next;
 	
@@ -144,10 +144,12 @@ static inline void mpt_check_bitfield(MemPoolT* mp) {
 }
 
 static inline size_t mpt_get_bf_index(MemPoolT* mp, size_t index) {
+	(void)mp;
 	return ((index - 1) / 64);
 }
 
 static inline int mpt_get_bf_bit(MemPoolT* mp, size_t index) {
+	(void)mp;
 	return ((index - 1) % 64);
 }
 

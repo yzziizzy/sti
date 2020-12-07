@@ -27,8 +27,8 @@ void ring_rm_(void* data, size_t stride, size_t* len, size_t* first, size_t allo
 	
 	if(end < *first) { // the data wraps around
 		if(n < end) { // easy case; move the end data backward
-			void* dst = data + (n * stride);	
-			void* src = data + ((n + 1) * stride);
+			void* dst = (char*)data + (n * stride);	
+			void* src = (char*)data + ((n + 1) * stride);
 			
 			memmove(dst, src, (end - n) * stride);
 		}
@@ -36,27 +36,27 @@ void ring_rm_(void* data, size_t stride, size_t* len, size_t* first, size_t allo
 			
 			// move the tail
 			memmove(
-				data + (n * stride), 
-				data + ((n + 1) * stride), 
+				(char*)data + (n * stride), 
+				(char*)data + ((n + 1) * stride), 
 				(alloc - n - 1) * stride
 			);
 			// copy the head to the tail
 			memcpy(
-				data + ((alloc - 1) * stride), 
-				data, 
+				(char*)data + ((alloc - 1) * stride), 
+				(char*)data, 
 				stride
 			);
 			// move the wrapped end back
 			memmove(
-				data, 
-				data + stride, 
+				(char*)data, 
+				(char*)data + stride, 
 				(end) * stride
 			);
 		}
 	}
 	else { // all the data is sequential
-		void* dst = data + (n * stride);		
-		void* src = data + ((n + 1) * stride);		
+		void* dst = (char*)data + (n * stride);		
+		void* src = (char*)data + ((n + 1) * stride);		
 	
 		memmove(dst, src, (*len - n - 1) * stride);
 	}

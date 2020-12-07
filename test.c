@@ -53,7 +53,7 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args);
 // 	return bi - ai;
 // }
 
-void mergesort_strings(char* arr, int len, int bs, int (*compar)(const void *, const void *));
+//void mergesort_strings(char** arr, int len, int bs, int (*compar)(const void *, const void *));
 
 static int str_sort(const void* a, const void* b) {
 	char* c = *((char**)a);
@@ -72,10 +72,12 @@ static long rb_trav_fn(char* key, void* data, void* user_data) {
 	struct trav_data* td = (struct trav_data*)user_data;
 	memcpy(
 		td->cpy + (td->n * td->bs),
-		td->arr + ((int)data * td->bs),
+		td->arr + ((long)data * td->bs),
 		td->bs
 	);
 	td->n++;
+	
+	(void)key;
 	return 0;
 }
 
@@ -94,7 +96,7 @@ void bench_sort(int n, int bs) {
 	printf("\nN = %d\n", n);
 	
 	s = getCurrentTime();
-	mergesort_strings(arr, n, bs, str_sort);
+//	mergesort_strings(arr, n, bs, str_sort);
 	e = getCurrentTime();
 	printf(" Merge Sort:  %fms\n", (e - s) * 1000);
 	
@@ -104,7 +106,7 @@ void bench_sort(int n, int bs) {
 	char* cpy = malloc(bs * n);
 	struct trav_data td = {arr2, cpy, 0, bs};
 	RB_init(&rb);
-	for(size_t i = 0; i < n; i++) 
+	for(intptr_t i = 0; i < n; i++) 
 		RB_insert(&rb, 
 			*((char**)(arr2 + i*bs))
 			, i);
@@ -149,8 +151,8 @@ int main(int argc, char* argv[]) {
 	char test_heap = 0;
 	
 	
-	char* source = readWholeFile("./objtext.txt", NULL);
-	objdp_text(source);
+	//char* source = readWholeFile("./objtext.txt", NULL);
+	//objdp_text(source);
 	
 // 	uint32_t* u = utf8_to_utf32("bafoooo", NULL); 
 // 	uint32_t* v = utf8_to_utf32("fooaarZZZ", NULL); 
@@ -222,11 +224,12 @@ int main(int argc, char* argv[]) {
 		heap_pop_(&h, &k, intcmp, 4); 
 		heap_print_(&h, 4);*/
 		
-		return;
+		return 0;
 	}
 	
 	
 	if(test_talloc) {
+		/*
 		void* a = talloc(NULL, 503);
 		void* aa = talloc(a, 3);
 		void* ab = talloc(a, 53);
@@ -237,7 +240,7 @@ int main(int argc, char* argv[]) {
 		
 		trealloc(ab, 7435);
 		
-		tfree(a);
+		tfree(a);*/
 		return 0;
 	}
 	
@@ -273,19 +276,19 @@ int main(int argc, char* argv[]) {
 		//	printf("%d: %d\n", i, r.data[i]);
 		//}
 		
-		int a = -99;
+//		int a = -99;
 		//RING_POP(&r, a);
 		//printf("\na: %d, len: %ld\n", a, r.len);
 	
 		RING_RM(&r, 9);	
 		
-		int b = -99;
+//		int b = -99;
 		//RING_POP(&r, b);
 		//printf("\nb: %d, len: %ld\n", b, r.len);
 		
 		//RING_PUSH(&r, 70);
 		
-		int c = -99;
+//		int c = -99;
 		//RING_POP(&r, c);
 		//printf("\nc: %d, len: %ld\n", c, r.len);
 		
@@ -532,10 +535,10 @@ char rand_char() {
 }
 
 char** generate_random_strings(size_t len, size_t block_size) {
-	char* out = malloc(len * block_size);
+	char** out = malloc(len * block_size);
 	int cl = 0;
 	
-	for(int i = 0; i < len; i++) {
+	for(size_t i = 0; i < len; i++) {
 		char* k = malloc(5);
 	TRY_AGAIN:
 		k[0] = rand_char();
