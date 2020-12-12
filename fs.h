@@ -19,7 +19,6 @@ char* pathExt(char* path);
 char* pathExt2(char* path, int* end);
 
 
-
 // returns a null terminated string. srcLen does NOT include the null terminator
 // nulls inside the string are not escaped or removed; the first null is not
 //   necessarily the terminating null

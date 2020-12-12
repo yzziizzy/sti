@@ -29,7 +29,7 @@ void PointerSet_print(PointerSet* ps);
 void PointerSet_insert(PointerSet* ps, void* p);
 int PointerSet_remove(PointerSet* ps, void* p);
 int PointerSet_exists(PointerSet* ps, void* p);
-PointerSet* PointerSet_alloc();
+PointerSet* PointerSet_alloc(void);
 void PointerSet_init(PointerSet* ps);
 void PointerSet_free(PointerSet* ps);
 void PointerSet_destroy(PointerSet* ps);
@@ -108,7 +108,7 @@ size_t StructSet_find_index(StructSet* ss, void* p);
 	void type##Set_insert(type##Set* ps, type p); \
 	int type##Set_remove(type##Set* ps, type p); \
 	int type##Set_exists(type##Set* ps, type p); \
-	type##Set* type##Set_alloc(); \
+	type##Set* type##Set_alloc(void); \
 	void type##Set_init(type##Set* ps); \
 	void type##Set_free(type##Set* ps); \
 	void type##Set_destroy(type##Set* ps); \
@@ -199,7 +199,7 @@ int type##Set_exists(type##Set* ps, type p) { \
 }
 
 #define DEFINE_SET_ALLOC(type) \
-type##Set* type##Set_alloc() { \
+type##Set* type##Set_alloc(void) { \
 	type##Set* ps = malloc(sizeof(*ps)); \
 	type##Set_init(ps); \
 	return ps; \

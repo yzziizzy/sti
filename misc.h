@@ -11,7 +11,7 @@
 // these use CLOCK_MONOTONIC_RAW (>= Linux 2.6.28)
 // they do not provide a real unix timestamp, rather a consistent, precise measure of
 //   some undefined time that is unaffected by system time twiddling
-double getCurrentTimePerf(); // in seconds
+double getCurrentTimePerf(void); // in seconds
 double timeSincePerf(double past); // also in seconds
 
 
@@ -19,7 +19,7 @@ double timeSincePerf(double past); // also in seconds
 
 // these give unix timestamps
 // this function provides the number of seconds since the unix epoch
-double getCurrentTimeEpoch(); // in seconds
+double getCurrentTimeEpoch(void); // in seconds
 // deceptively but consistently named, this function is comparative with stamps
 //   provided by the previous function
 double timeSinceEpoch(double past); // also in seconds

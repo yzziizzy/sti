@@ -9,7 +9,7 @@
 // these use CLOCK_MONOTONIC_RAW (>= Linux 2.6.28)
 // they do not provide a real unix timestamp, rather a consistent, precise measure of
 //   some undefined time that is unaffected by system time twiddling
-double getCurrentTimePerf() { // in seconds
+double getCurrentTimePerf(void) { // in seconds
 	double now;
 	struct timespec ts;
 	static double offset = 0;
@@ -33,7 +33,7 @@ double timeSincePerf(double past) {
 
 // these give unix timestamps
 // this function provides the number of seconds since the unix epoch
-double getCurrentTimeEpoch() { // in seconds
+double getCurrentTimeEpoch(void) { // in seconds
 	double now;
 	struct timespec ts;
 	static double offset = 0;
