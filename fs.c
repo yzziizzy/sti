@@ -13,6 +13,7 @@
 #include <dirent.h> // readdir
 #include <unistd.h> // pathconf
 #include <sys/stat.h>
+#include <wordexp.h>
 
 #include "fs.h"
 
@@ -234,6 +235,68 @@ char* resolve_path(char* in) {
 	out = realpath(tmp, NULL);
 	
 	if(tmp_was_malloced) free(tmp);
+	
+	return out;
+}
+
+
+// works like wordexp, except accepts a list of ;-separated paths
+//   and returns an array of char*'s, all allocated with normal malloc
+char** multi_wordexp_dup(char* input, size_t* out_len) {
+	char** out; 
+	wordexp_t p;
+	
+	char* in = input;
+	char* head = input;
+	
+	size_t alloc = 128;
+	char* buf = malloc(alloc * sizeof(*buf));
+	
+	int flags = WRDE_NOCMD;
+	
+	while(1) {
+		if(*in == ';' || *in == 0) {
+			
+			size_t len = in - head;
+			if(len) {
+				if(len + 1 > alloc) {
+					alloc *= 2;
+					if(alloc < len + 1) alloc = len + 1;
+					
+					buf = realloc(buf, alloc * sizeof(*buf));
+				} 
+				
+				strncpy(buf, head, len);
+				buf[len] = 0;
+				
+				wordexp(buf, &p, flags);
+				flags |= WRDE_APPEND;
+			}
+			
+			head = in + 1;
+		}
+		else if(*in == '\\') {
+			in++;
+		}
+		
+		if(!*in) break;
+			
+		in++;	
+	};
+	
+	// fill the output array
+	out = malloc(p.we_wordc * (sizeof(*out) + 1));
+	out[p.we_wordc] = NULL;
+	
+	for(unsigned int i = 0; i < p.we_wordc; i++) {
+		out[i] = strdup(p.we_wordc[i]);	
+	}
+	
+	if(out_len) *out_len = p.we_wordc;
+	
+	
+	free(buf);
+	wordfree(&p);
 	
 	return out;
 }

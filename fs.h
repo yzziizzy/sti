@@ -51,6 +51,9 @@ int recurseDirs(
 // works like realpath(), except also handles ~/
 char* resolve_path(char* in);
 
+// works like wordexp, except accepts a list of ;-separated paths
+//   and returns an array of char*'s, all allocated with normal malloc
+char** multi_wordexp_dup(char* input, size_t* out_len);
 
 
 #endif // __sti__fs_h__

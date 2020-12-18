@@ -135,6 +135,7 @@ int intcmp(void* a_, void* b_) {
 	return *b - *a;
 }
 
+
 int main(int argc, char* argv[]) {
 	char c;
 	char test_sets = 0;
@@ -167,8 +168,7 @@ int main(int argc, char* argv[]) {
 // 	printf("c: %d\n", );
 	
 // 	for(int i = 0; x[i]; i++) printf("%c", x[i]);
-	
-	
+
 	while ((c = getopt (argc, argv, "tchsSvf1piIr")) != -1) {
 		switch(c) {
 			case 't': test_talloc = 1; break;
