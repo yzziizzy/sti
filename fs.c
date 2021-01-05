@@ -289,7 +289,7 @@ char** multi_wordexp_dup(char* input, size_t* out_len) {
 	out[p.we_wordc] = NULL;
 	
 	for(unsigned int i = 0; i < p.we_wordc; i++) {
-		out[i] = strdup(p.we_wordc[i]);	
+		out[i] = strdup(p.we_wordv[i]);	
 	}
 	
 	if(out_len) *out_len = p.we_wordc;

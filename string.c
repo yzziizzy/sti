@@ -389,7 +389,13 @@ Give a char set as long as your base.
 /*static*/ int flt_r_cvt_str(float f, int base, char* buf, char* charset) {
 	int i = 0;
 	
-	uint32_t nf = *((uint32_t*)&f); 
+	union {
+		float f;
+		uint32_t u;
+	} u;
+	
+	u.f = f;
+	uint32_t nf = u.u; 
 	
 	if(nf == 0x7f800000) { // infinity
 		strcpy(buf, "infinity");
@@ -414,14 +420,14 @@ Give a char set as long as your base.
 	
 	
 	
-// 	while(n > 0) {
-// 		int64_t b = n / base;
-// 		int     a = n % base;
-// 		
-// 		buf[i++] = charset[a];
-// 		
-// 		n = b;
-// 	}
+	while(nf > 0) {
+ 		int64_t b = nf / base;
+ 		int     a = nf % base;
+ 		
+ 		buf[i++] = charset[a];
+ 		
+ 		nf = b;
+ 	}
 	
 // 	if(negative) buf[i++] = '-';
 	
@@ -634,7 +640,8 @@ int iprintf(char* fmt, ...) {
 					len = int_r_cvt(i64, 10, uppercase, buf);
 					
 					if(add_commas) {
-						len = int_r_add_commas(buf, len);
+						// causes an annoying warning i don't feel like dealing with now
+//						len = int_r_add_commas(buf, len);
 					}
 					
 					if(force_sign && i64 > 0) putc('+', stdout);
@@ -653,7 +660,8 @@ int iprintf(char* fmt, ...) {
 					len = uint_r_cvt(u64, 10, uppercase, buf);
 					
 					if(add_commas) {
-						len = int_r_add_commas(buf, len);
+					// causes an annoying warning i don't feel like dealing with now
+//						len = int_r_add_commas(buf, len);
 					}
 					
 					if(force_sign) putc('+', stdout);
@@ -964,7 +972,7 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 			void* c = args[ar+2];
 			
 			indirect(Indirect, numExtra, &a, &b, &c);
-			
+			/*
 			if(Double) {
 				if(Half) { // yes, backwards, but compatible with standard format strings
 					if(numExtra == 0) n += snprintf(out + n, out_sz - n, fmt_buf, *((float*)&a));
@@ -996,6 +1004,7 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 					else if(numExtra == 2) n += snprintf(out + n, out_sz - n, fmt_buf, (uint64_t)a, (uint64_t)b, (uint32_t)(uint64_t)c);
 				}
 			}
+			*/
 // 			printf("-ex:%d-", numExtra);
 			ar += 1 + numExtra;
 			
