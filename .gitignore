@@ -60,8 +60,6 @@ parser_gen
 parser_example
 parser_example_generated.h
 
-scripting/ass
-scripting/lexer_*
 
 test/rbtest
 test/debug.html
