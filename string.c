@@ -335,6 +335,47 @@ void decodeHexColorNorm(char* s, float* out) {
 
 
 
+int find_oom(uint64_t n, uint64_t divisor) {
+	
+	
+}
+/*
+char** sane_prefixes[] = {
+	"B",
+	"KB",
+	"MB",
+	"GB",
+	"TB",
+	"PB",
+	"EB",
+	"ZB",
+	"YB",
+};
+
+void format_bytes(char* buf, size_t buf_len, uint64_t bytes, int sig_figs) {
+	
+	// find the greatest two sections
+	uint64_t n = bytes;
+	uint64_t old = 0;
+	int oom = 0;
+	
+	while(1) {
+		if(n < 1024) break;
+		
+		old = n;
+		n /= 1024;
+	}
+	
+	old -= n * 1024;
+	
+	
+	
+
+}
+*/
+
+
+
 
 /*
 Returns the reversed string

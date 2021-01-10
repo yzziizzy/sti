@@ -4,6 +4,7 @@
 // Public Domain.
 
 #include <stdint.h>
+#include <stddef.h>
 
 
 // super nifty site:

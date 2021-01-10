@@ -1,7 +1,9 @@
 // Public Domain
 
+#include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
+#include <string.h>
 
 #include "err.h"
 #include "rpn.h"

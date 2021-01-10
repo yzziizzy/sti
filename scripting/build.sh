@@ -2,11 +2,10 @@
 
 # Public Domain.
 
-./gen_parser.sh ./scripting_tokens.txt
 
-CFLAGS="-Wall  -Wextra "
+CFLAGS="-Wall "
 
-gcc -o ass assembler.c lexer.c ../sti.c \
+gcc -o arith arithmetic.c ../vec.c ../hash.c ../rpn.c ../hash_fns/MurmurHash3.c \
 	-lm \
 	$CFLAGS \
 	-O0 -ggdb -DLINUX -std=gnu11
