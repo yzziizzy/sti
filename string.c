@@ -334,11 +334,6 @@ void decodeHexColorNorm(char* s, float* out) {
 }
 
 
-
-int find_oom(uint64_t n, uint64_t divisor) {
-	
-	
-}
 /*
 char** sane_prefixes[] = {
 	"B",

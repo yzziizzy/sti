@@ -156,7 +156,12 @@ char* path_join_(size_t nargs, ...) {
 				end += j_len;
 			}
 
-			strncpy(end, s, l);
+			// should be strncpy, but GCC is so fucking stupid that it
+			//   has a warning about using strncpy to do exactly what 
+			//   strncpy does if you read the fucking man page.
+			// fortunately, we are already terminating our strings
+			//   manually so memcpy is a drop-in replacement here.
+			memcpy(end, s, l);
 			end += l;
 		}
 	}
