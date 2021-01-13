@@ -1,6 +1,7 @@
 // Public Domain.
 
 
+#include <stdarg.h>
 #include <stdlib.h> 
 #include <stddef.h> // offsetof
 #include <stdio.h> // fprintf, fopen et al.
@@ -61,7 +62,7 @@ int recurseDirs(
 		type = result->d_type; // the way life should be
 #else
 		// do some slow extra bullshit to get the type
-		fullPath = pathJoin(path, n);
+		fullPath = path_join(path, n);
 		
 		struct stat upgrade_your_fs;
 		
@@ -77,7 +78,7 @@ int recurseDirs(
 		}
 		
 #ifdef _DIRENT_HAVE_D_TYPE
-		fullPath = pathJoin(path, n);
+		fullPath = path_join(path, n);
 #endif
 		
 		if(type == DT_DIR) {
@@ -104,26 +105,67 @@ int recurseDirs(
 }
 
 
+char* path_join_(size_t nargs, ...) {
+	size_t total = 0;
+	char* out, *end;
+	size_t j_len;
+	char* joiner = "/";
+	int escape;
 
-char* pathJoin(char* a, char* b) {
-	int alen, blen, extra = 0;
-	char* o;
-	
-	
-	alen = a ? strlen(a) : 0;
-	blen = b ? strlen(b) : 0;
-	
-	o = malloc(alen + blen + 2);
-	
-	strcpy(o, a ? a : "");
-	if(alen > 0 && a[alen - 1] != '/') {
-		o[alen] = '/';
-		extra = 1;
+	if(nargs == 0) return NULL;
+
+	// calculate total buffer length
+	va_list va;
+	va_start(va, nargs);
+
+	for(size_t i = 0; i < nargs; i++) {
+		char* s = va_arg(va, char*);
+		if(s) total += strlen(s);
 	}
-	strcpy(o + alen + extra, b ? b : "");
-	o[alen + blen + extra] = 0; 
-	
-	return o;
+
+	va_end(va);
+
+	j_len = strlen(joiner);
+	total += j_len * (nargs - 1);
+
+	out = malloc((total + 1) * sizeof(char*));
+	end = out;
+
+	va_start(va, nargs);
+
+	for(size_t i = 0; i < nargs; i++) {
+		char* s = va_arg(va, char*);
+		size_t l = strlen(s);
+		
+		if(s) {
+			if(l > 1) {
+				escape = s[l-2] == '\\' ? 1 : 0;
+			}
+
+			if(i > 0 && (s[0] == joiner[0])) {
+				s++;
+				l--;
+			}
+
+			if(i > 0 && i != nargs-1 && !escape && (s[l-1] == joiner[0])) {
+				l--;
+			}
+
+			if(i > 0) {
+				strcpy(end, joiner);
+				end += j_len;
+			}
+
+			strncpy(end, s, l);
+			end += l;
+		}
+	}
+
+	va_end(va);
+
+	*end = 0;
+
+	return out;
 }
 
 

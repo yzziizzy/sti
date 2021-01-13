@@ -6,10 +6,12 @@
 
 
 #include <stddef.h> // size_t
+#include "macros.h"
 
 
-
-char* pathJoin(char* a, char* b); 
+// join all path segments in a new buffer
+#define path_join(...) path_join_(PP_NARG(__VA_ARGS__), __VA_ARGS__)
+char* path_join_(size_t nargs, ...);
 
 // gets a pointer to the first character of the file extension, or to the null terminator if none
 char* pathExt(char* path);
