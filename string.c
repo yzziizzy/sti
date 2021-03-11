@@ -508,6 +508,41 @@ Give a sufficiently long buffer. You figure it out first.
 }
 
 
+int sprintlongb(char* buf, int base, int64_t n, char* charset) {
+	char negative = 0;
+	int o = 0;
+	
+	if(n < 0) {
+		negative = 1;
+		n = -n;
+	}
+	
+	while(n > 0) {
+		int64_t b = n / base;
+		int     a = n % base;
+		
+		buf[o++] = charset[a];
+		
+		n = b;
+	}
+	
+	if(negative) buf[o++] = '-';
+	
+	int limit = o / 2;
+	char tmp;
+	
+	int i;
+	for(i=0;i<limit;i++) {
+		tmp = buf[o-i-1];
+		buf[o-i-1] = buf[i];
+		buf[i] = tmp;
+	}
+	buf[o] = '\0';
+	
+	return o;
+}
+
+
 
 int int_r_add_commas(char* buf, int len) {
 	char tmp[64];

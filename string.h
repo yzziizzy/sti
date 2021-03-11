@@ -51,6 +51,8 @@ static inline char* strskip(char* s, char* skip) {
 	return s + strspn(s, skip);
 }
 
+// format in arbitrary base/charset
+int sprintlongb(char* buf, int base, int64_t n, char* charset);
 
 // returns the numerical value of a single hex digit
 unsigned int decodeHexDigit(char c);
