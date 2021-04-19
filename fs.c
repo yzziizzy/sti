@@ -20,6 +20,39 @@
 
 
 
+
+// given a longer name so as to not conflict with other things
+// handles ~ properly
+// returns 0 for false, 1 for true, and 0 on any error
+int is_path_a_dir(char* path) {
+	int ret;
+	struct stat sb;
+	char* tmp;
+	
+	if(!path) return 0;
+	
+	if(path[0] == '~') {
+		char* homedir, *tmp;
+		
+		homedir = getenv("HOME");
+		tmp = path_join(homedir, path + 1);
+		
+		ret = stat(tmp, &sb);
+		
+		free(tmp);
+	}
+	else {
+		ret = stat(path, &sb);
+	}
+	
+	if(ret) return 0;
+	
+	if(sb.st_mode & S_IFDIR) return 1;
+	
+	return 0;
+}
+
+
 // returns negative on error, nonzero if scanning was halted by the callback
 int recurseDirs(
 	char* path, 

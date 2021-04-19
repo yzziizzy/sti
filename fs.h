@@ -9,6 +9,13 @@
 #include "macros.h"
 
 
+
+
+// given a longer name so as to not conflict with other things
+// handles ~ properly
+// returns 0 for false, 1 for true, and 0 on any error
+int is_path_a_dir(char* path);
+
 // join all path segments in a new buffer
 #define path_join(...) path_join_(PP_NARG(__VA_ARGS__), __VA_ARGS__)
 char* path_join_(size_t nargs, ...);

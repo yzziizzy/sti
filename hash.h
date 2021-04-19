@@ -60,6 +60,9 @@ do { \
 
 int oaht_resize(char** buckets, size_t stride, size_t* fill, size_t* alloc_size, size_t newSize);
 
+
+// returns 0 if val is set to the value
+// *val == NULL && return > 0  means the key was not found;
 int oaht_getp(char* buckets, size_t stride, size_t alloc_size, char* key, char** valp);
 int oaht_get(char* buckets, size_t stride, size_t alloc_size, char* key, char* val);
 
