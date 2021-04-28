@@ -7,12 +7,13 @@ DISABLE_DUMB_WARNINGS="\
 	-Wno-unused-but-set-variable \
 	-Wno-maybe-uninitialized \
 	-Wno-unused-variable \
+	-Wno-unused-function \
 	"
 
-CFLAGS="-Wall "
+CFLAGS="-Wall -O0 -ggdb -std=gnu11 "
 
 gcc -o arith arithmetic.c ../vec.c ../hash.c ../rpn.c ../hash_fns/MurmurHash3.c \
 	-lm \
 	$CFLAGS $DISABLE_DUMB_WARNINGS \
-	-O0 -ggdb -DLINUX -std=gnu11
+	-DLINUX 
 

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdalign.h>
 #include <ctype.h>
 
 #include <sys/mman.h>
@@ -13,156 +14,11 @@
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
-
-typedef  unsigned char byte;
-
-// Argument passing:
-// rdi, rsi, rdx, rcx, r8, r9, ....stack
+#include "arithmetic.h"
 
 
 
-size_t parse(char* input, char*** output) {
-	char* s = input;
-	size_t alloc = 32;
-	size_t len = 0;
-	char** out = malloc(alloc * sizeof(*out));
-	
-	
-	for(; *s; ) {
-		if(len >= alloc) {
-			alloc *= 2;
-			out = realloc(out, alloc * sizeof(*out));
-		}
-		
-		if(isalnum(*s) || *s == '.') {
-			char* e = s;
-			while(*e && (isalnum(*e) || *e == '.')) e++;
-			
-			out[len] = strndup(s, e - s);
-			len++;
-			
-			s = e;
-			continue;
-		}
-		
-		switch(*s) {
-			case '*':
-			case '/':
-			case '+':
-			case '-':
-			case '(':
-			case ')':
-			case '[':
-			case ']':
-			case ',':
-				out[len] = strndup(s, 1);
-				len++;
-				s++;
-				break;
-				
-			case ' ':
-			case '\r':
-			case '\n':
-				s++;
-				continue;
-		}
-	}
-	
-	// null-terminate the list
-	if(len >= alloc) {
-		out = realloc(out, (alloc+1) * sizeof(*out));
-	}
-	out[len] = NULL;
-		
-	*output = out;
-	
-	return len;
-}
-
-
-#define INST_TYPES \
-	X(MOV) \
-	X(LOAD) \
-	X(STORE) \
-	X(ADD) \
-	X(SUB) \
-	X(MUL) \
-	X(DIV) \
-
-
-enum InstructionType {
-	#define X(x) INST_##x,
-		INST_TYPES
-	#undef X
-};
-
-char* InstructionTypeNames[] = {
-	#define X(x) [INST_##x] = #x,
-		INST_TYPES
-	#undef X
-};
-
-
-
-
-
-// W = 1 means 64 bit operand size
-// R is the MSB of the modr/m reg field
-// X is the MSB of the sib index field
-// B is the MSB of the modr/m r/m field, sib base field, or opcode reg field
-byte encodeREX(char W, char R, char X, char B) {
-	return 0 | (1 << 6) | (!!W << 3) | (!!R << 2) | (!!X << 1) | (!!B);
-}
-
-// reg usually encodes the second operand, usually the destination
-// mod+r/m usually encode the first operand
-// reg sometimes stores extra opcode information
-// rarely, mod+rm can store extra opcode info
-
-byte encodeModRM(char mod, char reg, char rm) {
-	byte out = 0;
-	
-	out |= mod << 6;
-	out |= (reg & 0x3) << 3;
-	out |= (rm & 0x3);
-	
-	return out;
-}
-
-// mod = 11, r/m = 0..8
-//   AX, CX, DX, BX, SP, BP, SI, DI
-
-
-// In 64-bit mode, the default address size is 64 and operand size is 32
-
-// legacy prefix, rex prefix, opcode, modr/m, sib, disp, imm
-// rex prefix comes after mandatory prefix and before escape bytes
-
-
-// MOVUPS  0f 10   reg = dst, r/m = src
-// MOVUPS  0f 11   reg = src, r/m = dst
-// MOVAPS  0f 28   reg = dst, r/m = src
-// MOVAPS  0f 29   reg = src, r/m = dst
-// ADDPS   0f 58   reg = dst, r/m = src
-// MULPS   0f 59   reg = dst, r/m = src
-// SUBPS   0f 5C   reg = dst, r/m = src
-// DIVPS   0f 5E   reg = dst, r/m = src
-// MINPS   0f 5d   reg = dst, r/m = src
-// MAXPS   0f 5f   reg = dst, r/m = src
-// SQRTPS  0f 51   reg = dst, r/m = src  
-// RSQRTPS 0f 52   reg = dst, r/m = src  
-// RCPPS   0f 53   reg = dst, r/m = src  // reciprocal
-
-
-typedef struct AssemblerInfo {
-	int type;
-	unsigned char opcodes[3];
-	char numOpcodes;
-	char dstIsRM;
-	char* textName;
-	
-	// int alignment;
-} AssemblerInfo;
+static size_t parse(char* input, char*** output);
 
 
 AssemblerInfo assemblerLookup[] = {
@@ -186,28 +42,6 @@ AssemblerInfo* findInstr(enum InstructionType type) {
 
 
 
-#define TOKEN_TYPES \
-	X(NONE) \
-	\
-	X(ADD) \
-	X(SUB) \
-	X(MUL) \
-	X(DIV) \
-	X(MIN) \
-	X(MAX) \
-	X(SQRT) \
-	X(RECIP) \
-	\
-	X(IMMED) \
-	X(CONST) \
-	X(VAR) \
-	
-	
-enum TokType {
-	#define X(x) T_##x,
-		TOKEN_TYPES
-	#undef X
-};
 
 char* TokTypeNames[] = {
 	#define X(x) [T_##x] = #x,
@@ -241,16 +75,6 @@ enum TokType classifyToken(char* s) {
 
 
 
-typedef struct Node {
-	char* text;
-	enum TokType type;
-	struct Node* l, *r;
-	
-	int resultVar;
-	
-} Node;
-	
-
 void printNode(Node* n, int indent) {
 	for(int i = 0; i < indent; i++) printf(" ");
 	
@@ -269,9 +93,69 @@ void printNode(Node* n, int indent) {
 	if(n->r) printNode(n->r, indent + 2);
 }
 
-typedef struct RegAllocInfo {
-	int nextVar;
-} RegAllocInfo;
+
+
+
+// W = 1 means 64 bit operand size
+// R is the MSB of the modr/m reg field
+// X is the MSB of the sib index field
+// B is the MSB of the modr/m r/m field, sib base field, or opcode reg field
+static byte encodeREX(char W, char R, char X, char B) {
+	return 0 | (1 << 6) | (!!W << 3) | (!!R << 2) | (!!X << 1) | (!!B);
+}
+
+// reg usually encodes the second operand, usually the destination
+// mod+r/m usually encode the first operand
+// reg sometimes stores extra opcode information
+// rarely, mod+rm can store extra opcode info
+
+static byte encodeModRM(unsigned char mod, unsigned char reg, unsigned char rm) {
+	byte out = 0;
+	
+	out |= mod << 6;
+	out |= (reg & 0x7) << 3;
+	out |= (rm & 0x7);
+	
+	return out;
+}
+
+// mod = 11, r/m = 0..8
+//   AX, CX, DX, BX, SP, BP, SI, DI
+//    0   1   2   3   4   5   6   7
+
+
+// In 64-bit mode, the default address size is 64 and operand size is 32
+
+// legacy prefix, rex prefix, opcode, modr/m, sib, disp, imm
+// rex prefix comes after mandatory prefix and before escape bytes
+
+
+// MOVUPS  0f 10   reg = dst, r/m = src
+// MOVUPS  0f 11   reg = src, r/m = dst
+// MOVAPS  0f 28   reg = dst, r/m = src
+// MOVAPS  0f 29   reg = src, r/m = dst
+// ADDPS   0f 58   reg = dst, r/m = src
+// MULPS   0f 59   reg = dst, r/m = src
+// SUBPS   0f 5C   reg = dst, r/m = src
+// DIVPS   0f 5E   reg = dst, r/m = src
+// MINPS   0f 5d   reg = dst, r/m = src
+// MAXPS   0f 5f   reg = dst, r/m = src
+// SQRTPS  0f 51   reg = dst, r/m = src  
+// RSQRTPS 0f 52   reg = dst, r/m = src  
+// RCPPS   0f 53   reg = dst, r/m = src  // reciprocal
+
+
+
+enum {
+	REG,
+	MEM,
+};
+enum {
+	M_TEMP,
+	M_INPUT,
+	M_CONST,
+	M_OUTPUT,
+};
 
 
 void assignRegisters(Node* n, RegAllocInfo* info) {
@@ -282,85 +166,13 @@ void assignRegisters(Node* n, RegAllocInfo* info) {
 }
 
 
-typedef struct ThreeAddressInstr {
-	char* text;
-	enum TokType type;
-	int out;
-	int inL, inR;
-} ThreeAddressInstr;
 
-typedef struct VarDef {
-	int varNum;
+// Argument passing:
+// rdi, rsi, rdx, rcx, r8, r9, ....stack
 
-	int slot;
-	char slotType; // 0 = temp/var, 1 = input, 2 = const
-	float constVal;
-	char* varTextName;
-	int regNum;
-
-	int assignmentInst;
-	int lastUsedInst;
-
-} VarDef;
-
-typedef struct SlotInfo {
-	char* textName;
-	int varNum;
-	size_t byteOffset;
-	size_t elemSize;
-} SlotInfo;
-
-typedef struct AsmInst {
-	int instID;
-	short dstReg; // register num or slotType
-	short srcReg;
-	char dstType; // 0 = reg, 1 = mem
-	char srcType; // 0 = reg, 1 = mem
-	size_t memOffset;
-	
-	unsigned char* machineCode;
-	int mcLen;
-} AsmInst;
-
-
-
-
-typedef struct LinearizationInfo {
-	VEC(ThreeAddressInstr*) ilist;
-	int varCnt;
-	int inputSlotCnt;
-	int constSlotCnt;
-	int tempSlotCnt;
-	
-	VarDef* vars;
-	SlotInfo* inputSlots;
-	SlotInfo* constSlots;
-	SlotInfo* tempSlots;
-	
-	VEC(int) freeRegStack;
-	
-	VEC(AsmInst) code;
-	
-} LinearizationInfo;
-
-
-
-typedef void (*arithmetic_fn)(float* /*in*/, float* /*out*/, float* /*constants*/);
-
-
-typedef struct ProgramInfo {
-	size_t mcLen;
-	arithmetic_fn fn;
-	
-	int width; // SIMD width. 4 for now with SSE *ps instructions
-	
-	float* constants;
-
-} ProgramInfo;
-
-
-
-
+/*
+typedef void (*arithmetic_fn)(float* in, float* out, float* constants);
+*/
 
 void encodeInst(AsmInst* inst) {
 	byte temp[16]; // x64 instructions cannot be longer than 15 bytes, per the ISA
@@ -382,22 +194,41 @@ void encodeInst(AsmInst* inst) {
 	
 	// modr/m byte
 	
-	if(inst->srcType == 1) {
+	if(inst->srcType == MEM) {
 		// memory
 		if(a->dstIsRM) {
 //			modrm = encodeModRM(0x3, inst->srcReg, inst->dstReg);
-//			printf("\n--STORE assembly not implemented--\n\n");
-			modrm = encodeModRM(0x2, inst->srcReg, 0x7); // [rdi]+disp32
+			printf("\n--STORE assembly not implemented--\n\n");
+			
+			// BUG: probably all wrong
+			if(inst->srcReg == M_INPUT)
+				modrm = encodeModRM(0x2, inst->srcReg, 0x7); // [rdi]+disp32
+			if(inst->srcReg == M_OUTPUT)
+				modrm = encodeModRM(0x2, inst->srcReg, 0x6); // [rsi]+disp32
+			if(inst->srcReg == M_CONST)
+				modrm = encodeModRM(0x2, inst->srcReg, 0x2); // [rdx]+disp32
+			if(inst->srcReg == M_TEMP)
+				modrm = encodeModRM(0x2, inst->srcReg, 0x1); // [rcx]+disp32
+			
+			
 			hasDisp32 = 1;
-			disp32 = inst->memOffset;
+			disp32 = inst->memOffset*4;
 		}
 		else {
-			modrm = encodeModRM(0x2, inst->dstReg, 0x2); // [rdx]+disp32
+			if(inst->srcReg == M_INPUT)
+				modrm = encodeModRM(0x2, inst->dstReg, 0x7); // [rdi]+disp32
+			if(inst->srcReg == M_OUTPUT)
+				modrm = encodeModRM(0x2, inst->dstReg, 0x6); // [rsi]+disp32
+			if(inst->srcReg == M_CONST)
+				modrm = encodeModRM(0x2, inst->dstReg, 0x2); // [rdx]+disp32
+			if(inst->srcReg == M_TEMP)
+				modrm = encodeModRM(0x2, inst->dstReg, 0x1); // [rcx]+disp32
+			
 			hasDisp32 = 1;
-			disp32 = inst->memOffset;
+			disp32 = inst->memOffset*4;
 		}
 	}
-	else if(inst->srcType == 0 && inst->dstType == 0) {
+	else if(inst->srcType == REG && inst->dstType == REG) {
 		// for registers
 		// mod = 11b, r/m = 0..7  (xmm0..xmm7)
 		//   AX, CX, DX, BX, SP, BP, SI, DI
@@ -430,9 +261,9 @@ void assembleCode(LinearizationInfo* info) {
 	VEC_EACHP(&info->code, i, inst) {
 		encodeInst(inst);
 	}
+	
+	
 }
-
-
 
 
 void generateCode(LinearizationInfo* info) {
@@ -459,11 +290,12 @@ void generateCode(LinearizationInfo* info) {
 			case T_CONST:
 				// load from const mem area
 				o = &info->vars[tia->out];
-				INST(MOV, REG, o->regNum, MEM, CONST, info->constSlots[info->vars[tia->out].slot].byteOffset);
+				INST(MOV, REG, o->regNum, MEM, M_CONST, info->constSlots[info->vars[tia->out].slot].byteOffset);
 				break;
 				
 			case T_VAR:
-				printf("T_VAR not supported.\n");
+				o = &info->vars[tia->out];
+				INST(MOV, REG, o->regNum, MEM, M_INPUT, info->inputSlots[info->vars[tia->out].slot].byteOffset);
 				break;
 			
 			case T_ADD:
@@ -729,18 +561,28 @@ ProgramInfo* compile(char** source, size_t slen) {
 	printf("\nInstructions:\n");
 	VEC_EACHP(&linfo.code, i, inst) {
 		printf("  %ld> %s ", i, InstructionTypeNames[inst->instID]);
-		if(inst->dstType == 0) {
-			printf("xmm%d, ", inst->dstReg); 
+		if(inst->dstType == REG) {
+			printf("xmm%d, ", (int)inst->dstReg); 
 		}
-		else if(inst->dstType == 1) {
-			printf("[CONST+%ld], ", inst->memOffset);
+		else if(inst->dstType == MEM) {
+			if(inst->dstReg == M_CONST) 
+				printf("[CONST+%ld]\n", inst->memOffset);
+			else if(inst->dstReg == M_INPUT) 
+				printf("[INPUT+%ld]\n", inst->memOffset);
+			else if(inst->dstReg == M_TEMP) 
+				printf("[TEMP+%ld]\n", inst->memOffset);
 		}
 		
-		if(inst->srcType == 0) {
-			printf("xmm%d\n", inst->srcReg); 
+		if(inst->srcType == REG) {
+			printf("xmm%d\n", (int)inst->srcReg); 
 		}
-		else if(inst->srcType == 1) {
-			printf("[CONST+%ld]\n", inst->memOffset);
+		else if(inst->srcType == MEM) {
+			if(inst->srcReg == M_CONST) 
+				printf("[CONST+%ld]\n", inst->memOffset);
+			else if(inst->srcReg == M_INPUT) 
+				printf("[INPUT+%ld]\n", inst->memOffset);
+			else if(inst->srcReg == M_TEMP) 
+				printf("[TEMP+%ld]\n", inst->memOffset);
 		}
 	}
 	
@@ -763,8 +605,9 @@ ProgramInfo* compile(char** source, size_t slen) {
 		printf("\n");
 	}
 	
-	byte* finalCode = malloc(totalSize);
+	totalSize++;
 	
+	//byte* finalCode = malloc(totalSize);
 	
 	ProgramInfo* pi;
 	
@@ -779,7 +622,8 @@ ProgramInfo* compile(char** source, size_t slen) {
 		memcpy((byte*)pi->fn + off, inst->machineCode, inst->mcLen);
 		off += inst->mcLen;
 	}
-	
+
+	((byte*)pi->fn)[totalSize-1] = 0xc3;	
 	
 	printf("\nFinal Executable:\n");
 	for(int i = 0; i < totalSize; i++) {
@@ -807,7 +651,7 @@ int main(int argc, char* argv[]) {
 	ProgramInfo* pi;
 	
 	char** tokens;
-	size_t len = parse("3.14*74.2-66+82.36", &tokens);
+	size_t len = parse("3.14*74.2-66+82.36+a", &tokens);
 	
 	for(int i = 0; i < len; i++) {
 		printf("%d - '%s'\n", i, tokens[i]);
@@ -815,18 +659,87 @@ int main(int argc, char* argv[]) {
 	
 	pi = compile(tokens, len);
 	
-	return 0;
+//	return 0;
 	
+	_Alignas(16) float in[200] = {2.0};
+	_Alignas(16) float out[200] = {};
+	_Alignas(16) float constants[200] = {};
 	
+	pi->fn(in, out, constants);
 	
-	//pi->fn(in, out, constants);
-	
-//	printf("b: %d\n", b);
+//	printf("b: %f\n", b);
 	
 
 	return 0;
 }
 
+
+
+
+
+
+
+
+
+
+
+size_t parse(char* input, char*** output) {
+	char* s = input;
+	size_t alloc = 32;
+	size_t len = 0;
+	char** out = malloc(alloc * sizeof(*out));
+	
+	
+	for(; *s; ) {
+		if(len >= alloc) {
+			alloc *= 2;
+			out = realloc(out, alloc * sizeof(*out));
+		}
+		
+		if(isalnum(*s) || *s == '.') {
+			char* e = s;
+			while(*e && (isalnum(*e) || *e == '.')) e++;
+			
+			out[len] = strndup(s, e - s);
+			len++;
+			
+			s = e;
+			continue;
+		}
+		
+		switch(*s) {
+			case '*':
+			case '/':
+			case '+':
+			case '-':
+			case '(':
+			case ')':
+			case '[':
+			case ']':
+			case ',':
+				out[len] = strndup(s, 1);
+				len++;
+				s++;
+				break;
+				
+			case ' ':
+			case '\r':
+			case '\n':
+				s++;
+				continue;
+		}
+	}
+	
+	// null-terminate the list
+	if(len >= alloc) {
+		out = realloc(out, (alloc+1) * sizeof(*out));
+	}
+	out[len] = NULL;
+		
+	*output = out;
+	
+	return len;
+}
 
 
 
