@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <sys/mman.h>
 
@@ -15,8 +16,8 @@
 
 typedef  unsigned char byte;
 
-
-
+// Argument passing:
+// rdi, rsi, rdx, rcx, r8, r9, ....stack
 
 
 
@@ -159,6 +160,8 @@ typedef struct AssemblerInfo {
 	char numOpcodes;
 	char dstIsRM;
 	char* textName;
+	
+	// int alignment;
 } AssemblerInfo;
 
 
@@ -342,15 +345,31 @@ typedef struct LinearizationInfo {
 
 
 
+typedef void (*arithmetic_fn)(float* /*in*/, float* /*out*/, float* /*constants*/);
+
+
+typedef struct ProgramInfo {
+	size_t mcLen;
+	arithmetic_fn fn;
+	
+	int width; // SIMD width. 4 for now with SSE *ps instructions
+	
+	float* constants;
+
+} ProgramInfo;
+
+
+
+
 
 void encodeInst(AsmInst* inst) {
 	byte temp[16]; // x64 instructions cannot be longer than 15 bytes, per the ISA
 	int len = 0;
 	byte modrm;
 	byte disp8;
-	unsigned short disp16;
+	unsigned int disp32;
 	char hasDisp8 = 0;
-	char hasDisp16 = 0;
+	char hasDisp32 = 0;
 	
 	AssemblerInfo* a = findInstr(inst->instID);
 	
@@ -367,12 +386,15 @@ void encodeInst(AsmInst* inst) {
 		// memory
 		if(a->dstIsRM) {
 //			modrm = encodeModRM(0x3, inst->srcReg, inst->dstReg);
-			printf("\n--STORE assembly not implemented--\n\n");
+//			printf("\n--STORE assembly not implemented--\n\n");
+			modrm = encodeModRM(0x2, inst->srcReg, 0x7); // [rdi]+disp32
+			hasDisp32 = 1;
+			disp32 = inst->memOffset;
 		}
 		else {
-			modrm = encodeModRM(0x2, inst->dstReg, 0x5); // [rdi]+disp16
-			hasDisp16 = 1;
-			disp16 = inst->memOffset;
+			modrm = encodeModRM(0x2, inst->dstReg, 0x2); // [rdx]+disp32
+			hasDisp32 = 1;
+			disp32 = inst->memOffset;
 		}
 	}
 	else if(inst->srcType == 0 && inst->dstType == 0) {
@@ -391,15 +413,18 @@ void encodeInst(AsmInst* inst) {
 	temp[len++] = modrm;
 	
 	if(hasDisp8) temp[len++] = disp8;
-	else if(hasDisp16) {
-		temp[len++] = disp16 & 0xff;
-		temp[len++] = disp16 >> 8;
+	else if(hasDisp32) {
+		temp[len++] = disp32 & 0xff;
+		temp[len++] = (disp32 >> 8) & 0xff;
+		temp[len++] = (disp32 >> 16) & 0xff;
+		temp[len++] = (disp32 >> 24) & 0xff;
 	}
 	
 	inst->machineCode = malloc(len);
 	memcpy(inst->machineCode, temp, len);
 	inst->mcLen = len;
 }
+
 
 void assembleCode(LinearizationInfo* info) {
 	VEC_EACHP(&info->code, i, inst) {
@@ -576,8 +601,7 @@ void linearizeAST(Node* n, LinearizationInfo* info) {
 }
 
 
-
-void compile(char** source, size_t slen) {
+ProgramInfo* compile(char** source, size_t slen) {
 
 
 	sti_op_prec_rule rules[] = {
@@ -682,7 +706,7 @@ void compile(char** source, size_t slen) {
 	for(int i = 1; i < linfo.varCnt; i++) {
 		VarDef* def = &linfo.vars[i];
 		
-		printf("  %d: first: %d, last: %d, ", def->varNum, def->assignmentInst, def->lastUsedInst);
+		printf("  I%d: first: %d, last: %d, ", def->varNum, def->assignmentInst, def->lastUsedInst);
 		if(def->slotType == 0) {
 			printf("tempvar slot = %d\n", def->slot);
 		}
@@ -709,14 +733,14 @@ void compile(char** source, size_t slen) {
 			printf("xmm%d, ", inst->dstReg); 
 		}
 		else if(inst->dstType == 1) {
-			printf("[CONST+%d], ", inst->memOffset);
+			printf("[CONST+%ld], ", inst->memOffset);
 		}
 		
 		if(inst->srcType == 0) {
 			printf("xmm%d\n", inst->srcReg); 
 		}
 		else if(inst->srcType == 1) {
-			printf("[CONST+%d]\n", inst->memOffset);
+			printf("[CONST+%ld]\n", inst->memOffset);
 		}
 	}
 	
@@ -725,14 +749,49 @@ void compile(char** source, size_t slen) {
 	
 	// done
 	
+	size_t totalSize = 0;
+	
 	printf("\nMachine Code:\n");
 	VEC_EACHP(&linfo.code, i, inst) {
 		printf("  %ld> ", i);
 		for(int j = 0; j < inst->mcLen; j++) {
 			printf("%.2x ", inst->machineCode[j]);
 		}
+		
+		totalSize += inst->mcLen;
+		
 		printf("\n");
 	}
+	
+	byte* finalCode = malloc(totalSize);
+	
+	
+	ProgramInfo* pi;
+	
+	pi = calloc(1, sizeof(*pi));
+	pi->mcLen = totalSize;
+	pi->width = 4;
+	
+	pi->fn = mmap(NULL, totalSize, PROT_EXEC|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, 0, 0);
+	
+	size_t off = 0;
+	VEC_EACHP(&linfo.code, i, inst) {
+		memcpy((byte*)pi->fn + off, inst->machineCode, inst->mcLen);
+		off += inst->mcLen;
+	}
+	
+	
+	printf("\nFinal Executable:\n");
+	for(int i = 0; i < totalSize; i++) {
+		printf("%.2x ", ((unsigned char*)pi->fn)[i]);
+		
+		
+		if(7 == i % 8) printf("  "); 
+		if(15  == i % 16) printf("\n"); 
+	}
+	printf("\n");
+	
+	return pi;
 }
 
 
@@ -745,7 +804,8 @@ typedef int (*asmfn)(int);
 
 
 int main(int argc, char* argv[]) {
-
+	ProgramInfo* pi;
+	
 	char** tokens;
 	size_t len = parse("3.14*74.2-66+82.36", &tokens);
 	
@@ -753,17 +813,15 @@ int main(int argc, char* argv[]) {
 		printf("%d - '%s'\n", i, tokens[i]);
 	}
 	
-	compile(tokens, len);
+	pi = compile(tokens, len);
 	
 	return 0;
 	
-	asmfn fn = mmap(NULL, 64, PROT_EXEC|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, 0, 0);
 	
-	memcpy(fn, prog, 4);
 	
-	int b = fn(3);
+	//pi->fn(in, out, constants);
 	
-	printf("b: %d\n", b);
+//	printf("b: %d\n", b);
 	
 
 	return 0;
