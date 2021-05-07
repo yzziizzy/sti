@@ -290,7 +290,8 @@ state_info* expand_word(
 	case_list* extra, 
 	char* retry_as, 
 	char* retry_as_cs_name, 
-	tcontext* ctx) {
+	tcontext* ctx,
+	char char_i_cmp) {
 	
 	size_t blen = 0;
 	size_t balloc = 256;
@@ -331,7 +332,16 @@ state_info* expand_word(
 		
 		state_case_info* ci = add_case_char(prev_st, c, 0, this_name); 
 		(void)ci;
-		
+		state_case_info* cii = NULL;
+		int cc = c;
+		if(char_i_cmp && (c >= 'A' && c <= 'Z')) {
+			cc = c + 32;
+			cii = add_case_char(prev_st, cc, 0, this_name);
+		} else if(char_i_cmp && (c >= 'a' && c <= 'z')) {
+			cc = c - 32;
+			cii = add_case_char(prev_st, cc, 0, this_name);
+		}
+		(void)cii;
 		
 		VEC_EACH(&extra->cases, i, cs) {
 			add_case_cset(s, cs.cs_name, cs.dest_state, cs.action, cs.invert);
@@ -713,15 +723,17 @@ int main(int argc, char* argv[]) {
 		
 		
 		char* cached_word = NULL;
+		char char_i_cmp = 0;
 		
 		// word
 // 		state_info* lst; // last state of the word
-		if(*s == '{') {
+		if(*s == '{' || *s == '(') {
 			end = strpbrk(lines[i] + 1, " \n\t\r");
 			wl = end - lines[i] - 1;
 // 			printf(">%d %s\n", l, lines[i]+1);
 			
 			cached_word = strndup(s+1, wl);
+			if(*s == '(') char_i_cmp = 1;
 			
 // 			lst = expand_word(w, pst, tctx); 
 			// put the word in the tree
@@ -896,7 +908,7 @@ int main(int argc, char* argv[]) {
 		
 		
 		if(cached_word) {
-			state_info* final = expand_word(cached_word, pst, &extra, retry_as, retry_as_cs_name, tctx); 
+			state_info* final = expand_word(cached_word, pst, &extra, retry_as, retry_as_cs_name, tctx, char_i_cmp);
 			VEC_CAT(&final->terminal_data, &terminal_data);
 		}
 		else {
