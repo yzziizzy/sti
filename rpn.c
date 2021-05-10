@@ -173,7 +173,7 @@ int infix_to_rpn(sti_op_prec_rule* rules, char** infix, char*** rpn, size_t* rpn
 	VEC_PUSH(&out, NULL);
 	
 	if(rpn) *rpn = out.data;
-	if(rpnlen) *rpnlen = out.len;
+	if(rpnlen) *rpnlen = out.len - 1; // -1 because of the null pushed onto the end
 	
 	return 0;
 	
@@ -274,6 +274,7 @@ double rpn_eval_double_str(char** rpn) {
 			case '/': oper(c = a / b);
 			case '*': oper(c = a * b);
 			case '%': oper(c = fmod(a, b));
+			default: return 0;
 		}
 	}
 	

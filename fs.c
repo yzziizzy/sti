@@ -365,7 +365,7 @@ char** multi_wordexp_dup(char* input, size_t* out_len) {
 	};
 	
 	// fill the output array
-	out = malloc(p.we_wordc * (sizeof(*out) + 1));
+	out = malloc((p.we_wordc + 1) * sizeof(*out));
 	out[p.we_wordc] = NULL;
 	
 	for(unsigned int i = 0; i < p.we_wordc; i++) {
