@@ -51,6 +51,14 @@ static inline char* strskip(char* s, char* skip) {
 	return s + strspn(s, skip);
 }
 
+// decodes strings according to the string literal rules in C
+// *s is advanced to the next char
+// gleefully advances the pointer through nulls like any other character
+// returns 1 if the character was escaped 
+// returns an error code on invalid escape sequences
+int decode_c_string(char** s, int* c_out);
+
+
 // format in arbitrary base/charset
 int sprintlongb(char* buf, int base, int64_t n, char* charset);
 

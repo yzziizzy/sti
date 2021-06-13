@@ -10,6 +10,16 @@
 
 
 
+static inline int is_x_digit(int c) {
+	return (
+		('0' <= c && c <= '9') || 
+		('a' <= c && c <= 'f') || 
+		('A' <= c && c <= 'F') 
+	); 
+}
+
+
+
 
 // length of the line, or length of the string if no \n found
 size_t strlnlen(const char* s) {
@@ -334,6 +344,101 @@ void decodeHexColorNorm(char* s, float* out) {
 }
 
 
+
+
+// decodes strings according to the string literal rules in C
+// *s is advanced to the next char
+// gleefully advances the pointer through nulls like any other character
+// returns 1 if the character was escaped 
+// returns an error code on invalid escape sequences
+int decode_c_string(char** s, int* c_out) {
+	int acc = 0;
+	int max = 4;
+	int i;
+	
+	int c = **s;
+	(*s)++;
+		
+	if(c != '\\') {
+		*c_out = c;
+		return 0;
+	}
+
+	// escape sequence of some kind
+	
+	c = **s;
+	(*s)++;
+	
+	switch(c) {
+		case 'a': *c_out = 0x07; break;
+		case 'b': *c_out = 0x08; break;
+		case 'e': *c_out = 0x1b; break;
+		case 'f': *c_out = 0x0c; break;
+		case 'n': *c_out = 0x0a; break;
+		case 'r': *c_out = 0x0d; break;
+		case 't': *c_out = 0x09; break;
+		case 'v': *c_out = 0x0b; break;
+		case '\\': *c_out = 0x5c; break;
+		case '\'': *c_out = 0x27; break;
+		case '"': *c_out = 0x22; break;
+		case '?': *c_out = 0x3f; break;
+		
+		case '0': // \nnn octal
+		case '1': case '2': case '3': case '4': case '5': case '6': case '7': 
+			for(i = 0; i < 3; i++) {
+				acc = (acc << 3) + c - '0';
+				
+				c = **s;
+				(*s)++;
+				
+				if('0' > c || c > '9') break;
+			}
+			
+			*c_out = acc;
+			return 1;
+		
+		case 'x': // \xnn... hex sequence
+			for(i = 0;; i++) {
+				
+				c = **s;
+				(*s)++;
+				
+				if(!is_x_digit(c)) break;
+				
+				acc = (acc << 4) + decodeHexDigit(c);
+			}
+			
+			*c_out = acc;
+			return i >= 1 ? 1 : -1;
+		
+		
+		case 'U': // \Unnnnnnnn
+			max = 8;
+			/* fallthrough */
+			
+		case 'u': // \unnnn hex
+			for(i = 0; i < max; i++) {
+				c = **s;
+				(*s)++;
+				
+				if(!is_x_digit(c)) break;
+				
+				acc = (acc << 4) + decodeHexDigit(c);
+			}
+			
+			*c_out = acc;
+			return i == max ? 1 : -1;
+			
+		default:
+			*c_out = c;
+			return -2;
+	}
+	
+	
+	return 1;
+}
+
+
 /*
 char** sane_prefixes[] = {
 	"B",
@@ -563,6 +668,8 @@ int int_r_add_commas(char* buf, int len) {
 
 
 int iprintf(char* fmt, ...) {
+	(void)fmt;
+#if 0
 	va_list va;
 	
 	va_start(va, fmt);
@@ -831,6 +938,7 @@ END_STR:
 	
 	va_end(va);
 	
+#endif
 	return 0;
 }
 
@@ -849,7 +957,11 @@ static void indirect(int amt, int index, void** a, void** b, void** c) {
 
 
 int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
-	
+	(void)out;
+	(void)out_sz;
+	(void)fmt;
+	(void)args;
+#if 0
 	int n = 0;
 	int ar = 0;
 	
@@ -1090,4 +1202,6 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 	out[out_sz < n ? out_sz : n] = 0;
 	
 	return n;
+#endif
+	return 0;
 }

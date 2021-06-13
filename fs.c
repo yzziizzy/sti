@@ -27,7 +27,6 @@
 int is_path_a_dir(char* path) {
 	int ret;
 	struct stat sb;
-	char* tmp;
 	
 	if(!path) return 0;
 	

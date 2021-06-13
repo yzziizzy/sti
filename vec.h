@@ -160,6 +160,19 @@ do { \
 } while(0)
 
 
+
+#define VEC_INSERT_AT(x, e, i) \
+do { \
+	VEC_CHECK(x); \
+	memmove( /* move the rest of x forward */ \
+		VEC_DATA(x) + (i) + 1, \
+		VEC_DATA(x) + (i),  \
+		(VEC_LEN(x) - (i)) * sizeof(*VEC_DATA(x)) \
+	); \
+	VEC_DATA(x)[i] = (e); \
+} while(0)
+
+
 #define VEC_SPLICE(x, y, where) \
 do { \
 	if(VEC_ALLOC(x) < VEC_LEN(x) + VEC_LEN(y)) { \
