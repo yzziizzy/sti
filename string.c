@@ -351,7 +351,7 @@ void decodeHexColorNorm(char* s, float* out) {
 // gleefully advances the pointer through nulls like any other character
 // returns 1 if the character was escaped 
 // returns an error code on invalid escape sequences
-int decode_c_string(char** s, int* c_out) {
+int decode_c_string_char(char** s, int* c_out) {
 	int acc = 0;
 	int max = 4;
 	int i;
@@ -437,6 +437,134 @@ int decode_c_string(char** s, int* c_out) {
 	
 	return 1;
 }
+
+
+
+int is_number_char(int c) {
+	switch(c) {
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':	
+		case '5':	
+		case '6':	
+		case '7':	
+		case '8':	
+		case '9':	
+		case '-':	
+		case '.':	
+		case 'e':	
+		case 'E':	
+		case 'x':	
+		case 'X':	
+			return 1;
+	}
+	
+	return 0;
+}
+
+
+
+typedef struct number_parse_info {
+	union {
+		long double f;
+		unsigned long long int n;
+	};
+	
+	char type; // 'f', 'i'
+	char base;
+	
+	// suffixes
+	char longs; // 0 for unspecified
+	char not_signed; // 0 for unspecified
+} number_parse_info;
+
+
+
+int read_c_number(char** s, number_parse_info* info) {
+	char* s2 = *s;
+	
+	// probe the base
+	if(s2[0] == '0') {
+		if(s2[1] == 'x' || s2[1] == 'X') {
+			info->base = 16;
+		}
+		if(s2[1] == 'b' || s2[1] == 'B') {
+			info->base = 2;
+		}
+		else {
+			info->base = 8;
+		}
+		
+		s2 += 2;
+	}
+	else {
+		info->base = 10;
+	}
+	
+
+	// probe if it's a float or an integer type so the right fn can be called
+	// skip past numbers until we find an indicator
+	char type = 'i';
+	
+	for(int i = 0; s2[i]; i++) {
+		if(isxdigit(s2[i])) continue;
+		
+		switch(s2[i]) {
+			case '.':
+			case 'e':
+			case 'E':
+				type = 'f';
+				break;
+				
+			case 'p':
+			case 'P':
+				if(info->base == 16) {
+					type = 'f';
+				}
+				break;
+		}
+		
+		break;
+	}
+	
+	
+	// convert the numeric part
+	if(type == 'i') {
+		info->n = strtoull(*s, &s2, info->base);
+	}
+	else {
+		info->f = strtold(*s, &s2);
+	}
+	
+	// check for suffixes
+	while(*s2) {
+		switch(s2[0]) {
+			case 'u':
+			case 'U':
+				info->not_signed = 'u';
+				s2++;
+				continue;
+				
+			case 'l':
+			case 'L':
+				info->longs++;
+				s2++;
+				continue;
+		}
+		
+		break;
+	}
+	
+	*s = s2;
+	
+	return 0;
+}
+
+
+
+
 
 
 /*
