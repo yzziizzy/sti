@@ -231,6 +231,16 @@ char** strsplit(char* src, char delim, size_t* outLen) {
 }
 
 
+size_t strnspn(const char* s, size_t count, const char* accept) {
+	const char* e = s;
+	
+	for(size_t i = 0; i < count && NULL != strchr(accept, *e); i++, e++);
+	
+	return e - s;
+}
+
+
+
 size_t strrspn(const char* s, const char* accept) {
 	const char* e, *r;
 	
@@ -466,19 +476,6 @@ int is_number_char(int c) {
 
 
 
-typedef struct number_parse_info {
-	union {
-		long double f;
-		unsigned long long int n;
-	};
-	
-	char type; // 'f', 'i'
-	char base;
-	
-	// suffixes
-	char longs; // 0 for unspecified
-	char not_signed; // 0 for unspecified
-} number_parse_info;
 
 
 

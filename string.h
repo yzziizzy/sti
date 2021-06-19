@@ -6,6 +6,9 @@
 #include <string.h>
 #include "macros.h"
 
+// limited strspn
+size_t strnspn(const char* s, size_t count, const char* accept);
+
 // reverse strspn
 size_t strrspn(const char* s, const char* accept);
 
@@ -56,7 +59,25 @@ static inline char* strskip(char* s, char* skip) {
 // gleefully advances the pointer through nulls like any other character
 // returns 1 if the character was escaped 
 // returns an error code on invalid escape sequences
-int decode_c_string(char** s, int* c_out);
+int decode_c_string_char(char** s, int* c_out);
+
+
+
+typedef struct number_parse_info {
+	union {
+		long double f;
+		unsigned long long int n;
+	};
+	
+	char type; // 'f', 'i'
+	char base;
+	
+	// suffixes
+	char longs; // 0 for unspecified
+	char not_signed; // 0 for unspecified
+} number_parse_info;
+
+int read_c_number(char** s, number_parse_info* info);
 
 
 // format in arbitrary base/charset

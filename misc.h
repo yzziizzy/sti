@@ -3,6 +3,7 @@
 
 // Public Domain.
 
+#include <stdlib.h>
 #include <math.h> // fmin,fmax
 
 
