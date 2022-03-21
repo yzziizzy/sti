@@ -401,7 +401,8 @@ void StructSet_destroy(StructSet* ss) {
 
 StructSet* StructSet_intersect(StructSet* a, StructSet* b) {
 	StructSet* c = malloc(sizeof(*c));
-	
+
+	c->elem_size = a->elem_size;
 	c->alloc = a->length > b->length ? a->length : b->length;
 	c->set = malloc(c->alloc * c->elem_size);
 	c->length = 0;
@@ -431,7 +432,8 @@ StructSet* StructSet_intersect(StructSet* a, StructSet* b) {
 
 StructSet* StructSet_union(StructSet* a, StructSet* b) {
 	StructSet* c = malloc(sizeof(*c));
-	
+
+	c->elem_size = a->elem_size;
 	c->alloc = a->length + b->length;
 	c->set = malloc(c->alloc * c->elem_size);
 	c->length = 0;
@@ -465,7 +467,8 @@ StructSet* StructSet_union(StructSet* a, StructSet* b) {
 
 StructSet* StructSet_difference(StructSet* a, StructSet* b) {
 	StructSet* c = malloc(sizeof(*c));
-	
+
+	c->elem_size = a->elem_size;
 	c->alloc = a->length + b->length;
 	c->set = malloc(c->alloc * c->elem_size);
 	c->length = 0;
