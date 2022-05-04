@@ -130,25 +130,25 @@ effective source:
 #define HASH__MAINLOOP(key, val) HASH__PASTE(hashtable_main_loop__ ## key ## __ ## val ## __, __LINE__)    
 #define HT_EACH(obj, keyname, valtype, valname) \
 if(0) \
-	HASH__FINISHED(key, val): ; \
+	HASH__FINISHED(keyname, val): ; \
 else \
 	for(char* keyname ;;) \
 	for(valtype valname ;;) \
-	for(void* HASH__ITER(key, val) = NULL ;;) \
-		if(HT_next(obj, & (HASH__ITER(key, val)), &keyname, &valname)) \
-			goto HASH__MAINLOOP(key, val); \
+	for(void* HASH__ITER(keyname, val) = NULL ;;) \
+		if(HT_next(obj, & (HASH__ITER(keyname, val)), &keyname, &valname)) \
+			goto HASH__MAINLOOP(keyname, val); \
 		else \
 			while(1) \
 				if(1) { \
-					goto HASH__FINISHED(key, val); \
+					goto HASH__FINISHED(keyname, val); \
 				} \
 				else \
 					while(1) \
-						if(!HT_next(obj, & (HASH__ITER(key, val)), &keyname, &valname)) { \
-							goto HASH__FINISHED(key, val); \
+						if(!HT_next(obj, & (HASH__ITER(keyname, val)), &keyname, &valname)) { \
+							goto HASH__FINISHED(keyname, val); \
 						} \
 						else \
-							HASH__MAINLOOP(key, val) :
+							HASH__MAINLOOP(keyname, val) :
 							
 							//	{ user block; not in macro }
 

@@ -5,6 +5,7 @@
 
 
 #include <stddef.h> // size_t
+#include <string.h> // memcpy
 
 
 // -----------------------
