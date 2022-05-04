@@ -17,6 +17,11 @@
 #include "sti.h"
 #include "./string.h"
 
+// optional utilities
+#include "ini.h"
+
+
+
 
 double getCurrentTime() { // in seconds
 	double now;
@@ -135,6 +140,15 @@ int intcmp(void* a_, void* b_) {
 	return *b - *a;
 }
 
+int ini_callback(char* section, char* key, char* value, void* user_data) {
+	if(value)
+		printf("[%s] '%s' = '%s'\n", section, key, value);
+	else
+		printf("[%s] '%s' = NULL\n", section, key);
+	return 0;
+}
+	
+
 
 int main(int argc, char* argv[]) {
 	char c;
@@ -150,6 +164,7 @@ int main(int argc, char* argv[]) {
 	char test_sort = 0;
 	char test_talloc = 0;
 	char test_heap = 0;
+	char test_ini = 0;
 	
 	
 	//char* source = readWholeFile("./objtext.txt", NULL);
@@ -169,7 +184,7 @@ int main(int argc, char* argv[]) {
 	
 // 	for(int i = 0; x[i]; i++) printf("%c", x[i]);
 
-	while ((c = getopt (argc, argv, "tchsSvf1piIr")) != -1) {
+	while ((c = getopt (argc, argv, "tchsSvf1piInr")) != -1) {
 		switch(c) {
 			case 't': test_talloc = 1; break;
 			case 's': test_sets = 1; break;
@@ -180,12 +195,20 @@ int main(int argc, char* argv[]) {
 			case 'p': test_rpn = 1; break;
 			case 'i': test_iprintf = 1; break;
 			case 'I': test_Iprintf = 1; break;
+			case 'n': test_ini = 1; break;
 			case 'c': test_commas = 1; break;
 			case 'r': test_ring = 1; break;
 			case 'h': test_heap = 1; break;
 		}
 	}
 	
+	
+
+	
+	if(test_ini) {
+
+		ini_read("./initest.ini", ini_callback, (void*)1337);	
+	}
 	
 	if(test_heap) {
 		HEAP(char*) h;
