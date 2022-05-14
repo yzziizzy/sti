@@ -1,0 +1,4 @@
+build/
+.gdbinit
+hacer
+sample.c
