@@ -18,6 +18,8 @@
 #include "rb.c"
 #include "rpn.c"
 #include "ring.c"
+#include "ini.c"
+#include "string_int.c"
 //#include "sort.c"
 
 // semi-platform-dependent

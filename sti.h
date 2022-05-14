@@ -18,6 +18,8 @@
 #include "rb.h"
 #include "vec.h"
 #include "ring.h"
+#include "ini.h"
+#include "string_int.h"
 
 // heavily dependent on Linux
 #include "memarena.h"
