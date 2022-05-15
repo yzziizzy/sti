@@ -23,14 +23,9 @@ typedef struct lexer_token {
 
 typedef struct lexer_opts {
 	void (*got_token)(lexer_token_t*);
-	void (*got_whitespace)(lexer_token_t*);
-	void (*got_comment)(lexer_token_t*);
 	
 	char** symbols;
-	void** ids;
 	
-	char** sl_comments;
-	char** ml_comment_pairs;
 } lexer_opts_t;
 
 

@@ -282,6 +282,26 @@ static void send_token(lexer_info_t* lx, size_t len) {
 	lx->cached_token = tok;
 	memcpy(lx->cached_buffer, lx->buffer, lx->buf_len);
 	
+	// translate digraphs at the token level
+	if(len == 2) {
+		if(lx->buffer[0] == '<') {
+			     if(lx->buffer[1] == ':') { lx->cached_buffer[0] = '['; lx->cached_token.text_len = 1; }
+			else if(lx->buffer[1] == '%') { lx->cached_buffer[0] = '{'; lx->cached_token.text_len = 1; }
+		}
+		else if(lx->buffer[0] == '%') {
+			     if(lx->buffer[1] == '>') { lx->cached_buffer[0] = '}'; lx->cached_token.text_len = 1; }
+			else if(lx->buffer[1] == ':') { lx->cached_buffer[0] = '#'; lx->cached_token.text_len = 1; }
+		}
+		else if(lx->buffer[0] == ':') {
+			if(lx->buffer[1] == '>') { lx->cached_buffer[0] = ']'; lx->cached_token.text_len = 1; }
+		}
+	}
+	else if(len == 4) {
+		if(lx->buffer[0] == '%' && lx->buffer[1] == ':' && lx->buffer[2] == '%' && lx->buffer[3] == ':') {
+			lx->cached_buffer[0] = '#'; lx->cached_buffer[1] = '#'; lx->cached_token.text_len = 2;
+		}
+	}
+	
 	
 	if(!lx->was_space) lx->t_sol = 0;
 	lx->t_eol = 0;
@@ -303,6 +323,71 @@ int lex_pp(lexer_info_t* lx) {
 	return 0;
 }
 
+int lex_num(lexer_info_t* lx) {
+	// the C preprocessor has a strange definition of numbers:
+	//  An optional . followed by a decimal number, followed by amy sequence of letters, numbers, +, - or .
+	
+	while(1) {
+		read_char(lx);
+		if(lx->eof) break;
+		
+		int c = lx->c;
+		
+		if(!(isalnum(c) || c == '.' || c == '-' || c == '+')) {
+			// done
+			send_token(lx, lx->buf_len - 1);
+			shift_buffer(lx, 1);
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
+int lex_dot(lexer_info_t* lx) {
+	// dots need a degree of smart lookahead.
+	// . = .
+	// .. = ., .
+	// ... = ...
+	// .\d = number
+	
+	
+	// just a . so far
+	
+	read_char(lx);
+	if(lx->eof) return 0;
+	
+	if(lx->c != '.') {
+		if(isdigit(lx->c)) {
+			return lex_num(lx);
+		}
+		
+		send_token(lx, lx->buf_len - 1);
+		shift_buffer(lx, 1);
+		return 1;
+	}
+	
+	// .. now
+
+	read_char(lx);
+	if(lx->eof) return 0;
+	
+	if(lx->c != '.') {
+		// send two separate dots
+		send_token(lx, 1);
+		shift_buffer(lx, lx->buf_len - 1);
+		send_token(lx, 1);
+		shift_buffer(lx, lx->buf_len - 1);
+		return 1;
+	}
+	else {
+		// send ...
+		send_token(lx, lx->buf_len);
+		shift_buffer(lx, 0);
+		return 0;
+	}
+}
+
 int lex_slc(lexer_info_t* lx) {
 	
 	while(1) {
@@ -312,7 +397,7 @@ int lex_slc(lexer_info_t* lx) {
 			send_token(lx, lx->buf_len - 1);
 			shift_buffer(lx, 1);
 			lx->was_space = 1;
-			break;
+			return 1;
 		}
 	}
 	
@@ -402,12 +487,22 @@ int lex_file(char* path, lexer_opts_t* opts) {
 	prefix_tree_t tree = {0};
 	
 	char** sp = opts->symbols;
-	void** idp = opts->ids;
-	for(; *sp; sp++, idp++) {
-		prefix_tree_add_string(&tree, *sp, *idp);
+	for(; *sp; sp++) {
+		prefix_tree_add_string(&tree, *sp, 1);
 	}
 	
-	prefix_tree_add_handler(&tree, "#", lex_pp);
+	//prefix_tree_add_handler(&tree, "#", lex_pp);
+	prefix_tree_add_handler(&tree, ".", lex_dot);
+	prefix_tree_add_handler(&tree, "0", lex_num);
+	prefix_tree_add_handler(&tree, "1", lex_num);
+	prefix_tree_add_handler(&tree, "2", lex_num);
+	prefix_tree_add_handler(&tree, "3", lex_num);
+	prefix_tree_add_handler(&tree, "4", lex_num);
+	prefix_tree_add_handler(&tree, "5", lex_num);
+	prefix_tree_add_handler(&tree, "6", lex_num);
+	prefix_tree_add_handler(&tree, "7", lex_num);
+	prefix_tree_add_handler(&tree, "8", lex_num);
+	prefix_tree_add_handler(&tree, "9", lex_num);
 	prefix_tree_add_handler(&tree, "//", lex_slc);
 	prefix_tree_add_handler(&tree, "/*", lex_mlc);
 	prefix_tree_add_handler(&tree, "\"", lex_string);
@@ -423,6 +518,8 @@ int lex_file(char* path, lexer_opts_t* opts) {
 	// read the file one painfully-slow logical character at a time
 	while(1) {
 		read_char(lx);
+		
+	FULL_RETRY:
 		if(lx->c_sol) lx->t_sol = 1; 
 		if(lx->c_eol) lx->t_eol = 1; 
 		
@@ -513,6 +610,10 @@ int lex_file(char* path, lexer_opts_t* opts) {
 			VEC_EACH(&lx->cur_node->handlers, i, h) {
 				if(!h(lx)) {
 					lx->cur_node = &tree.root;
+				}
+				else {
+					lx->cur_node = &tree.root;
+					goto FULL_RETRY;
 				}
 			}
 		}
