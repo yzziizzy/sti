@@ -3,9 +3,16 @@
 
 
 #include "lexer.h"
+#include "cpp.h"
 
 
 int main(int argc, char* argv[]) {
+	
+	
+	
+	
+	preprocess_file("./sample.c");
+	return 1;
 	
 	lexer_token_t t = {0};
 	t.alloc = 256;

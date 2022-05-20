@@ -49,6 +49,13 @@ do { \
 
 
 int is_token(lexer_source_t* src, lexer_token_t* t) {
+	t->has_newline = 0;
+	
+	if(src->head >= src->text + src->len - 1) {
+		t->len = 0;
+		return 0;
+	}
+	
 	char* s = src->head;
 	char* os = s;
 	
@@ -318,7 +325,7 @@ NUMBER:
 		break;
 	}
 	
-	if(n == 1 && buf[0] == '.') goto PUNCT1;
+	if(n == 1 && buf[0] == '.') {s--; goto PUNCT1; };
 	
 	t->type = LEXER_TOK_NUMBER;
 	goto RETURN;
@@ -406,10 +413,11 @@ CHARLIT: {
 	s++;
 	int state = 0; 
 	while(1) {
+				
 		if(state == 1) {
 			state = 0;
 			
-			if(*s == '\'') {
+			if(*s != 0) {
 				CHECK_BUF(t, n);
 				buf[n++] = *s;
 				s++; col++;
@@ -430,6 +438,7 @@ CHARLIT: {
 	buf[n++] = *s;
 	s++; col++;
 	
+	
 	t->type = LEXER_TOK_CONST;
 	goto RETURN;
 }
@@ -442,25 +451,30 @@ PUNCT4:
 	buf[2] = s[2];
 	buf[1] = s[1];
 	n = 4;
+	s += 3;
 	goto PUNCT1;
 	
 PUNCT3:
 	buf[2] = s[2];
 	buf[1] = s[1];
 	n = 3;
+	s += 2;
 	goto PUNCT1;
 
 PUNCT2:
 	buf[1] = s[1];
 	n = 2;
+	s += 1;
 	goto PUNCT1;
 	
 PUNCT1:
+	s++;
 	t->type = LEXER_TOK_PUNCT;
 	goto RETURN;
 		
 INVALID:
 	t->type = LEXER_TOK_INVALID;
+	s++;
 	goto RETURN;
 	
 SLOW:
@@ -790,6 +804,7 @@ ML_COMMENT: {
 }
 INVALID:
 	t->type = LEXER_TOK_INVALID;
+	s++;
 	goto RETURN;
 
 RETURN:

@@ -45,7 +45,7 @@ typedef struct string_internment_table {
 	
 } string_internment_table_t;
 
-struct string_internment_table global_string_internment_table;
+struct string_internment_table* global_string_internment_table;
 
 
 static ptrdiff_t find_bucket_strint(string_internment_table_t* tab, uint64_t hash, char* key);
@@ -55,7 +55,9 @@ static int resize(string_internment_table_t* tab, size_t new_size);
 
 
 
-void string_internment_table_init(struct string_internment_table* tab) {
+void string_internment_table_init(struct string_internment_table** ptab) {
+	struct string_internment_table* tab = calloc(1, sizeof(*tab));
+	*ptab = tab;
 	
 	tab->pool_alloc = 32;
 	tab->pool_fill = 0;

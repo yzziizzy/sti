@@ -1,4 +1,5 @@
-
+#ifndef __c_lexer_h__
+#define __c_lexer_h__
 
 
 
@@ -50,3 +51,6 @@ typedef struct lexer_token {
 
 int is_token(lexer_source_t* src, lexer_token_t* t);
 int is_token_slow(lexer_source_t* src, lexer_token_t* t);
+
+
+#endif
