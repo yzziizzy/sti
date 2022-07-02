@@ -99,6 +99,46 @@ static void inject_stringified(cpp_context_t* ctx, cpp_token_list_t* list, cpp_t
 }
 
 
+static void inject_pasted(cpp_context_t* ctx, cpp_token_list_t* list, lexer_token_t* l, lexer_token_t* r) {
+	char* buf;
+	
+	buf = malloc(sizeof(*buf) * (1 + strlen(l->text) + strlen(r->text)));
+	
+	
+	strcpy(buf, l->text);
+	strcat(buf, r->text);
+	
+	lexer_source_t lx;
+	lx.text = buf;
+	lx.head = buf;
+	lx.len = strlen(buf);
+	
+	lexer_token_t tok = {0};
+	tok.alloc = 1 + strlen(buf);
+	tok.text = malloc(tok.alloc);
+	
+	if(is_token(&lx, &tok) && strlen(tok.text) == lx.len) {
+		lexer_token_t* t = calloc(1, sizeof(*t));
+		t->type = tok.type; // TODO: probe
+		t->text = strint_(str_table, buf);
+		VEC_PUSH(&list->tokens, t);
+		
+		printf("    > pasted token: '%s'\n", buf);
+	}
+	else {
+		VEC_PUSH(&list->tokens, l);
+		inject_space(ctx, list);
+		VEC_PUSH(&list->tokens, r);
+
+		printf("    > paste failed for '%s'\n", buf);
+	}
+	
+
+	free(buf);
+	free(tok.text);
+}
+
+
 cpp_token_list_t* lex_file(char* path) {
 	lexer_source_t* src = calloc(1, sizeof(*src));
 	
@@ -410,6 +450,7 @@ cpp_macro_invocation_t* collect_invocation_args(cpp_context_t* ctx, cpp_token_li
 				}
 				else if(n->text == _rparen) {
 					if(pdepth == 0) {
+						// BUG? should push a space if there was whitespace?
 						VEC_PUSH(&inv->in_args, in_arg);
 						
 						printf("found %ld arguments:\n", VEC_LEN(&inv->in_args));
@@ -433,6 +474,7 @@ cpp_macro_invocation_t* collect_invocation_args(cpp_context_t* ctx, cpp_token_li
 					VEC_PUSH(&inv->in_args, in_arg);
 					in_arg = calloc(1, sizeof(*in_arg));
 					argn++;
+					was_ws = 0;
 				}
 				else {
 				
@@ -443,8 +485,10 @@ cpp_macro_invocation_t* collect_invocation_args(cpp_context_t* ctx, cpp_token_li
 					
 					if(n->type != LEXER_TOK_SPACE) {
 						if(was_ws) {
+							printf("     --space injected\n");
 							inject_space(ctx, &m->body);
 						}
+						printf("     --arg pushed '%s'\n", n->text);
 						VEC_PUSH(&in_arg->tokens, n);
 						
 						was_ws = 0;
@@ -563,17 +607,42 @@ void expand_token(cpp_context_t* ctx, cpp_token_list_t* out, cpp_token_list_t* i
 }
 
 
+ssize_t arg_index(cpp_macro_def_t* m, lexer_token_t* name) {
 
+	VEC_EACH(&m->args, ani, aname) {
+		if(aname == name->text) {
+			return ani;
+		}
+	}
+	
+	return -1;
+}
 
+lexer_token_t* next_real_token(cpp_token_list_t* list, size_t* cursor) {
+	
+	size_t i = *cursor + 1;
+	
+	for(; i < VEC_LEN(&list->tokens); i++) {
+		lexer_token_t* t = VEC_ITEM(&list->tokens, i);
+		
+		if(t->type != LEXER_TOK_SPACE && t->type != LEXER_TOK_COMMENT) {
+			*cursor = i;
+			return t;
+		}
+	}
+	
+	return NULL;
+}
 
 
 void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 	char* _va_args = strint_(str_table, "__VA_ARGS__");
 	char* _va_opt = strint_(str_table, "__VA_OPT__");
-	char* _va_cnt = strint_(str_table, "__VA_CNT__");
+	char* _va_narg = strint_(str_table, "__VA_NARG__");
 	char* _lparen = strint_(str_table, "(");
 	char* _rparen = strint_(str_table, ")");
 	char* _hash = strint_(str_table, "#");
+	char* _concat = strint_(str_table, "##");
 	
 	cpp_macro_def_t* m = inv->def;
 	
@@ -592,6 +661,75 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 	inv->replaced = calloc(1, sizeof(*inv->replaced));
 	
 	VEC_EACH(&m->body.tokens, bti, bt) {
+		
+		// special lookahead for ##
+		if(bti < VEC_LEN(&m->body.tokens) - 1) {
+			size_t next_ind = bti;
+			lexer_token_t* bt_next = next_real_token(&m->body, &next_ind);
+			
+			if(bt_next->text == _concat) {
+				printf("   Token pasting operator encountered\n");
+				
+				if(bti >= VEC_LEN(&m->body.tokens) - 2) {
+					fprintf(stderr, "Token pasting operator at end of macro body\n");
+				}
+				else {
+					// the token after the ##
+					size_t c_ind = next_ind;
+					lexer_token_t* ct = next_real_token(&m->body, &c_ind);
+					
+					printf("       body tokens being pasted: '%s' ## '%s'\n", bt->text, ct->text);
+					
+					lexer_token_t* paste_l, *paste_r;
+					
+					ssize_t bai = arg_index(m, bt);
+					if(bai > -1) {
+						cpp_token_list_t* l_arg_tokens = VEC_ITEM(&inv->in_args, bai);
+						// append all but the last of the left tokens (bt)
+						for(int i = 0; i < VEC_LEN(&l_arg_tokens->tokens) - 1; i++) {
+							VEC_PUSH(&inv->replaced->tokens, VEC_ITEM(&l_arg_tokens->tokens, i));
+						}
+						
+						paste_l = VEC_ITEM(&l_arg_tokens->tokens, VEC_LEN(&l_arg_tokens->tokens) - 1);
+					}
+					else {
+						// literal token
+						paste_l = bt;
+					}
+					
+					
+					cpp_token_list_t* r_arg_tokens;
+					ssize_t cai = arg_index(m, ct);
+					if(cai > -1) {
+						// handle the argument replacement
+						r_arg_tokens = VEC_ITEM(&inv->in_args, cai);
+						paste_r = VEC_ITEM(&r_arg_tokens->tokens, 0);
+					}
+					else {
+						// literal token
+						paste_r = ct;
+					}
+					
+					printf("       literal tokens being pasted: '%s' ## '%s'\n", paste_l->text, paste_r->text);
+					// paste the last of bt with the first of ct
+					// BUG: right now the CPP will not validate if it's a valid token. It will just paste it.
+					inject_pasted(ctx, inv->replaced, paste_l, paste_r);
+					
+					
+					// append the rest of ct tokens
+					if(cai > -1) {
+						for(int i = 1; i < VEC_LEN(&r_arg_tokens->tokens); i++) {
+							VEC_PUSH(&inv->replaced->tokens, VEC_ITEM(&r_arg_tokens->tokens, i));
+						}
+					}
+					
+					bti = c_ind + 1;
+					continue;
+				}
+			}
+		}
+	
+	
 		if(bt->text == _va_args) {
 			// special __VA_ARGS__ handling
 			
@@ -639,7 +777,7 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 						}
 					
 					}
-					else if(bt->text == _va_cnt) {
+					else if(bt->text == _va_narg) {
 						inject_number(ctx, inv->replaced, vararg_count);
 					}
 					else {
@@ -648,7 +786,7 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 				}
 			}
 		}
-		else if(bt->text == _va_cnt) {
+		else if(bt->text == _va_narg) {
 			inject_number(ctx, inv->replaced, vararg_count);
 			goto ARG_REPLACED;
 		}
@@ -662,6 +800,7 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 			
 			bt = VEC_ITEM(&m->body.tokens, bti);
 			
+			// TODO: #__VA_ARGS__, et al
 			VEC_EACH(&m->args, ani, aname) {
 				if(aname == bt->text) {
 					
@@ -675,6 +814,19 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 			
 			goto ARG_REPLACED;
 		}
+		
+		// TODO: implement lookahead
+		else if(bt->text == _concat) {
+			
+			
+			bti++;
+			if(bti >= VEC_LEN(&m->body.tokens)) {
+				fprintf(stderr, "Token pasting operator at end of macro body.\n");
+				break;
+			}
+			
+		}
+		
 		else {
 			// normal tokens
 			VEC_EACH(&m->args, ani, aname) {
