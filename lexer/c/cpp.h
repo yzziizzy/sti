@@ -18,6 +18,7 @@ typedef struct cpp_macro_def {
 	unsigned int obj_like : 1;
 	unsigned int fn_like : 1;
 	unsigned int special : 1;
+	unsigned int variadic : 1;
 	VEC(char*) args;
 	cpp_token_list_t body;
 } cpp_macro_def_t;

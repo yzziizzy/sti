@@ -164,6 +164,7 @@ int main(int argc, char* argv[]) {
 	char test_sort = 0;
 	char test_talloc = 0;
 	char test_heap = 0;
+	char test_range = 0;
 	char test_ini = 0;
 	
 	
@@ -184,7 +185,7 @@ int main(int argc, char* argv[]) {
 	
 // 	for(int i = 0; x[i]; i++) printf("%c", x[i]);
 
-	while ((c = getopt (argc, argv, "tchsSvf1piInr")) != -1) {
+	while ((c = getopt (argc, argv, "tchsSvf1piInrR")) != -1) {
 		switch(c) {
 			case 't': test_talloc = 1; break;
 			case 's': test_sets = 1; break;
@@ -198,6 +199,7 @@ int main(int argc, char* argv[]) {
 			case 'n': test_ini = 1; break;
 			case 'c': test_commas = 1; break;
 			case 'r': test_ring = 1; break;
+			case 'R': test_range = 1; break;
 			case 'h': test_heap = 1; break;
 		}
 	}
@@ -205,6 +207,13 @@ int main(int argc, char* argv[]) {
 	
 
 	
+	if(test_range) {
+
+			
+		
+		
+	
+	}
 	if(test_ini) {
 
 		ini_read("./initest.ini", ini_callback, (void*)1337);	

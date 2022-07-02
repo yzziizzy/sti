@@ -21,15 +21,33 @@ enum {
 	_HASH_DEF_SP_ID, // 4
 	_HASH_DEF_SP_ID_LP, // 5
 	_MACRO_ARGS, // 6
-	_MACRO_ARGS_RP, // 7
-	_MACRO_BODY, // 8
+	_MACRO_ARGS_ELIPSIS, // 7
+	_MACRO_ARGS_RP, // 8
+	_MACRO_BODY, // 9
 	
-	_FOUND_NAME, // 9
-	_INV_ARGS, // 10
+	_FOUND_NAME = 30, 
+	_INV_ARGS, // 31
 };
 
 
 
+static void inject_comma(cpp_context_t* ctx, cpp_token_list_t* list) {
+	lexer_token_t* t = calloc(1, sizeof(*t));
+	t->type = LEXER_TOK_PUNCT;
+	t->text = strint_(str_table, ",");
+	VEC_PUSH(&list->tokens, t);
+}
+
+static void inject_number(cpp_context_t* ctx, cpp_token_list_t* list, long num) {
+	char buf[64];
+	
+	snprintf(buf, 64, "%ld", num);
+	
+	lexer_token_t* t = calloc(1, sizeof(*t));
+	t->type = LEXER_TOK_PUNCT;
+	t->text = strint_(str_table, buf);
+	VEC_PUSH(&list->tokens, t);
+}
 
 
 cpp_token_list_t* lex_file(char* path) {
@@ -83,6 +101,8 @@ void preprocess_file(char* path) {
 	char* _comma = strint_(str_table, ",");
 	char* _elipsis = strint_(str_table, "...");
 	char* _space = strint_(str_table, " ");
+	char* _va_args = strint_(str_table, "__VA_ARGS__");
+	char* _va_opt = strint_(str_table, "__VA_OPTS__");
 
 	cpp_token_list_t* tokens = lex_file(path);
 	
@@ -119,7 +139,7 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 	int sanity = 0;
 	
 	VEC_EACH(&tokens->tokens, ni, n) {
-		printf(" {%ld} p token list loop [%s] %d\n", ni, n->text, state);
+		printf(" {%ld} p token list loop [%s] %d\n", ni, n->type == LEXER_TOK_SPACE ? " " : n->text, state);
 		if(sanity++ > 100) break;
 		
 		switch(state) {
@@ -212,11 +232,29 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 						fprintf(stderr, "An argument name identifier is required at %d:%d\n", n->start_line, n->start_col);
 					}
 				}
+				else if(n->text == _elipsis) {
+					// variadic macro
+					if(pdepth != 0) {
+						fprintf(stderr, "Varargs elipsis encountered inside nested parenthesis.\n");
+					}
+					
+					m->variadic = 1;
+					state = _MACRO_ARGS_ELIPSIS;
+				}
 				else if(n->type != LEXER_TOK_SPACE) {
 					fprintf(stderr, "Unexpected token '%s' at %d:%d\n", n->text, n->start_line, n->start_col);
 				}
 				break;
 
+			case _MACRO_ARGS_ELIPSIS:
+				if(n->text == _rparen) {
+					state = _MACRO_ARGS_RP;
+				}
+				else if(n->type != LEXER_TOK_SPACE) {
+					fprintf(stderr, "Unexpected token '%s' at %d:%d\n", n->text, n->start_line, n->start_col);
+				}
+				break;
+			
 			case _MACRO_ARGS_RP:
 				if(n->type != LEXER_TOK_SPACE) {
 					fprintf(stderr, "Whitespace required after macro parameter list at %d:%d\n", n->start_line, n->start_col);
@@ -229,7 +267,7 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 					state = _NONE;
 				}
 				else {
-					printf("  [%s] pushing body token: '%s'\n", m->name, n->text);
+					printf("  [%s] pushing body token: '%s'\n", m->name, n->type == LEXER_TOK_SPACE ? " " : n->text);
 					VEC_PUSH(&m->body.tokens, n);
 				}
 				break;
@@ -242,7 +280,7 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 	}// for
 	
 	
-	printf("\n\noutput:\n");
+	printf("\noutput:\n");
 	VEC_EACH(&ctx->out->tokens, i, t) {
 		if(t->type == LEXER_TOK_SPACE) printf(" ");
 		else printf("%s ", t->text);
@@ -339,6 +377,9 @@ cpp_macro_invocation_t* collect_invocation_args(cpp_context_t* ctx, cpp_token_li
 		}
 	}
 	
+	// no parens because the list ended
+	return NULL;
+	
 DONE:
 		
 	*cursor = i;
@@ -394,7 +435,7 @@ void expand_token(cpp_context_t* ctx, cpp_token_list_t* out, cpp_token_list_t* i
 	cpp_macro_def_t* m = get_macro_def(ctx, t);
 	if(!m) {
 		// just a regular token. push it to the output
-		printf("    regular token, pushing '%s' to output\n", t->text);
+		printf("    regular token, pushing '%s' to output\n", t->type == LEXER_TOK_SPACE ? " " : t->text);
 		VEC_PUSH(&out->tokens, t);
 	}
 	else if(m->fn_like) {
@@ -440,7 +481,14 @@ void expand_token(cpp_context_t* ctx, cpp_token_list_t* out, cpp_token_list_t* i
 
 
 
+
+
 void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
+	char* _va_args = strint_(str_table, "__VA_ARGS__");
+	char* _va_opt = strint_(str_table, "__VA_OPT__");
+	char* _va_cnt = strint_(str_table, "__VA_CNT__");
+	char* _lparen = strint_(str_table, "(");
+	char* _rparen = strint_(str_table, ")");
 	
 	cpp_macro_def_t* m = inv->def;
 	
@@ -451,16 +499,81 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 		VEC_PUSH(&inv->in_args_expanded, expand_token_list(ctx, arg));
 	}
 	
+	int vararg_count = VEC_LEN(&inv->in_args) - VEC_LEN(&m->args); 
+	
 	
 	printf("  -- argument replacement --\n");
 	// fill replacement list
 	inv->replaced = calloc(1, sizeof(*inv->replaced));
 	
 	VEC_EACH(&m->body.tokens, bti, bt) {
-		VEC_EACH(&m->args, ani, aname) {
-			if(aname == bt->text) {
-				VEC_CAT(&inv->replaced->tokens, &VEC_ITEM(&inv->in_args_expanded, ani)->tokens);
-				goto ARG_REPLACED;
+		if(bt->text == _va_args) {
+			// special __VA_ARGS__ handling
+			
+			size_t start_arg = VEC_LEN(&m->args);
+			
+			for(int i = start_arg; i < VEC_LEN(&inv->in_args); i++) {
+				if(i > start_arg) inject_comma(ctx, inv->replaced);
+				VEC_CAT(&inv->replaced->tokens, &VEC_ITEM(&inv->in_args_expanded, i)->tokens);
+			}
+		
+			goto ARG_REPLACED;
+		}
+		else if(bt->text == _va_opt) {
+			int pdepth = 0;
+			int got_lparen = 0;
+			for(bti++; bti < VEC_LEN(&m->body.tokens); bti++) {
+				bt = VEC_ITEM(&m->body.tokens, bti);
+				
+				if(!got_lparen) {
+					if(bt->type == LEXER_TOK_SPACE) continue;
+					if(bt->text == _lparen) {
+						got_lparen = 1;
+						continue;
+					}
+					
+					fprintf(stderr, "Missing lparen after __VA_OPT__\n");
+					break;
+				}
+				
+				if(bt->text == _lparen) {
+					pdepth++;
+				}
+				else if(bt->text == _rparen) {
+					if(pdepth == 0) goto ARG_REPLACED;
+					pdepth--;
+				}
+				
+				
+				if(vararg_count > 0) { // __VA_OPT__ only works if there are args left
+					if(bt->text == _va_args) {
+						size_t start_arg = VEC_LEN(&m->args);
+						for(int i = start_arg; i < VEC_LEN(&inv->in_args); i++) {
+							if(i > start_arg) inject_comma(ctx, inv->replaced);
+							VEC_CAT(&inv->replaced->tokens, &VEC_ITEM(&inv->in_args_expanded, i)->tokens);
+						}
+					
+					}
+					else if(bt->text == _va_cnt) {
+						inject_number(ctx, inv->replaced, vararg_count);
+					}
+					else {
+						VEC_PUSH(&inv->replaced->tokens, bt);
+					}
+				}
+			}
+		}
+		else if(bt->text == _va_cnt) {
+			inject_number(ctx, inv->replaced, vararg_count);
+			goto ARG_REPLACED;
+		}
+		else {
+			// normal tokens
+			VEC_EACH(&m->args, ani, aname) {
+				if(aname == bt->text) {
+					VEC_CAT(&inv->replaced->tokens, &VEC_ITEM(&inv->in_args_expanded, ani)->tokens);
+					goto ARG_REPLACED;
+				}
 			}
 		}
 		
@@ -470,36 +583,13 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 	ARG_REPLACED:
 	}
 	
-	// temp
-	inv->output = calloc(1, sizeof(*inv->output));
-	VEC_CAT(&inv->output->tokens, &inv->replaced->tokens);
 	
 	// re-scan the final list
+	inv->output = calloc(1, sizeof(*inv->output));
+	
+	printf("  -- final rescan --\n");
+	inv->output = expand_token_list(ctx, inv->replaced);
 
-
-/*
-	VEC_EACH(&m->body, i, bt) {
-		int found = -1;
-		VEC_EACH(&m->args, j, a) {
-			if(a == bt->text) {
-				found = j; 
-				break; 
-			}
-		}
-		
-		printf("  ");
-		if(found == -1) {
-			printf("%s ", bt->text);
-		}
-		else {
-			cpp_token_list_t* arg = VEC_ITEM(&inv->in_args, found);
-			VEC_EACH(&arg->tokens, j, at) {
-				printf("%s ", at->text);
-			}
-		}
-		
-	}
-*/
 
 	// mark macro disabled
 
