@@ -25,8 +25,18 @@ enum {
 	_MACRO_ARGS_RP, // 8
 	_MACRO_BODY, // 9
 	
+	_HASH_IFDEF, // 10
+	_HASH_IFDEF_ID, // 11
+	_HASH_IFNDEF, // 12
+	_HASH_IFNDEF_ID, // 13
+	_HASH_ELSE, // 14
+	_HASH_ELSEIF, // 15
+	_HASH_ENDIF, // 16
+	
 	_FOUND_NAME = 30, 
 	_INV_ARGS, // 31
+	
+	_SKIP_REST = 999,
 };
 
 
@@ -138,6 +148,10 @@ static void inject_pasted(cpp_context_t* ctx, cpp_token_list_t* list, lexer_toke
 	free(tok.text);
 }
 
+int is_defined(cpp_context_t* ctx, lexer_token_t* name) {
+	return NULL != get_macro_def(ctx, name);
+}
+
 
 cpp_token_list_t* lex_file(char* path) {
 	lexer_source_t* src = calloc(1, sizeof(*src));
@@ -185,6 +199,11 @@ void preprocess_file(char* path) {
 	
 	char* _hash = strint_(str_table, "#");
 	char* _define = strint_(str_table, "define");
+	char* _ifdef = strint_(str_table, "ifdef");
+	char* _ifndef = strint_(str_table, "ifndef");
+	char* _else = strint_(str_table, "else");
+	char* _elseif = strint_(str_table, "elseif");
+	char* _endif = strint_(str_table, "endif");
 	char* _lparen = strint_(str_table, "(");
 	char* _rparen = strint_(str_table, ")");
 	char* _comma = strint_(str_table, ",");
@@ -192,6 +211,7 @@ void preprocess_file(char* path) {
 	char* _space = strint_(str_table, " ");
 	char* _va_args = strint_(str_table, "__VA_ARGS__");
 	char* _va_opt = strint_(str_table, "__VA_OPTS__");
+	char* _va_narg = strint_(str_table, "__VA_NARG__");
 
 	cpp_token_list_t* tokens = lex_file(path);
 	
@@ -204,6 +224,11 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 		
 	char* _hash = strint_(str_table, "#");
 	char* _define = strint_(str_table, "define");
+	char* _ifdef = strint_(str_table, "ifdef");
+	char* _ifndef = strint_(str_table, "ifndef");
+	char* _else = strint_(str_table, "else");
+	char* _elseif = strint_(str_table, "elseif");
+	char* _endif = strint_(str_table, "endif");
 	char* _lparen = strint_(str_table, "(");
 	char* _rparen = strint_(str_table, ")");
 	char* _comma = strint_(str_table, ",");
@@ -224,12 +249,16 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 	int was_nl = 0;
 	int was_ws = 0;
 	int pdepth = 0; // parenthesis nesting depth
+	
+	int cond_depth = 0;
+	int out_enable = 1; // don't output anything for failed conditionals
+	
 	int state = _NONE;
 	
 	int sanity = 0;
 	
 	VEC_EACH(&tokens->tokens, ni, n) {
-		printf(" {%ld} p token list loop [%s] %d\n", ni, n->type == LEXER_TOK_SPACE ? " " : n->text, state);
+		printf(" %s {%ld} p token list loop [%s] %d\n", out_enable ? "" : "X", ni, n->type == LEXER_TOK_SPACE ? " " : n->text, state);
 		if(sanity++ > 100) break;
 		
 		switch(state) {
@@ -239,20 +268,26 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 					break;
 				}
 				
-				
-				expand_token(ctx, ctx->out, tokens, &ni);
+				if(out_enable)
+					expand_token(ctx, ctx->out, tokens, &ni);
 				
 				break;
 			
 			case _HASH:
 				if(n->text == _define) state = _HASH_DEF;
+				else if(n->text == _ifdef) state = _HASH_IFDEF;
+				else if(n->text == _ifndef) state = _HASH_IFNDEF;
+				else if(n->text == _else) state = _HASH_ELSE;
+				else if(n->text == _elseif) state = _HASH_ELSEIF;
+				else if(n->text == _endif) state = _HASH_ENDIF;
 				else if(n->type != LEXER_TOK_SPACE) state = _NONE;
 				break;
 				
 			case _HASH_DEF:
 				if(n->type == LEXER_TOK_SPACE) {
 					// start macro here
-					m = calloc(1, sizeof(*m));
+					if(out_enable)
+						m = calloc(1, sizeof(*m));
 					
 					state = _HASH_DEF_SP;
 				}
@@ -269,14 +304,16 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 				}
 				
 				// macro name
-				m->name = n->text;
-				
-				if(HT_get(&ctx->macros, n->text, &mn)) {
-					mn = calloc(1, sizeof(*mn));
-					HT_set(&ctx->macros, n->text, mn);
+				if(out_enable) {
+					m->name = n->text;
+					
+					if(HT_get(&ctx->macros, n->text, &mn)) {
+						mn = calloc(1, sizeof(*mn));
+						HT_set(&ctx->macros, n->text, mn);
+					}
+					
+					VEC_PUSH(&mn->defs, m);
 				}
-				
-				VEC_PUSH(&mn->defs, m);
 				
 				state = _HASH_DEF_SP_ID;
 				break;
@@ -286,11 +323,15 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 				if(n->text == _lparen) {
 					// function-like macro
 //					printf("fn-like macro\n");
-					m->fn_like = 1;
+					if(out_enable)
+						m->fn_like = 1;
+					
 					state = _MACRO_ARGS;//_HASH_DEF_SP_ID_LP;
 				}
 				else {
-					m->obj_like = 1;
+					if(out_enable)
+						m->obj_like = 1;
+					
 					state = _MACRO_BODY;
 					ni--;
 				}
@@ -305,17 +346,20 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 				if(n->text == _rparen && pdepth == 0) {
 					if(cached_arg) {
 						// printf("pushing arg: %s\n", cached_arg);
-						VEC_PUSH(&m->args, cached_arg);
+						if(out_enable)
+							VEC_PUSH(&m->args, cached_arg);
 						cached_arg = 0;
 					}
 					state = _MACRO_ARGS_RP;
 				}
 				else if(n->type == LEXER_TOK_IDENT) {
-					cached_arg = n->text;
+					if(out_enable) 
+						cached_arg = n->text;
 				}
 				else if(n->text == _comma) {
 					if(cached_arg) {
-						VEC_PUSH(&m->args, cached_arg);
+						if(out_enable) 
+							VEC_PUSH(&m->args, cached_arg);
 						cached_arg = 0;
 					}
 					else {
@@ -328,7 +372,9 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 						fprintf(stderr, "Varargs elipsis encountered inside nested parenthesis.\n");
 					}
 					
-					m->variadic = 1;
+					if(out_enable)
+						m->variadic = 1;
+					
 					state = _MACRO_ARGS_ELIPSIS;
 				}
 				else if(n->type != LEXER_TOK_SPACE) {
@@ -357,6 +403,8 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 					state = _NONE;
 				}
 				else {
+					if(!out_enable) break;
+					
 					if(n->type == LEXER_TOK_SPACE) {
 						if(VEC_LEN(&m->body.tokens) == 0) break;
 					}
@@ -375,7 +423,77 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 					}
 				}
 				break;
+				
+				
+				
+			/*--------------------------
+					Conditionals
+			--------------------------*/
+				
+				
+			case _HASH_IFDEF:
+				if(n->type == LEXER_TOK_IDENT) {
+					if(!is_defined(ctx, n)) {
+						out_enable = 0;
+					}
+					
+					cond_depth++;
+					if(n->has_newline) state = _NONE;
+					else state = _SKIP_REST;
+				}
+				
+				break;
+				
+			case _HASH_IFNDEF:
+				if(n->type == LEXER_TOK_IDENT) {
+					if(is_defined(ctx, n)) {
+						out_enable = 0;
+					}
+					
+					cond_depth++;
+					if(n->has_newline) state = _NONE;
+					else state = _SKIP_REST;
+				}
+				break;
+			
+
+				
+			case _HASH_ELSE:
+				if(cond_depth == 0) {
+					fprintf(stderr, "Found unmatched #else\n");
+				}
+				else if(cond_depth == 1) {
+					out_enable = !out_enable;
+				}
+				
+				if(n->has_newline) state = _NONE;
+				else state = _SKIP_REST;
+				break;
+				
+			case _HASH_ENDIF:
+				if(cond_depth == 0) {
+					fprintf(stderr, "Found unmatched #endif\n");
+				}
+				else if(cond_depth == 1) {
+					cond_depth = 0;
+					out_enable = 1;
+				}
+				else {
+					cond_depth--;
+				}
+				
+				if(n->has_newline) state = _NONE;
+				else state = _SKIP_REST;
+				break;
 		
+		
+			case _SKIP_REST:
+				// skip everything to the end of the line
+				if(n->has_newline) {
+					state = _NONE;
+				}
+				break;
+
 		}
 		
 		

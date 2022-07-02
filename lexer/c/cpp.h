@@ -57,6 +57,7 @@ cpp_token_list_t* lex_file(char* path);
 void preprocess_file(char* path);
 void preprocess_token_list(cpp_token_list_t* tokens);
 
+cpp_macro_def_t* get_macro_def(cpp_context_t* ctx, lexer_token_t* query);
 void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv);
 
 
