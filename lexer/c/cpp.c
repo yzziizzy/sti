@@ -31,6 +31,13 @@ enum {
 
 
 
+static void inject_space(cpp_context_t* ctx, cpp_token_list_t* list) {
+	lexer_token_t* t = calloc(1, sizeof(*t));
+	t->type = LEXER_TOK_SPACE;
+	t->text = strint_(str_table, " ");
+	VEC_PUSH(&list->tokens, t);
+}
+
 static void inject_comma(cpp_context_t* ctx, cpp_token_list_t* list) {
 	lexer_token_t* t = calloc(1, sizeof(*t));
 	t->type = LEXER_TOK_PUNCT;
@@ -47,6 +54,48 @@ static void inject_number(cpp_context_t* ctx, cpp_token_list_t* list, long num) 
 	t->type = LEXER_TOK_PUNCT;
 	t->text = strint_(str_table, buf);
 	VEC_PUSH(&list->tokens, t);
+}
+
+static void inject_stringified(cpp_context_t* ctx, cpp_token_list_t* list, cpp_token_list_t* input) {
+	char* buf;
+	size_t sz = 0;
+	
+	VEC_EACH(&input->tokens, ti, t) {
+		if(t->type == LEXER_TOK_SPACE) {
+			sz++;
+			continue;
+		}
+		
+		for(char* s = t->text; *s; s++) {
+			if(*s == '\\' || *s == '"') sz++;
+			sz++;
+		}
+	}
+	
+	buf = malloc(sz + 3); // two quotes and a null;
+	buf[0] = '"';
+	buf[sz + 1] = '"';
+	buf[sz + 2] = 0;
+	
+	char* c = buf + 1;
+	VEC_EACH(&input->tokens, ti, t) {
+		if(t->type == LEXER_TOK_SPACE) {
+			*c++ = ' ';
+			continue;
+		}
+		
+		for(char* s = t->text; *s; s++) {
+			if(*s == '\\' || *s == '"') *c++ = '\\';
+			*c++ = *s;
+		}
+	}
+	
+	lexer_token_t* t = calloc(1, sizeof(*t));
+	t->type = LEXER_TOK_STRING;
+	t->text = strint_(str_table, buf);
+	VEC_PUSH(&list->tokens, t);
+	
+	free(buf);
 }
 
 
@@ -133,6 +182,7 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 	cpp_token_list_t* in_arg;
 	char* cached_arg = 0;
 	int was_nl = 0;
+	int was_ws = 0;
 	int pdepth = 0; // parenthesis nesting depth
 	int state = _NONE;
 	
@@ -267,8 +317,22 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 					state = _NONE;
 				}
 				else {
+					if(n->type == LEXER_TOK_SPACE) {
+						if(VEC_LEN(&m->body.tokens) == 0) break;
+					}
 					printf("  [%s] pushing body token: '%s'\n", m->name, n->type == LEXER_TOK_SPACE ? " " : n->text);
-					VEC_PUSH(&m->body.tokens, n);
+					
+					if(n->type != LEXER_TOK_SPACE) {
+						if(was_ws) {
+							inject_space(ctx, &m->body);
+						}
+						VEC_PUSH(&m->body.tokens, n);
+						
+						was_ws = 0;
+					}
+					else {
+						was_ws = 1;
+					}
 				}
 				break;
 		
@@ -282,7 +346,8 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 	
 	printf("\noutput:\n");
 	VEC_EACH(&ctx->out->tokens, i, t) {
-		if(t->type == LEXER_TOK_SPACE) printf(" ");
+		if(t->type == LEXER_TOK_COMMENT) {}
+		else if(t->type == LEXER_TOK_SPACE) printf(" ");
 		else printf("%s ", t->text);
 	}
 	printf("\n");
@@ -311,6 +376,7 @@ cpp_macro_invocation_t* collect_invocation_args(cpp_context_t* ctx, cpp_token_li
 	int state = _FOUND_NAME;
 	int i;
 	int argn = 0;
+	int was_ws = 0;
 	
 	// BUG: should read from a cursor of some kind
 	for(i = *cursor; i < VEC_LEN(&input->tokens); i++) {
@@ -369,7 +435,25 @@ cpp_macro_invocation_t* collect_invocation_args(cpp_context_t* ctx, cpp_token_li
 					argn++;
 				}
 				else {
-					VEC_PUSH(&in_arg->tokens, n);
+				
+					if(n->type == LEXER_TOK_SPACE) {
+						if(VEC_LEN(&in_arg->tokens) == 0) break;
+					}
+//					printf("  [%s] pushing body token: '%s'\n", m->name, n->type == LEXER_TOK_SPACE ? " " : n->text);
+					
+					if(n->type != LEXER_TOK_SPACE) {
+						if(was_ws) {
+							inject_space(ctx, &m->body);
+						}
+						VEC_PUSH(&in_arg->tokens, n);
+						
+						was_ws = 0;
+					}
+					else {
+						was_ws = 1;
+					}
+				
+					
 //					printf("  arg: %s\n", n->text);
 				}
 				
@@ -489,6 +573,7 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 	char* _va_cnt = strint_(str_table, "__VA_CNT__");
 	char* _lparen = strint_(str_table, "(");
 	char* _rparen = strint_(str_table, ")");
+	char* _hash = strint_(str_table, "#");
 	
 	cpp_macro_def_t* m = inv->def;
 	
@@ -565,6 +650,29 @@ void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv) {
 		}
 		else if(bt->text == _va_cnt) {
 			inject_number(ctx, inv->replaced, vararg_count);
+			goto ARG_REPLACED;
+		}
+		else if(bt->text == _hash) {
+		
+			bti++;
+			if(bti >= VEC_LEN(&m->body.tokens)) {
+				fprintf(stderr, "Stringifier operator at end of macro body.\n");
+				break;
+			}
+			
+			bt = VEC_ITEM(&m->body.tokens, bti);
+			
+			VEC_EACH(&m->args, ani, aname) {
+				if(aname == bt->text) {
+					
+					inject_stringified(ctx, inv->replaced, VEC_ITEM(&inv->in_args, ani));
+				
+					goto ARG_REPLACED;
+				}
+			}
+			
+			
+			
 			goto ARG_REPLACED;
 		}
 		else {
