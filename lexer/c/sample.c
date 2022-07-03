@@ -1,6 +1,6 @@
 
 #define bar(x) BAR
-#ifndef bar
+#ifdef bar
 #define wrap(x) {x()}
 #else
 #define wrap(x) <x()>
@@ -12,7 +12,9 @@
 
 X(A, wrap(foo), C, DD, EE FF)
 
-
+#if (11 - 2) == 19 % 10
+	TRUE
+#endif
 
 
 

@@ -41,12 +41,23 @@ typedef struct cpp_macro_name {
 } cpp_macro_name_t;
 
 
+typedef struct cpp_stack_token { 
+	char type;
+	char arity; 
+	char prec; 
+	char assoc; 
+} cpp_stack_token_t;
+
 typedef struct cpp_context {
 	HT(cpp_macro_name_t*) macros;
 	
 	cpp_token_list_t* tokens;
 	cpp_token_list_t* out;
 	int cur_index;
+	
+	// for expressions in if's
+	VEC(int) oper_stack;
+	VEC(long) value_stack;
 	
 	struct cpp_context* parent;
 } cpp_context_t;
