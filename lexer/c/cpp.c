@@ -157,6 +157,7 @@ int is_integer(lexer_token_t* t, long* val) {
 	char* end;
 	long l = strtol(t->text, &end, 0);
 	if(end != t->text + strlen(t->text)) {
+		if(val) *val = 0;
 		return 0; // not a valid integer
 	}
 	
@@ -226,6 +227,7 @@ cpp_token_list_t* lex_file(char* path) {
 	X(NEQ, 2, 70, 0) \
 	X(EQ, 2, 70, 0) \
 	X(UNARY_NEG, 1, 20, 1) \
+	X(DEFINED, 1, 10, 1) \
 	X(LPAREN, -1, 127, 0) \
 	X(RPAREN, -1, -1, 0) \
 
@@ -315,10 +317,18 @@ void reduce(cpp_context_t* ctx) {
 	VEC_POP(&ctx->oper_stack, op);
 	
 	long lval, rval, res = 0;
+	lexer_token_t* ltok, *rtok;
 	
-	if(operator_data[op].arity > 0) VEC_POP(&ctx->value_stack, rval);
-	if(operator_data[op].arity > 1) VEC_POP(&ctx->value_stack, lval);
-
+	if(operator_data[op].arity > 0) {
+		VEC_POP(&ctx->value_stack, rtok);
+		is_integer(rtok, &rval);
+	}
+	
+	if(operator_data[op].arity > 1) {
+		VEC_POP(&ctx->value_stack, ltok);
+		is_integer(ltok, &lval);
+	}
+	
 	switch(op) {
 		case OP_EQ: res = lval == rval; break;
 		case OP_NEQ: res = lval != rval; break;
@@ -329,8 +339,6 @@ void reduce(cpp_context_t* ctx) {
 		case OP_PLUS: res = lval + rval; break;
 		case OP_MINUS: res = lval - rval; break;
 		case OP_MUL: res = lval * rval; break;
-		case OP_DIV: res = lval / rval; break;
-		case OP_MOD: res = lval % rval; break;
 		case OP_BIT_NOT: res = ~rval; break;
 		case OP_LOGIC_NOT: res = !rval; break;
 		case OP_LOGIC_AND: res = lval && rval; break;
@@ -342,6 +350,14 @@ void reduce(cpp_context_t* ctx) {
 		case OP_SHL: res = lval << rval; break;
 		case OP_UNARY_NEG: res = -rval; break;
 		
+		// these are just hacked because this parser doesn't handle logical operator shortcutting
+		case OP_DIV: rval != 0 ? res = lval / rval : 0; break;
+		case OP_MOD: rval != 0 ? res = lval % rval : 0; break;
+		
+		case OP_DEFINED:
+			res = is_defined(ctx, rtok);
+			break;
+		
 		case OP_LPAREN:
 			printf("     evaluating lparen!!!!\n");
 			return;
@@ -352,8 +368,11 @@ void reduce(cpp_context_t* ctx) {
 		
 	}
 
+	lexer_token_t* res_tok = malloc(sizeof(*res_tok));
+	res_tok->type = LEXER_TOK_NUMBER;
+	res_tok->text = sprintfdup("%ld", res);
 
-	VEC_PUSH(&ctx->value_stack, res);
+	VEC_PUSH(&ctx->value_stack, res_tok);
 }
 
 
@@ -370,25 +389,22 @@ long eval_exp(cpp_context_t* ctx, cpp_token_list_t* exp) {
 	VEC_EACH(&exp->tokens, ni, n) {
 	
 		if(n->type == LEXER_TOK_NUMBER) {
-			long val;
-			if(is_integer(n, &val)) {
-				VEC_PUSH(&ctx->value_stack, val);
-				printf("  pushing integer %ld to the stack\n", val);
-			}
+		
+			VEC_PUSH(&ctx->value_stack, n);
+//			long val;
+//			if(is_integer(n, &val)) {
+//				VEC_PUSH(&ctx->value_stack, val);
+//				printf("  pushing integer %ld to the stack\n", val);
+//			}
 			
 			was_oper = 0;
 		}
 		
 		if(n->type == LEXER_TOK_IDENT) {
-			
-			if(n->text == _defined) {
-				size_t cursor = ni;
-				next_real_token(exp, &cursor);
-			}
-			
+					
 			// TODO: check for operators like 'defined'
 			
-			VEC_PUSH(&ctx->value_stack, 0);
+			VEC_PUSH(&ctx->value_stack, n);
 			printf("  pushing 0 to the stack due to '%s'\n", n->text);
 			was_oper = 0;
 			
@@ -412,7 +428,7 @@ long eval_exp(cpp_context_t* ctx, cpp_token_list_t* exp) {
 					printf("       - %s\n", operator_names[top]);
 					
 					if(top == OP_LPAREN) {
-						printf("       - found lparen, exiting loop (top value: %ld)\n", VEC_TAIL(&ctx->value_stack));
+						printf("       - found lparen, exiting loop (top value: --)\n" /*VEC_TAIL(&ctx->value_stack)*/);
 						VEC_POP1(&ctx->oper_stack);
 						break;
 					}
@@ -457,9 +473,11 @@ long eval_exp(cpp_context_t* ctx, cpp_token_list_t* exp) {
 		reduce(ctx);
 	}
 	
+	lexer_token_t* final_tok;
 	long final = 0; 
-	VEC_POP(&ctx->value_stack, final);
+	VEC_POP(&ctx->value_stack, final_tok);
 	
+	final = strtol(final_tok->text, NULL, 0);
 
 	
 	return final;

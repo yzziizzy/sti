@@ -57,7 +57,7 @@ typedef struct cpp_context {
 	
 	// for expressions in if's
 	VEC(int) oper_stack;
-	VEC(long) value_stack;
+	VEC(lexer_token_t*) value_stack;
 	cpp_token_list_t exp_buffer;
 	
 	struct cpp_context* parent;
