@@ -225,6 +225,7 @@ cpp_token_list_t* lex_file(char* path) {
 	X(LTE, 2, 60, 0) \
 	X(NEQ, 2, 70, 0) \
 	X(EQ, 2, 70, 0) \
+	X(UNARY_NEG, 1, 20, 1) \
 	X(LPAREN, -1, 127, 0) \
 	X(RPAREN, -1, -1, 0) \
 
@@ -339,10 +340,10 @@ void reduce(cpp_context_t* ctx) {
 		case OP_BIT_XOR: res = lval ^ rval; break;
 		case OP_SHR: res = lval >> rval; break;
 		case OP_SHL: res = lval << rval; break;
-			
+		case OP_UNARY_NEG: res = -rval; break;
 		
 		case OP_LPAREN:
-			printf("     evaluationg lparen!!!!\n");
+			printf("     evaluating lparen!!!!\n");
 			return;
 			
 		case OP_RPAREN:
@@ -354,6 +355,116 @@ void reduce(cpp_context_t* ctx) {
 
 	VEC_PUSH(&ctx->value_stack, res);
 }
+
+
+long eval_exp(cpp_context_t* ctx, cpp_token_list_t* exp) {
+	
+	char* _defined = strint_(str_table, "defined");
+	
+	int was_oper = 1;
+	
+	VEC_TRUNC(&ctx->oper_stack);
+	VEC_TRUNC(&ctx->value_stack);
+	
+	
+	VEC_EACH(&exp->tokens, ni, n) {
+	
+		if(n->type == LEXER_TOK_NUMBER) {
+			long val;
+			if(is_integer(n, &val)) {
+				VEC_PUSH(&ctx->value_stack, val);
+				printf("  pushing integer %ld to the stack\n", val);
+			}
+			
+			was_oper = 0;
+		}
+		
+		if(n->type == LEXER_TOK_IDENT) {
+			
+			if(n->text == _defined) {
+				size_t cursor = ni;
+				next_real_token(exp, &cursor);
+			}
+			
+			// TODO: check for operators like 'defined'
+			
+			VEC_PUSH(&ctx->value_stack, 0);
+			printf("  pushing 0 to the stack due to '%s'\n", n->text);
+			was_oper = 0;
+			
+
+		}
+		
+		if(n->type == LEXER_TOK_PUNCT) {
+			// check for operators, rest are 0
+			
+			int op = probe_operator_type(n);
+			
+			if(op == OP_LPAREN) {
+				VEC_PUSH(&ctx->oper_stack, op);
+				printf("  pushing lparen to the stack\n");
+				was_oper = 1;
+			}
+			else if(op == OP_RPAREN) {
+				printf("     executing rparen\n");
+				do {
+					int top = VEC_TAIL(&ctx->oper_stack);
+					printf("       - %s\n", operator_names[top]);
+					
+					if(top == OP_LPAREN) {
+						printf("       - found lparen, exiting loop (top value: %ld)\n", VEC_TAIL(&ctx->value_stack));
+						VEC_POP1(&ctx->oper_stack);
+						break;
+					}
+					
+					reduce(ctx);
+					
+				} while(VEC_LEN(&ctx->oper_stack));
+				
+				was_oper = 0;
+			}
+			else if(op == OP_MINUS && was_oper) {
+				VEC_PUSH(&ctx->oper_stack, OP_UNARY_NEG);
+				printf("  pushing operator UNARY_NEG to the stack\n");
+			}
+			else if(op > 0) {
+				int top = 0;
+				if(VEC_LEN(&ctx->oper_stack)) 
+					top = VEC_TAIL(&ctx->oper_stack);
+				
+				printf("top: %d, op: %d\n", top, op);
+				if(operator_data[top].prec < operator_data[op].prec) {
+					// if(top.prec == r->prec && r->assoc == STI_OP_ASSOC_LEFT) break;
+					reduce(ctx);
+				}
+				
+				VEC_PUSH(&ctx->oper_stack, op);
+				printf("  pushing operator %s to the stack\n", operator_names[op]);
+				was_oper = 1;
+			}
+			else {
+				VEC_PUSH(&ctx->value_stack, 0);
+				printf("  pushing 0 to the stack due to '%s'\n", n->text);
+				was_oper = 0;
+			}
+		}
+		
+	}
+	
+	
+	// finish off the operator stack
+	while(VEC_LEN(&ctx->oper_stack)) {
+		reduce(ctx);
+	}
+	
+	long final = 0; 
+	VEC_POP(&ctx->value_stack, final);
+	
+
+	
+	return final;
+}
+
 
 
 void preprocess_file(char* path) {
@@ -418,7 +529,7 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 	
 	int cond_depth = 0;
 	int out_enable = 1; // don't output anything for failed conditionals
-	
+		
 	int state = _NONE;
 	
 	int sanity = 0;
@@ -441,13 +552,16 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 			
 			case _HASH:
 				if(n->text == _define) state = _HASH_DEF;
-				else if(n->text == _if) state = _HASH_IF;
 				else if(n->text == _ifdef) state = _HASH_IFDEF;
 				else if(n->text == _ifndef) state = _HASH_IFNDEF;
 				else if(n->text == _else) state = _HASH_ELSE;
 				else if(n->text == _elseif) state = _HASH_ELSEIF;
 				else if(n->text == _endif) state = _HASH_ENDIF;
-				else if(n->type != LEXER_TOK_SPACE) state = _NONE;
+				else if(n->text == _if) {
+					VEC_TRUNC(&ctx->exp_buffer.tokens);
+					state = _HASH_IF;
+				}
+				else if(n->type != LEXER_TOK_SPACE && n->type != LEXER_TOK_COMMENT) state = _NONE;
 				break;
 				
 			case _HASH_DEF:
@@ -660,85 +774,33 @@ void preprocess_token_list(cpp_token_list_t* tokens) {
 			--------------------------------------*/
 			
 			case _HASH_IF:
+				if(!out_enable) { // don't bother evaluating the expression if output is disabled at a higher level anyway
+					cond_depth++;
+					state = _SKIP_REST;
+					break;
+				}
 			
-				if(n->type == LEXER_TOK_NUMBER) {
-					long val;
-					if(is_integer(n, &val)) {
-						VEC_PUSH(&ctx->value_stack, val);
-						printf("  pushing integer %ld to the stack\n", val);
-					}
-				
+				// buffer up all the expression tokens first
+				if(n->type != LEXER_TOK_SPACE && n->type != LEXER_TOK_COMMENT) {
+					VEC_PUSH(&ctx->exp_buffer.tokens, n);
 				}
 				
-				if(n->type == LEXER_TOK_IDENT) {
-					
 				
-					// expand macros
-					
-					// non-integers are 0
-					
-					// check for operators
-				}
-				
-				if(n->type == LEXER_TOK_PUNCT) {
-					// check for operators, rest are 0
-					
-					int op = probe_operator_type(n);
-					
-					if(op == OP_LPAREN) {
-						VEC_PUSH(&ctx->oper_stack, op);
-						printf("  pushing lparen to the stack\n");
-					}
-					else if(op == OP_RPAREN) {
-						printf("     executing rparen\n");
-						do {
-							int top = VEC_TAIL(&ctx->oper_stack);
-							printf("       - %s\n", operator_names[top]);
-							
-							if(top == OP_LPAREN) {
-								printf("       - found lparen, exiting loop (top value: %ld)\n", VEC_TAIL(&ctx->value_stack));
-								VEC_POP1(&ctx->oper_stack);
-								break;
-							}
-							
-							reduce(ctx);
-							
-						} while(VEC_LEN(&ctx->oper_stack));
-					
-					}
-					else if(op > 0) {
-						int top = 0;
-						if(VEC_LEN(&ctx->oper_stack)) 
-							top = VEC_TAIL(&ctx->oper_stack);
-						
-						printf("top: %d, op: %d\n", top, op);
-						if(operator_data[top].prec < operator_data[op].prec) {
-							// if(top.prec == r->prec && r->assoc == STI_OP_ASSOC_LEFT) break;
-							reduce(ctx);
-						}
-						
-						VEC_PUSH(&ctx->oper_stack, op);
-						printf("  pushing operator %s to the stack\n", operator_names[op]);
-					}
-					else {
-						VEC_PUSH(&ctx->value_stack, 0);
-						printf("  pushing 0 to the stack due to '%s'\n", n->text);
-					}
-				}
-				
+				// expand macros and do the evaluation at the end of the line
 				if(n->has_newline) {
 					
-					while(VEC_LEN(&ctx->oper_stack)) {
-						reduce(ctx);
-					}
+					// TODO: expand macros
+					cpp_token_list_t* exp_exp = expand_token_list(ctx, &ctx->exp_buffer);
 					
-					long final; VEC_POP(&ctx->value_stack, final);
+					long final = eval_exp(ctx, exp_exp);
 					cond_depth++;
 					out_enable = final != 0;
 					
+					VEC_FREE(&exp_exp->tokens);
+					free(exp_exp);
+					
 					state = _NONE;
 				}
-				
 				break;
 		
 			case _SKIP_REST:

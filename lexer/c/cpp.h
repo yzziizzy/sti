@@ -58,6 +58,7 @@ typedef struct cpp_context {
 	// for expressions in if's
 	VEC(int) oper_stack;
 	VEC(long) value_stack;
+	cpp_token_list_t exp_buffer;
 	
 	struct cpp_context* parent;
 } cpp_context_t;
@@ -70,7 +71,8 @@ void preprocess_token_list(cpp_token_list_t* tokens);
 
 cpp_macro_def_t* get_macro_def(cpp_context_t* ctx, lexer_token_t* query);
 void expand_fnlike_macro(cpp_context_t* ctx, cpp_macro_invocation_t* inv);
-
+cpp_token_list_t* expand_token_list(cpp_context_t* ctx, cpp_token_list_t* in);
+lexer_token_t* next_real_token(cpp_token_list_t* list, size_t* cursor);
 
 void expand_token(cpp_context_t* ctx, cpp_token_list_t* out, cpp_token_list_t* in, size_t* cursor);
 
