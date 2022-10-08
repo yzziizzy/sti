@@ -10,7 +10,7 @@
 #define to32s(x, s) (((uint32_t)(x)) << (s))
 
 
-uint32_t* utf8_to_utf32(char* u8, size_t* outLen) {
+uint32_t* utf8_to_utf32(uint8_t* u8, size_t* outLen) {
 	size_t u8len = strlen(u8);
 	
 	uint32_t* u32 = malloc((u8len + 1) * sizeof(u32)); // just overallocate
@@ -56,6 +56,53 @@ MALFORMED:
 }
 
 
+// It is the caller's responsibility to provide at least 4 bytes of output memory
+// returns the number of bytes used.
+int utf32_to_utf8(uint32_t u32, uint8_t* u8_out) {
+	
+	if(u32 < 0x80) { // one byte
+		u8_out[0] = u32;
+		return 1;
+	}
+	else if(u32 < 0x800) { // two bytes
+		u8_out[0] = ((u32 >> 6) & 0x1f) | 0xc0;
+		u8_out[1] = (u32 & 0x3f) | 0x80;
+		return 2;
+	}
+	else if(u32 < 0x10000) { // three bytes
+		u8_out[0] = ((u32 >> 12) & 0x0f) | 0xe0;
+		u8_out[1] = ((u32 >> 6) & 0x3f) | 0x80;
+		u8_out[2] = (u32 & 0x3f) | 0x80;
+		return 3;
+	}
+	else if(u32 <= 0x7ffffff) { // four bytes. we gleefully encode up to the physical limit because they'll probably expand to it in the future.
+		u8_out[0] = ((u32 >> 18) & 0x07) | 0xf0;
+		u8_out[1] = ((u32 >> 12) & 0x3f) | 0x80;
+		u8_out[2] = ((u32 >> 6) & 0x3f) | 0x80;
+		u8_out[3] = (u32 & 0x3f) | 0x80;
+		return 4;
+	}
+	
+	return 5;
+}
+
+
+int utf8_bytes_needed(uint32_t u32) {
+	if(u32 < 0x80) { // one byte
+		return 1;
+	}
+	else if(u32 < 0x800) { // two bytes
+		return 2;
+	}
+	else if(u32 < 0x10000) { // three bytes
+		return 3;
+	}
+	else if(u32 <= 0x7ffffff) { // four bytes. we gleefully encode up to the physical limit because they'll probably expand to it in the future.
+		return 4;
+	}
+	
+	return 5;
+}
 
 
 // returns the number of characters in a utf8 string
@@ -90,7 +137,7 @@ size_t charlen8(const char* u8) {
 
 
 // returns 1 if there are multi-byte sequences, 0 otherwise
-int utf8_has_multibyte(const char* u8) {
+int utf8_has_multibyte(const uint8_t* u8) {
 	uint8_t* s = (uint8_t*)u8;
 	
 	while(*s) {
@@ -102,6 +149,78 @@ int utf8_has_multibyte(const char* u8) {
 	
 	return 0;
 }
+
+
+// byte length of a single utf8 character, with subsequent btye format verification and null checks
+int utf8_char_size(const char* u8) {
+	if((u8[0] & 0x80) == 0x00) { // single byte
+		return 1;
+	}
+	else if((u8[0] & 0xe0) == 0xc0) { // two bytes
+		if((u8[1] == 0) || ((u8[1] & 0xc0) != 0x80)) goto MALFORMED_1;
+		return 2;
+	}
+	else if((u8[0] & 0xf0) == 0xe0) { // three bytes
+		if((u8[1] == 0) || ((u8[1] & 0xc0) != 0x80)) goto MALFORMED_1;
+		if((u8[2] == 0) || ((u8[2] & 0xc0) != 0x80)) goto MALFORMED_2;
+		return 3;
+	}
+	else if((u8[0] & 0xf8) == 0xf0) { // four bytes
+		if((u8[1] == 0) || ((u8[1] & 0xc0) != 0x80)) goto MALFORMED_1;
+		if((u8[2] == 0) || ((u8[2] & 0xc0) != 0x80)) goto MALFORMED_2;
+		if((u8[3] == 0) || ((u8[3] & 0xc0) != 0x80)) goto MALFORMED_3;
+		return 4;
+	}
+	
+	
+	// the character lies outside of known utf8 encodings. 
+	// just eat one byte at a times and hope for recovery
+	return 1;
+	
+MALFORMED_3:
+	return 3;
+MALFORMED_2:
+	return 2;
+MALFORMED_1:
+	return 1;
+}
+
+
+// returns NULL on not found or if codepoint is invalid
+char* strchr8(const char* s, uint32_t codepoint) {
+	uint8_t c8[5];
+	int sz;
+	
+	sz = utf32_to_utf8(codepoint, codepoint);
+	
+	switch(sz) {
+		case 1: return strchr(s, codepoint);
+		case 2:
+		case 3:
+		case 4:
+			c8[sz] = 0;
+			return strstr(s, c8);
+		
+		default:
+			return NULL;
+	}
+}
+
+
+// c is a pointer to a single utf8 character, up to 4 bytes
+// returns NULL on not found or if codepoint is invalid
+char* strchr8p(const char* s, char* c) {
+	uint8_t c8[5];
+	int sz;
+	
+	sz = utf8_char_size(s);
+	for(int i = 0; i < sz; i++) c8[i] = c[i];
+	c8[sz] = 0;
+	
+	return strstr(s, c8);
+}
+
+
 
 // in bytes, not including (4-byte) null terminator
 size_t strlen32(const uint32_t* s) {

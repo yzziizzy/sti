@@ -30,15 +30,32 @@
 size_t charlen8(const char* u8);
 
 // returns a new buffer, caller must free, or NULL when the string is malformed
-uint32_t* utf8_to_utf32(char* u8, size_t* outLen);
+uint32_t* utf8_to_utf32(uint8_t* u8, size_t* outLen);
+
+
+// It is the caller's responsibility to provide at least 4 bytes of output memory
+// returns the number of bytes used.
+int utf32_to_utf8(uint32_t u32, uint8_t* u8_out);
+
+// returns the number of bytes needed to encode this codepoint in utf8
+int utf8_bytes_needed(uint32_t u32);
+
+// byte length of a single utf8 character, with subsequent btye format verification and null checks
+int utf8_char_size(const char* u8);
 
 // returns 1 if there are multi-byte sequences, 0 otherwise
-int utf8_has_multibyte(const char* u8);
+int utf8_has_multibyte(const uint8_t* u8);
 
 
-// char* strchr8(const char* s, uint32_t codepoint);
+// returns NULL on not found or if codepoint is invalid
+char* strchr8(const char* s, uint32_t codepoint);
+// c is a pointer to a single utf8 character, up to 4 bytes
+// returns NULL on not found or if codepoint is invalid
+char* strchr8p(const char* s, char* c);
+
+
+
 // char* strrchr8(const char* s, uint32_t codepoint);
-// char* strchr8p(const char* s, char* c);
 // char* strrchr8p(const char* s, char* c);
 // size_t strcspn8(const char* a, const char* b);
 // char* strpbrk8(const char* a, const char* b);
@@ -62,6 +79,7 @@ inline static char* strstr8(const char* a, const char* b) { return strstr(a, b);
 inline static char* strdup8(const char* const s) { return strdup(s); }
 inline static char* strndup8(const char* const s, size_t len) { return strndup(s, len); }
 // inline static char* strtok_r8(const char* const s, size_t len) { return strndup(s, len); }
+
 
 
 // strtok intentionally not implemented
@@ -121,7 +139,7 @@ inline static uint32_t* strtok32(uint32_t* s, const uint32_t* delim) {
 // http://www.unicode.org/reports/tr44/#UnicodeData.txt
 
 // TODO:
-//   toupper/tolower/totitle for whole strings
+//   toupper/tolower for whole strings
 //   Capitalize words
 //   Character class info
 //   Strip emoji
