@@ -12,6 +12,9 @@ size_t strnspn(const char* s, size_t count, const char* accept);
 // reverse strspn
 size_t strrspn(const char* s, const char* accept);
 
+// reverse strstr
+const char* strrstr(const char* haystack, const char* needle)
+
 // length of the line, or length of the string if no \n found
 size_t strlnlen(const char* s);
 

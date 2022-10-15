@@ -255,6 +255,26 @@ size_t strrspn(const char* s, const char* accept) {
 }
 
 
+const char* strrstr(const char* haystack, const char* needle) {
+	const char* best = NULL;
+	
+	for(const char* p = haystack; *p; p++) {
+		for(long i = 0; ; i++) {
+			if(needle[i] == 0) {
+				best = p;
+				break;
+			}
+				
+			if(needle[i] != p[i] || !p[i]) {
+				break;
+			}
+		}
+	}
+	
+	return best;
+}
+
+
 size_t strtriml(char* s, const char* trim) {
 	size_t n, l;
 	
