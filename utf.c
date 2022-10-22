@@ -191,7 +191,7 @@ char* strchr8(const char* s, uint32_t codepoint) {
 	uint8_t c8[5];
 	int sz;
 	
-	sz = utf32_to_utf8(codepoint, codepoint);
+	sz = utf32_to_utf8(codepoint, c8);
 	
 	switch(sz) {
 		case 1: return strchr(s, codepoint);

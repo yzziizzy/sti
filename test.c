@@ -141,6 +141,7 @@ int intcmp(void* a_, void* b_) {
 }
 
 int ini_callback(char* section, char* key, char* value, void* user_data) {
+	(void)user_data;
 	if(value)
 		printf("[%s] '%s' = '%s'\n", section, key, value);
 	else
@@ -166,6 +167,7 @@ int main(int argc, char* argv[]) {
 	char test_heap = 0;
 	char test_range = 0;
 	char test_ini = 0;
+	char test_hash = 0;
 	
 	
 	//char* source = readWholeFile("./objtext.txt", NULL);
@@ -185,7 +187,7 @@ int main(int argc, char* argv[]) {
 	
 // 	for(int i = 0; x[i]; i++) printf("%c", x[i]);
 
-	while ((c = getopt (argc, argv, "tchsSvf1piInrR")) != -1) {
+	while ((c = getopt (argc, argv, "AtchsSvf1piInrR")) != -1) {
 		switch(c) {
 			case 't': test_talloc = 1; break;
 			case 's': test_sets = 1; break;
@@ -201,6 +203,7 @@ int main(int argc, char* argv[]) {
 			case 'r': test_ring = 1; break;
 			case 'R': test_range = 1; break;
 			case 'h': test_heap = 1; break;
+			case 'A': test_hash = 1; break;
 		}
 	}
 	
@@ -213,6 +216,24 @@ int main(int argc, char* argv[]) {
 		
 		
 	
+	}
+	if(test_hash) {
+		int fooval;
+		int* foovalp;
+		
+		HT(int) foo;
+		
+		HT(int, int) bar;
+		
+		HT_init(&foo, 32);
+		HT_init(&bar, 32);
+		
+		HT_set(&foo, "foo", fooval);
+		HT_getp(&foo, "foo", &foovalp);
+		
+		HT_set(&bar, 500, fooval);
+		HT_getp(&bar, 500, &foovalp);
+		
 	}
 	if(test_ini) {
 

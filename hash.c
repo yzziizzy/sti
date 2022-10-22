@@ -15,7 +15,7 @@
 
  
 static uint64_t hash_key(char* key, int64_t len);
-static ptrdiff_t find_bucket(PointerHashTable* obj, uint64_t hash, char* key);
+static uint64_t hash_int64_key(uint64_t key);
  
  
 
@@ -45,28 +45,22 @@ inline static size_t nextPOT(size_t in) {
 
 
 
-static ptrdiff_t oaht_find_bucket(
-	char* buckets, 
-	size_t stride, 
-	size_t alloc_size, 
-	uint64_t hash, 
-	char* key
-) {
+static ptrdiff_t oaht_find_bucket(struct HT_base_layout* ht, uint64_t hash, void* key) {
 	int64_t startBucket, bi;
 	
-	bi = hash % alloc_size; 
+	bi = hash % ht->alloc_size; 
 	startBucket = bi;
 	
 	struct bucket {
 		uint64_t hash;
-		char* key;
-		char value;
+		void* key;
+		char value[0];
 	};
 	
 	do {
 // 		struct hash_bucket* bucket;
 		
-		struct bucket* bucket = (struct bucket*)(buckets + (bi * stride));
+		struct bucket* bucket = (struct bucket*)(ht->buckets + (bi * ht->stride));
 		
 		// empty bucket
 		if(bucket->key == NULL) {
@@ -74,15 +68,33 @@ static ptrdiff_t oaht_find_bucket(
 		}
 		
 		if(bucket->hash == hash) {
-			if(!strcmp(key, bucket->key)) {
-				// bucket is the right one and contains a value already
-				return bi;
+			switch(ht->key_mode) {
+				case 's':
+					if(!strcmp(key, bucket->key)) {
+						return bi;
+					}
+					break;
+					
+				case 'p':
+					if(!memcmp(key, bucket->key, ht->key_len)) {
+						// bucket is the right one and contains a value already
+						return bi;
+					}
+					break;
+					
+				case 'i':
+					if(!memcmp(key, &bucket->key, ht->key_len)) {
+						// bucket is the right one and contains a value already
+						return bi;
+					}
+					break;
 			}
+				
 			
 			// collision, probe next bucket
 		}
 		
-		bi = (bi + 1) % alloc_size;
+		bi = (bi + 1) % ht->alloc_size;
 	} while(bi != startBucket);
 	
 	// should never reach here if the table is maintained properly
@@ -96,7 +108,7 @@ static ptrdiff_t oaht_find_bucket(
 // TODO: better return values and missing key handling
 // returns 0 if val is set to the value
 // *val == NULL && return > 0  means the key was not found;
-int oaht_getp(char* buckets, size_t stride, size_t alloc_size, char* key, char** valp) {
+int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 	uint64_t hash;
 	int64_t bi;
 	
@@ -105,28 +117,34 @@ int oaht_getp(char* buckets, size_t stride, size_t alloc_size, char* key, char**
 		return 2;
 	}
 	
-	hash = hash_key(key, -1);
+	size_t key_len = ht->key_mode == 's' ? strlen(key) : ht->key_len;
+	hash = hash_key(key, key_len);
 	
-	bi = oaht_find_bucket(buckets, stride, alloc_size, hash, key);
-	if(bi < 0 || *(char**)(buckets + (bi * stride) + sizeof(uint64_t)) == NULL) {
+	bi = oaht_find_bucket(ht, hash, key);
+	if(bi < 0) {// || *(char**)(ht->buckets + (bi * ht->stride) + sizeof(uint64_t)) == NULL) {
 		*valp = NULL;
 		return 1;
 	}
 	
-	//                 index             hash               key    
-	*valp = buckets + (bi * stride) + sizeof(uint64_t) + sizeof(char*); 
+	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+	
+	//                         index             hash               key    
+	*valp = ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width;
 	return 0;
 }
 
-int oaht_get(char* buckets, size_t stride, size_t alloc_size, char* key, char* val) {
+
+int oaht_get_kptr(struct HT_base_layout* ht, void* key, void* val) {
 	char* p = NULL;
 	
-	int ret = oaht_getp(buckets, stride, alloc_size, key, &p);
+	int ret = oaht_getp_kptr(ht, key, &p);
 	if(ret == 0) {
+		size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+		
 		memcpy(
 			val, 
 			p,
-			stride - sizeof(uint64_t) - sizeof(char*)
+			ht->stride - sizeof(uint64_t) - key_width
 		);
 	}
 	
@@ -134,9 +152,8 @@ int oaht_get(char* buckets, size_t stride, size_t alloc_size, char* key, char* v
 }
 
 
-
 // zero for success
-int oaht_set(char** buckets, size_t stride, size_t* fill, size_t* alloc_size, char* key, char* val) {
+int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val) {
 	uint64_t hash;
 	int64_t bi;
 	
@@ -147,25 +164,38 @@ int oaht_set(char** buckets, size_t stride, size_t* fill, size_t* alloc_size, ch
 	};
 	
 	// check size and grow if necessary
-	if((float)*fill / (float)*alloc_size >= 0.75) {
-		oaht_resize(buckets, stride, fill, alloc_size, *alloc_size * 2);
+	if((float)ht->fill / (float)ht->alloc_size >= 0.75) {
+		oaht_resize(ht, ht->alloc_size * 2);
 	}
 	
-	hash = hash_key(key, -1);
+	size_t key_len = ht->key_mode == 's' ? strlen(key) : ht->key_len;
+	hash = hash_key(key, key_len);
 	
-	bi = oaht_find_bucket(*buckets, stride, *alloc_size, hash, key);
+	bi = oaht_find_bucket(ht, hash, key);
 	if(bi < 0) return 1;
 	
 // 	printf("oaht set - bi: %ld (alloc %ld, stride %ld)\n", bi, *alloc_size, stride);
 	
-#define BK ((struct bucket*)((*buckets) + (stride * bi))) 
-	if(BK->key == NULL) {
+	void* b = ht->buckets + (ht->stride * bi);
+	#define BK ((struct bucket*)b)
+	
+	if(BK->hash == 0) {
 		// new bucket
-		(*fill)++;
+		ht->fill++;
 	}
 	
-	memcpy(&BK->value, val, stride - sizeof(uint64_t) - sizeof(char*));
-	BK->key = key;
+	
+	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+	memcpy(b + sizeof(uint64_t) + key_width, val, ht->stride - sizeof(uint64_t) - key_width);
+	
+	if(ht->key_mode == 'i') {
+		memcpy(&BK->key, key, ht->key_len);
+	}
+	else {
+		BK->key = key;
+	}
+	
+	
 	BK->hash = hash;
 #undef BK
 	
@@ -176,7 +206,7 @@ int oaht_set(char** buckets, size_t stride, size_t* fill, size_t* alloc_size, ch
 
 
 // should always be called with a power of two
-int oaht_resize(char** buckets, size_t stride, size_t* fill, size_t* alloc_size, size_t newSize) {
+int oaht_resize(struct HT_base_layout* ht, size_t newSize) {
 	struct bucket {
 		uint64_t hash;
 		char* key;
@@ -184,28 +214,28 @@ int oaht_resize(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 	};
 	
 	char* old, *op;
-	int64_t oldlen = *alloc_size;
+	int64_t oldlen = ht->alloc_size;
 	int64_t i, n, bi;
 	
-	old = op = *buckets;
+	old = op = ht->buckets;
 	
-	*alloc_size = newSize;
-	*buckets = calloc(1, stride * newSize);
-	if(!*buckets) return 1;
+	ht->alloc_size = newSize;
+	ht->buckets = calloc(1, ht->stride * newSize);
+	if(!ht->buckets) return 1;
 	
-	for(i = 0, n = 0; i < oldlen && n < (int64_t)*fill; i++) {
-		#define OP ((struct bucket*)(op + (stride * i))) 
+	for(i = 0, n = 0; i < oldlen && n < (int64_t)ht->fill; i++) {
+		#define OP ((struct bucket*)(op + (ht->stride * i))) 
 		
-		if(OP->key == NULL) {
+		if(OP->hash == 0) {
 			continue;
 		}
 
-		#define BK ((struct bucket*)(*buckets + (stride * bi))) 
+		#define BK ((struct bucket*)(ht->buckets + (ht->stride * bi))) 
 		
-		bi = oaht_find_bucket(*buckets, stride, *alloc_size, OP->hash, OP->key);
-		memcpy(&BK->value, &OP->value, stride - sizeof(uint64_t) - sizeof(char*));
-		BK->hash = OP->hash;
-		BK->key = OP->key;
+		size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+		
+		bi = oaht_find_bucket(ht, OP->hash, ht->key_mode == 'i' ? (char*)&OP->key : (char*)OP->key);
+		memcpy(BK, OP, ht->stride);
 		
 		n++;
 	}
@@ -221,7 +251,7 @@ int oaht_resize(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 
 
 // zero for success
-int oaht_delete(char** buckets, size_t stride, size_t* fill, size_t* alloc_size, char* key) {
+int oaht_delete(struct HT_base_layout* ht, char* key) {
 	uint64_t hash;
 	int64_t bi, empty_bi, nat_bi;
 	
@@ -239,8 +269,10 @@ int oaht_delete(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 		alloc_size = obj->alloc_size;
 	}
 	*/
-	hash = hash_key(key, -1);
-	bi = oaht_find_bucket(*buckets, stride, *alloc_size, hash, key);
+	
+	size_t key_len = ht->key_mode == 's' ? strlen(key) : ht->key_len;
+	hash = hash_key(key, key_len);
+	bi = oaht_find_bucket(ht, hash, key);
 	
 	// if there's a key, work until an empty bucket is found
 	// check successive buckets for colliding keys
@@ -248,25 +280,26 @@ int oaht_delete(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 	//   move it to the working bucket.
 	//   
 
-	#define BK ((struct bucket*)(*buckets + (stride * bi))) 
-	#define E_BK ((struct bucket*)(*buckets + (stride * empty_bi))) 
+	#define BK ((struct bucket*)(ht->buckets + (ht->stride * bi))) 
+	#define E_BK ((struct bucket*)(ht->buckets + (ht->stride * empty_bi))) 
 	
 	
 	// nothing to delete, bail early
-	if(BK->key == NULL) return 0;
+	if(BK->hash == 0) return 0;
 	
 	//
 	empty_bi = bi;
+	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
 	
 	do {
-		bi = (bi + 1) % (*alloc_size);
-		if(BK->key == NULL) {
+		bi = (bi + 1) % ht->alloc_size;
+		if(BK->hash == 0) {
 			//empty bucket
 			break;
 		}
 		
 		// bucket the hash at the current index naturally would be in
-		nat_bi = BK->hash % *alloc_size;
+		nat_bi = BK->hash % ht->alloc_size;
 		
 		if((bi > empty_bi && // after the start
 			(nat_bi <= empty_bi /* in a sequence of probed misses */ || nat_bi > bi /* wrapped all the way around */)) 
@@ -275,16 +308,14 @@ int oaht_delete(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 			(nat_bi <= empty_bi /* in a sequence of probed misses... */ && nat_bi > bi /* ..from before the wrap */))) {
 			
 			// move this one back
-			E_BK->key = BK->key;
-			E_BK->hash = BK->hash;
-			memcpy(&E_BK->value, &BK->value, stride - sizeof(uint64_t) - sizeof(char*));
+			memcpy(E_BK, BK, ht->stride);
 			
 			empty_bi = bi;
 		}
 	} while(1);
 	
-	E_BK->key = NULL;
-	(*fill)--;
+	E_BK->hash = 0;
+	ht->fill--;
 	
 	return 0;
 }
@@ -295,7 +326,7 @@ int oaht_delete(char** buckets, size_t stride, size_t* fill, size_t* alloc_size,
 // iteration. no order. results undefined if modified while iterating
 // returns 0 when there is none left
 // set iter to NULL to start
-int oaht_nextp(char* buckets, size_t stride, size_t alloc_size, void** iter, char** key, char** valp) { 
+int oaht_nextp(struct HT_base_layout* ht, void** iter, char** key, char** valp) { 
 	struct bucket {
 		uint64_t hash;
 		char* key;
@@ -304,14 +335,15 @@ int oaht_nextp(char* buckets, size_t stride, size_t alloc_size, void** iter, cha
 
 	#define B ((struct bucket*)b)
 
-	char* b = *iter;
+	void* b = *iter;
 	
-	// a tiny bit of idiot-proofing
-	if(b == NULL) b = buckets - stride;
+	// for starting the loop
+	if(b == NULL) b = ht->buckets - ht->stride;
 	
+	// TODO: make sure strings and pointers and such are all reasonably handled for the key
 	do {
-		b += stride;
-		if(b >= buckets + (alloc_size * stride)) {
+		b += ht->stride;
+		if(b >= ht->buckets + (ht->alloc_size * ht->stride)) {
 			// end of the list
 			*valp = NULL;
 			*key = NULL;
@@ -320,7 +352,10 @@ int oaht_nextp(char* buckets, size_t stride, size_t alloc_size, void** iter, cha
 	} while(!B->key);
 	
 	*key = B->key;
-	*valp = &B->value;
+	
+	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+	// TODO: implicit key width
+	*valp = b + sizeof(uint64_t) + key_width;
 	*iter = b;
 	#undef B
 	
@@ -330,7 +365,7 @@ int oaht_nextp(char* buckets, size_t stride, size_t alloc_size, void** iter, cha
 // iteration. no order. results undefined if modified while iterating
 // returns 0 when there is none left
 // set iter to NULL to start
-int oaht_next(char* buckets, size_t stride, size_t alloc_size, void** iter, char** key, char* val) { 
+int oaht_next(struct HT_base_layout* ht, void** iter, char** key, char* val) { 
 	struct bucket {
 		uint64_t hash;
 		char* key;
@@ -339,14 +374,14 @@ int oaht_next(char* buckets, size_t stride, size_t alloc_size, void** iter, char
 
 	#define B ((struct bucket*)b)
 
-	char* b = *iter;
+	void* b = *iter;
 	
 	// a tiny bit of idiot-proofing
-	if(b == NULL) b = buckets - stride;
+	if(b == NULL) b = ht->buckets - ht->stride;
 	
 	do {
-		b += stride;
-		if(b >= buckets + (alloc_size * stride)) {
+		b += ht->stride;
+		if(b >= ht->buckets + (ht->alloc_size * ht->stride)) {
 			// end of the list
 			*key = NULL;
 			return 0;
@@ -354,7 +389,8 @@ int oaht_next(char* buckets, size_t stride, size_t alloc_size, void** iter, char
 	} while(!B->key);
 	
 	*key = B->key;
-	memcpy(val, &B->value, stride - sizeof(uint64_t) - sizeof(char*));
+	
+	memcpy(val, &B->value, ht->stride - sizeof(uint64_t) - sizeof(char*)); // BUG: implicit key length
 	*iter = b;
 	#undef B
 	
@@ -372,297 +408,23 @@ int oaht_next(char* buckets, size_t stride, size_t alloc_size, void** iter, char
 
 
 
-
-
-
-
-
-
-
-
-PointerHashTable* PHT_create(int allocPOT) {
-	
-	PointerHashTable* obj;
-	
-	obj = malloc(sizeof(*obj));
-	if(!obj) return NULL;
-	
-	if(PHT_init(obj, allocPOT)) {
-		fprintf(stderr, "Failed to initialized hash table\n");
-		free(obj);
-		return NULL;
-	}
-	
-	return obj;
-}
-
-
-int PHT_init(PointerHashTable* obj, int minAllocSize) {
-	size_t pot;
-	
-	pot = nextPOT(minAllocSize);
-	pot = pot < 16 ? 16 : pot;
-	
-	obj->fill = 0;
-	obj->alloc_size = pot;
-	obj->grow_ratio = 0.75f;
-	obj->shrink_ratio = 99.0f; // set greater than 1.0 to entirely disable
-	obj->buckets = calloc(1, sizeof(*obj->buckets) * obj->alloc_size);
-	if(!obj->buckets) {
-		return 1;
-	}
-	
-	return 0;
-}
-
-
-void PHT_destroy(PointerHashTable* obj, int free_values_too) {
-	int64_t i, n;
-	
-	if(free_values_too) {
-		for(i = 0, n = 0; i < (int64_t)obj->alloc_size && n < (int64_t)obj->fill; i++) {
-			// only free valid pointers that also have a key
-			// deleted items are assumed to be cleaned up by the user
-			if(obj->buckets[i].key) {
-				if(obj->buckets[i].value) free(obj->buckets[i].value);
-				n++;
-			}
-		}
-	}
-	
-	if(obj->buckets) free(obj->buckets);
-//	free(obj); owner has to clean up
-}
-
-
-
-// uses a truncated 128bit murmur3 hash
+// uses a truncated 128bit murmur3 hash, except never returns 0
 static uint64_t hash_key(char* key, int64_t len) {
 	uint64_t hash[2];
 	
 	// len is optional
-	if(len <= 0) len = strlen(key);
+//	if(len <= 0) len = strlen(key);
 	
 	MurmurHash3_x64_128(key, len, MURMUR_SEED, hash);
 	
-	return hash[0];
+	return hash[0] == 0 ? 1 : hash[0];
 }
 
-static ptrdiff_t find_bucket(PointerHashTable* obj, uint64_t hash, char* key) {
-	int64_t startBucket, bi;
+static uint64_t hash_int64_key(uint64_t key) {
+	uint64_t hash[2];
 	
-	bi = startBucket = hash % obj->alloc_size; 
+	MurmurHash3_x64_128(&key, 8, MURMUR_SEED, hash);
 	
-	do {
-		struct pointer_hash_bucket* bucket;
-		
-		bucket = &obj->buckets[bi];
-		
-		// empty bucket
-		if(bucket->key == NULL) {
-			return bi;
-		}
-		
-		if(bucket->hash == hash) {
-			if(!strcmp(key, bucket->key)) {
-				// bucket is the right one and contains a value already
-				return bi;
-			}
-			
-			// collision, probe next bucket
-		}
-		
-		bi = (bi + 1) % obj->alloc_size;
-	} while(bi != startBucket);
-	
-	// should never reach here if the table is maintained properly
-	assert(0);
-	
-	return -1;
-}
-
-
-
-
-
-
-// should always be called with a power of two
-int PHT_resize(PointerHashTable* obj, int newSize) {
-	struct pointer_hash_bucket* old, *op;
-	int64_t oldlen = obj->alloc_size;
-	int64_t i, n, bi;
-	
-	old = op = obj->buckets;
-	
-	obj->alloc_size = newSize;
-	obj->buckets = calloc(1, sizeof(*obj->buckets) * newSize);
-	if(!obj->buckets) return 1;
-	
-	for(i = 0, n = 0; i < oldlen && n < (int64_t)obj->fill; i++) {
-		if(op->key == NULL) {
-			op++;
-			continue;
-		}
-		
-		bi = find_bucket(obj, op->hash, op->key);
-		obj->buckets[bi].value = op->value;
-		obj->buckets[bi].hash = op->hash;
-		obj->buckets[bi].key = op->key;
-		
-		n++;
-		op++;
-	}
-	
-	free(old);
-	
-	return 0;
-}
-
-// TODO: better return values and missing key handling
-// returns 0 if val is set to the value
-// *val == NULL && return > 0  means the key was not found;
-int PHT_get(PointerHashTable* obj, char* key, void** val) {
-	uint64_t hash;
-	int64_t bi;
-	
-	if(key == NULL) {
-		if(val) *val = NULL;
-		return 2;
-	}
-	
-	hash = hash_key(key, -1);
-	
-	bi = find_bucket(obj, hash, key);
-	if(bi < 0 || obj->buckets[bi].key == NULL) {
-		*val = NULL;
-		return 1;
-	}
-	
-	*val = obj->buckets[bi].value; 
-	return 0;
-}
-
-int PHT_getInt(PointerHashTable* obj, char* key, int64_t* val) {
-	return PHT_get(obj, key, (void**)val);
-} 
-
-
-// zero for success
-int PHT_set(PointerHashTable* obj, char* key, void* val) {
-	uint64_t hash;
-	int64_t bi;
-	
-	// check size and grow if necessary
-	if(obj->fill / obj->alloc_size >= obj->grow_ratio) {
-		PHT_resize(obj, obj->alloc_size * 2);
-	}
-	
-	hash = hash_key(key, -1);
-	
-	bi = find_bucket(obj, hash, key);
-	if(bi < 0) return 1;
-	
-	if(obj->buckets[bi].key == NULL) {
-		// new bucket
-// 		obj->buckets[bi].key = key;
-// 		obj->buckets[bi].hash = hash;
-		obj->fill++;
-	}
-	
-	obj->buckets[bi].value = val;
-	obj->buckets[bi].key = key;
-	obj->buckets[bi].hash = hash;
-	
-	return 0;
-}
-// zero for success
-int PHT_setInt(PointerHashTable* obj, char* key, int64_t val) {
-	return PHT_set(obj, key, (void*)val);
-}
-
-// zero for success
-int PHT_delete(PointerHashTable* obj, char* key) {
-	uint64_t hash;
-	int64_t bi, empty_bi, nat_bi;
-	
-	size_t alloc_size = obj->alloc_size;
-	
-	/* do this instead of the deletion algorithm
-	// check size and shrink if necessary
-	if(obj->fill / alloc_size <= obj->shrink_ratio) {
-		PHT_resize(obj, alloc_size > 32 ? alloc_size / 2 : 16);
-		alloc_size = obj->alloc_size;
-	}
-	*/
-	hash = hash_key(key, -1);
-	bi = find_bucket(obj, hash, key);
-	
-	// if there's a key, work until an empty bucket is found
-	// check successive buckets for colliding keys
-	//   walk forward until the furthest colliding key is found
-	//   move it to the working bucket.
-	//   
-	
-	// nothing to delete, bail early
-	if(obj->buckets[bi].key == NULL) return 0;
-	
-	//
-	empty_bi = bi;
-	
-	do {
-		bi = (bi + 1) % alloc_size;
-		if(obj->buckets[bi].key == NULL) {
-			//empty bucket
-			break;
-		}
-		
-		// bucket the hash at the current index naturally would be in
-		nat_bi = obj->buckets[bi].hash % alloc_size;
-		
-		if((bi > empty_bi && // after the start
-			(nat_bi <= empty_bi /* in a sequence of probed misses */ || nat_bi > bi /* wrapped all the way around */)) 
-			||
-			(bi < empty_bi && // wrapped around
-			(nat_bi <= empty_bi /* in a sequence of probed misses... */ && nat_bi > bi /* ..from before the wrap */))) {
-			
-			// move this one back
-			obj->buckets[empty_bi].key = obj->buckets[bi].key;
-			obj->buckets[empty_bi].hash = obj->buckets[bi].hash;
-			obj->buckets[empty_bi].value = obj->buckets[bi].value;
-			
-			empty_bi = bi;
-		}
-	} while(1);
-	
-	obj->buckets[empty_bi].key = NULL;
-	obj->fill--;
-	
-	return 0;
-}
-
-// iteration. no order. results undefined if modified while iterating
-// returns 0 when there is none left
-// set iter to NULL to start
-int PHT_next(PointerHashTable* obj, void** iter, char** key, void** value) { 
-	struct pointer_hash_bucket* b = *iter;
-	
-	// a tiny bit of idiot-proofing
-	if(b == NULL) b = &obj->buckets[-1];
-	
-	do {
-		b++;
-		if(b >= obj->buckets + obj->alloc_size) {
-			// end of the list
-			*value = NULL;
-			*key = NULL;
-			return 0;
-		}
-	} while(!b->key);
-	
-	*key = b->key;
-	*value = b->value;
-	*iter = b;
-	
-	return 1;
+	return hash[0] == 0 ? 1 : hash[0];
 }
 
