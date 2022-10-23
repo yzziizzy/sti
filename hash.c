@@ -107,13 +107,13 @@ static ptrdiff_t oaht_find_bucket(struct HT_base_layout* ht, uint64_t hash, void
 
 // TODO: better return values and missing key handling
 // returns 0 if val is set to the value
-// *val == NULL && return > 0  means the key was not found;
+// return > 0  means the key was not found;
 int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 	uint64_t hash;
 	int64_t bi;
 	
 	if(key == NULL) {
-		if(valp) *valp = NULL;
+//		if(valp) *valp = NULL;
 		return 2;
 	}
 	
@@ -122,14 +122,19 @@ int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 	
 	bi = oaht_find_bucket(ht, hash, key);
 	if(bi < 0) {// || *(char**)(ht->buckets + (bi * ht->stride) + sizeof(uint64_t)) == NULL) {
-		*valp = NULL;
+//		*valp = NULL;
 		return 1;
 	}
 	
+	uint64_t bhash = *(uint64_t*)(ht->buckets + (bi * ht->stride));
+	if(!bhash) return 1;
+	
 	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+//	printf("oaht get - bi: %ld (alloc %ld, stride %ld)\n", bi, ht->alloc_size, ht->stride);
 	
 	//                         index             hash               key    
 	*valp = ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width;
+	memcpy(*valp, ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width, ht->stride - 8 - 8);
 	return 0;
 }
 
@@ -181,8 +186,8 @@ int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val) {
 	bi = oaht_find_bucket(ht, hash, key);
 	if(bi < 0) return 1;
 	
-// 	printf("oaht set - bi: %ld (alloc %ld, stride %ld)\n", bi, *alloc_size, stride);
-	
+// 	printf("oaht set - bi: %ld (alloc %ld, stride %ld)\n", bi, ht->alloc_size, ht->stride);
+
 	void* b = ht->buckets + (ht->stride * bi);
 	#define BK ((struct bucket*)b)
 	
@@ -335,7 +340,7 @@ int oaht_delete(struct HT_base_layout* ht, char* key) {
 // iteration. no order. results undefined if modified while iterating
 // returns 0 when there is none left
 // set iter to NULL to start
-int oaht_nextp(struct HT_base_layout* ht, void** iter, char** key, char** valp) { 
+int oaht_nextp(struct HT_base_layout* ht, void** iter, void** key, void** valp) { 
 	struct bucket {
 		uint64_t hash;
 		char* key;
@@ -374,7 +379,7 @@ int oaht_nextp(struct HT_base_layout* ht, void** iter, char** key, char** valp) 
 // iteration. no order. results undefined if modified while iterating
 // returns 0 when there is none left
 // set iter to NULL to start
-int oaht_next(struct HT_base_layout* ht, void** iter, char** key, char* val) { 
+int oaht_next(struct HT_base_layout* ht, void** iter, void** key, void* val) { 
 	struct bucket {
 		uint64_t hash;
 		char* key;

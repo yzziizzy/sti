@@ -112,6 +112,7 @@ struct { \
 		ValType valType; \
 		ValType* valTypep; \
 		KeyType keyType; \
+		KeyType* keyTypep; \
 		struct KeyOpt keyOpt; \
 		struct ValOpt valOpt; \
 	} meta[0]; \
@@ -174,12 +175,15 @@ int oaht_get_kptr(struct HT_base_layout* ht, void* key, void* val);
 
 #define HT_get(h, key, valp) oaht_get_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep))
 
-#define HT_getp(h, key, valp) oaht_getp_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), (void**)(1 ? valp : &((h)->meta[0].valTypep))
+#define HT_getp(h, key, valp) oaht_getp_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), (void**)(1 ? valp : &((h)->meta[0].valTypep)))
 
 
 int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val);
 int oaht_set_litn(struct HT_base_layout* ht, uint64_t key, void* val);
-#define HT_set(h, key, valp)  oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep))
+#define HT_set(h, key, valp)  _Generic((h)->meta[0].keyTypeFlag, \
+	struct HT_String_Type: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, &valp, valTypep)), \
+	default: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, &valp, valTypep)) \
+)
 #define HT_setn(h, key, valp)  oaht_set_litn(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, valp, valTypep))
 
 /* doesn't work because the compiler is not smart enough to not typecheck the contents of non-chosen _Generic cases...
@@ -200,11 +204,11 @@ int oaht_delete(struct HT_base_layout* ht, char* key);
 // iteration. no order. results undefined if modified while iterating
 // returns 0 when there is none left
 // set iter to NULL to start
-int oaht_nextp(struct HT_base_layout* ht, void** iter, char** key, char** valp);
-#define HT_nextp(h, iter, keyp, valp) oaht_nextp((char*)(h)->buckets, HT_STRIDE(h), (h)->alloc_size, iter, keyp, (char**)(1 ? valp : &((h)->dummyPtr)))
+int oaht_nextp(struct HT_base_layout* ht, void** iter, void** key, void** valp);
+#define HT_nextp(h, iter, keyp, valp) oaht_nextp(&(h)->base, iter, keyp, HT_TYPECHECK(h, valp, &valTypep))
 
-int oaht_next(struct HT_base_layout* ht, void** iter, char** key, char* val);
-#define HT_next(h, iter, keyp, valp) oaht_next((char*)(h)->buckets, HT_STRIDE(h), (h)->alloc_size, iter, keyp, (char*)(1 ? valp : &((h)->buckets->value)))
+int oaht_next(struct HT_base_layout* ht, void** iter, void** key, void* val);
+#define HT_next(h, iter, keyp, valp) oaht_next(&(h)->base, iter, (void**)HT_TYPECHECK(h, keyp, keyTypep), HT_TYPECHECK(h, valp, valTypep))
 
 
 
@@ -254,10 +258,10 @@ effective source:
 if(0) \
 	HASH__FINISHED(keyname, val): ; \
 else \
-	for(char* keyname ;;) \
+	for(__typeof__((obj)->meta[0].keyType) keyname ;;) \
 	for(valtype valname ;;) \
 	for(void* HASH__ITER(keyname, val) = NULL ;;) \
-		if(HT_next(obj, & (HASH__ITER(keyname, val)), &keyname, &valname)) \
+		if(HT_next(obj, &(HASH__ITER(keyname, val)), &keyname, &valname)) \
 			goto HASH__MAINLOOP(keyname, val); \
 		else \
 			while(1) \
@@ -266,7 +270,7 @@ else \
 				} \
 				else \
 					while(1) \
-						if(!HT_next(obj, & (HASH__ITER(keyname, val)), &keyname, &valname)) { \
+						if(!HT_next(obj, &(HASH__ITER(keyname, val)), &keyname, &valname)) { \
 							goto HASH__FINISHED(keyname, val); \
 						} \
 						else \
@@ -282,7 +286,7 @@ else \
 	for(char* keyname ;;) \
 	for(valtype* valname ;;) \
 	for(void* HASH__ITER(key, val) = NULL ;;) \
-		if(HT_nextp(obj, & (HASH__ITER(key, val)), &keyname, &valname)) \
+		if(HT_nextp(obj, &(HASH__ITER(key, val)), &keyname, &valname)) \
 			goto HASH__MAINLOOP(key, val); \
 		else \
 			while(1) \
@@ -291,7 +295,7 @@ else \
 				} \
 				else \
 					while(1) \
-						if(!HT_nextp(obj, & (HASH__ITER(key, val)), &keyname, &valname)) { \
+						if(!HT_nextp(obj, &(HASH__ITER(key, val)), &keyname, &valname)) { \
 							goto HASH__FINISHED(key, val); \
 						} \
 						else \
