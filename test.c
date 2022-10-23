@@ -223,16 +223,17 @@ int main(int argc, char* argv[]) {
 		
 		HT(int) foo;
 		
-		HT(int, int) bar;
+		HT(int, int, Sizeof) bar;
 		
 		HT_init(&foo, 32);
 		HT_init(&bar, 32);
 		
-		HT_set(&foo, "foo", fooval);
-		HT_getp(&foo, "foo", &foovalp);
+		HT_set(&foo, "foo", &fooval);
+		HT_setn(&bar, 64, &fooval);
+	//	HT_getp(&foo, "foo", &foovalp);
 		
-		HT_set(&bar, 500, fooval);
-		HT_getp(&bar, 500, &foovalp);
+	//	HT_set(&bar, 500, fooval);
+	//	HT_getp(&bar, 500, &foovalp);
 		
 	}
 	if(test_ini) {

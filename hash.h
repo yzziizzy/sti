@@ -28,8 +28,47 @@ struct HT_Sizeof_Type {}; // key's length is determined by sizeof()
 struct HT_String_Type {}; // null terminated key pointer
 
 struct HT_Option_None {};
-struct HT_Option_KeyLiteral {}; // keys are literal 64 bit values, not pointers to memory
+struct HT_Option_Literal {}; // keys are literal 64 bit values, not pointers to memory
 
+#define HT_BUILTIN_TYPES(q, z) \
+	_Bool q: z, \
+	char q: z, \
+	signed char q: z, \
+	short q: z, \
+	int q: z, \
+	long q: z, \
+	long long q: z, \
+	unsigned char q: z, \
+	unsigned short q: z, \
+	unsigned int q: z, \
+	unsigned long q: z, \
+	unsigned long long q: z, \
+	float q: z, \
+	double q: z, \
+	void* q: z,
+
+#define HT_INT_TYPES(q, z) \
+	_Bool q: z, \
+	char q: z, \
+	signed char q: z, \
+	short q: z, \
+	int q: z, \
+	long q: z, \
+	long long q: z, \
+	unsigned char q: z, \
+	unsigned short q: z, \
+	unsigned int q: z, \
+	unsigned long q: z, \
+	unsigned long long q: z, \
+
+#define HT_IS_NATIVE_TYPE(x, y, n) _Generic(x, \
+    HT_BUILTIN_TYPES(,y) \
+    HT_BUILTIN_TYPES(*,y) \
+    HT_BUILTIN_TYPES(**,y) \
+    HT_BUILTIN_TYPES(***,y) \
+    HT_BUILTIN_TYPES(****,y) \
+	default: n \
+)
 
 // shrink_ratio: set greater than 1.0 to entirely disable, default 99.0
 
@@ -44,10 +83,14 @@ struct HT_Option_KeyLiteral {}; // keys are literal 64 bit values, not pointers 
 #define HT_(n, ...) HT_CAT(HT_,n)(__VA_ARGS__)
 
 // a single argument implies string keys and default options
-#define HT_1(ValType) HT_STR(ValType)
+#define HT_1(ValType) HT_EX(HT_String_Type, char*, ValType, HT_Option_None, HT_Option_None)
 
 // two arguments implies a sizeof()-able literal key type and default options 
-#define HT_2(KeyType, ValType) HT_SZOF(KeyType, ValType) 
+#define HT_2(KeyType, ValType) HT_EX(HT_Sizeof_Type, KeyType, ValType, HT_Option_None, HT_Option_None) 
+
+// three arguments lets you set the key mode flag
+#define HT_3(KeyType, ValType, KeyFlag) HT_EX(HT_##KeyFlag##_Type, KeyType, ValType, HT_Option_None, HT_Option_None) 
+
 
 struct HT_base_layout {
 	size_t alloc_size;
@@ -59,27 +102,18 @@ struct HT_base_layout {
 	uint8_t key_mode; // 's' = C string, 'p' = pointer to memory[key_len], 'i' = inline key sizeof() == key_len
 };
 
-#define HT_STR(ValType) \
-struct { \
-	struct HT_base_layout base; \
-	struct { \
-		struct HT_String_Type keyTypeFlag; \
-		ValType valType; \
-		ValType* valTypep; \
-		char* keyType; \
-	} meta[0]; \
-}
 
-#define HT_SZOF(KeyType, ValType) \
+
+#define HT_EX(KeyFlag, KeyType, ValType, KeyOpt, ValOpt) \
 struct { \
 	struct HT_base_layout base; \
 	struct { \
-		struct HT_Sizeof_Type keyTypeFlag; \
+		struct KeyFlag keyTypeFlag; \
 		ValType valType; \
 		ValType* valTypep; \
 		KeyType keyType; \
-		\
-		\
+		struct KeyOpt keyOpt; \
+		struct ValOpt valOpt; \
 	} meta[0]; \
 }
 
@@ -105,6 +139,8 @@ struct { \
 	struct HT_Sizeof_Type: sizeof((h)->meta[0].valType), \
 	struct HT_Pointer_Type: sizeof(void*) \
 )
+
+
 
 
 #define HT_init(h, sz) \
@@ -136,21 +172,23 @@ int oaht_get_kptr(struct HT_base_layout* ht, void* key, void* val);
 
 #define HT_TYPECHECK(h, a, b) (void*)(1 ? a : (h)->meta[0].b)
 
-#define HT_get(h, key, valp) _Generic((h)->meta[0].keyTypeFlag, \
-	struct HT_String_Type: oaht_get_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep)), \
-	struct HT_Sizeof_Type: oaht_get_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep)) \
-)
+#define HT_get(h, key, valp) oaht_get_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep))
 
-#define HT_getp(h, key, valp) _Generic((h)->meta[0].keyTypeFlag, \
-	struct HT_String_Type: oaht_getp_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), (void**)(1 ? valp : &((h)->meta[0].valTypep))), \
-	struct HT_Sizeof_Type: oaht_getp_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), (void**)(1 ? valp : &((h)->meta[0].valTypep))) \
-)
+#define HT_getp(h, key, valp) oaht_getp_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), (void**)(1 ? valp : &((h)->meta[0].valTypep))
+
 
 int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val);
-#define HT_set(h, key, val) _Generic((h)->meta[0].keyTypeFlag, \
-	struct HT_String_Type: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, val, valTypep)), \
-	struct HT_Sizeof_Type: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, val, valTypep)) \
+int oaht_set_litn(struct HT_base_layout* ht, uint64_t key, void* val);
+#define HT_set(h, key, valp)  oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep))
+#define HT_setn(h, key, valp)  oaht_set_litn(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, valp, valTypep))
+
+/* doesn't work because the compiler is not smart enough to not typecheck the contents of non-chosen _Generic cases...
+#define HT_set(h, key, valp) _Generic(key, \
+	HT_INT_TYPES(, oaht_set_litn(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, valp, valTypep))) \
+	default: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep)) \
 )
+*/
+
 
 
 

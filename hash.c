@@ -135,7 +135,7 @@ int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 
 
 int oaht_get_kptr(struct HT_base_layout* ht, void* key, void* val) {
-	char* p = NULL;
+	void* p = NULL;
 	
 	int ret = oaht_getp_kptr(ht, key, &p);
 	if(ret == 0) {
@@ -168,8 +168,15 @@ int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val) {
 		oaht_resize(ht, ht->alloc_size * 2);
 	}
 	
-	size_t key_len = ht->key_mode == 's' ? strlen(key) : ht->key_len;
-	hash = hash_key(key, key_len);
+	if(ht->key_mode == 's') {
+		hash = hash_key(key, strlen(key));
+	}
+	else { /* if(ht->key_mode == 'p') { */
+		hash = hash_key(key, ht->key_len);
+	} /*
+	else {
+		hash = hash_key((char*)&key, ht->key_len);
+	} */
 	
 	bi = oaht_find_bucket(ht, hash, key);
 	if(bi < 0) return 1;
@@ -202,8 +209,10 @@ int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val) {
 	return 0;
 }
 
-
-
+// zero for success
+int oaht_set_litn(struct HT_base_layout* ht, uint64_t key, void* val) {
+	return oaht_set_kptr(ht, &key, val);
+}
 
 // should always be called with a power of two
 int oaht_resize(struct HT_base_layout* ht, size_t newSize) {
