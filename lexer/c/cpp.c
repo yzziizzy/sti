@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <sys/stat.h>
+#include <libgen.h>
+
 #include "cpp.h"
 #include "sti/string_int.h"
 
@@ -477,7 +480,7 @@ long eval_exp(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* exp) {
 
 
 void cpp_tu_init(cpp_tu_t* tu) {
-	
+	HT_init(&tu->files, 64);
 	
 	string_internment_table_init(&tu->str_table);
 	
@@ -487,30 +490,154 @@ void cpp_tu_init(cpp_tu_t* tu) {
 
 }
 
+static int is_regular_file(char* path) {
+	struct stat st;
+	if(!stat(path, &st)) {
+		if((st.st_mode & S_IFMT) == S_IFREG) return 1;
+	}
+	return 0;
+}
 
-void preprocess_file(cpp_tu_t* tu, cpp_context_t* ctx, char* path) {
+static cpp_file_t* init_file(cpp_tu_t* tu, char* full_path, char* include_name) {
+	cpp_file_t* file;
+	
+	file = calloc(1, sizeof(*file));
+	file->name = strdup(include_name);
+	file->dir = dirname(strdup(full_path));
+	file->full_path = strdup(full_path);
+	
+	HT_set(&tu->files, full_path, file);
+	
+	return file;
+} 
+
+// BUG: needs to include relative to the current file being parsed
+cpp_file_t* cpp_tu_get_file(cpp_tu_t* tu, char* cwd, char* path, char is_system) {
+	cpp_file_t* file;
+	char* full_path, *full_path_bad;
+	
+	if(!HT_get(&tu->files, path, &file)) {
+		return file;
+	}
+	
+	// construct a path and search the directories
+	if(is_system) {
+		// check system headers first
+		VEC_EACH(&tu->system_inc_dirs, i, dir) {
+			full_path = path_join(dir, path);
+			
+			// check the cache before hitting the filesystem
+			if(!HT_get(&tu->files, full_path, &file)) {
+				return file;
+			}
+			
+			if(is_regular_file(full_path)) {
+				
+				// found the file
+				printf("Found system header '%s'\n", full_path);
+				
+				file = init_file(tu, full_path, path);
+				file->is_system_header = 1;
+				free(full_path);
+				return file;
+			}
+			
+			free(full_path);
+		}
+	
+	}
+	
+	// check the current directory
+	full_path_bad = path_join(cwd, path);
+	full_path = realpath(full_path_bad, NULL);
+	free(full_path_bad);
+	
+	if(!HT_get(&tu->files, full_path, &file)) {
+		return file;
+	}
+	
+	if(is_regular_file(full_path)) {
+				
+		// found the file
+		printf("Found local include '%s'\n", full_path);
+		
+		file = init_file(tu, full_path, path);
+		free(full_path);
+		return file;
+	}
+	free(full_path);
+	
+	
+	// check local include directories next
+	VEC_EACH(&tu->local_inc_dirs, i, dir) {
+		full_path_bad = path_join(dir, path);
+		full_path = realpath(full_path_bad, NULL);
+		free(full_path_bad);
+		
+		// check the cache before hitting the filesystem
+		if(!HT_get(&tu->files, full_path, &file)) {
+			return file;
+		}
+		
+		if(is_regular_file(full_path)) {
+				
+			// found the file
+			printf("Found local include '%s'\n", full_path);
+			
+			file = init_file(tu, full_path, path);
+			free(full_path);
+			return file;
+		}
+		
+		free(full_path);	
+	}
+	
+	
+	return NULL;
+}
+
+void preprocess_file(cpp_tu_t* tu, cpp_context_t* ctx, char* path, char is_system) {
 	if(!ctx) {
 		cpp_tu_init(tu);
 	}
 	
-	cpp_token_list_t* tokens = lex_file(tu, path);
+	char* dir;
+	if(ctx && ctx->file) {
+		dir = ctx->file->dir;
+	}
+	else {
+		dir = "./";
+	}
 	
-	if(!tokens) return;
+	
+	cpp_file_t* file = cpp_tu_get_file(tu, dir, path, is_system);
+	if(!file) {
+		fprintf(stderr, "Could not find file '%s'\n", path);
+		return;
+	}
+	
+	if(!file->raw_tokens) {
+		file->raw_tokens = lex_file(tu, file->full_path);
+		if(!file->raw_tokens) return;
+	}
+	
 	
 	if(!ctx) {
 		ctx = calloc(1, sizeof(*ctx));
 		HT_init(&ctx->macros, 128);
+		ctx->file = file;
 		ctx->out = calloc(1, sizeof(*ctx->out));
 		tu->root_ctx = ctx;
 	}
 	
+	// probabl should just push a new context here, but meh
 	cpp_token_list_t* token_cache = ctx->tokens;
 	size_t index_cache = ctx->cur_index;
 	
 	ctx->cur_index = 0;
-	ctx->tokens = tokens;
+	ctx->tokens = file->raw_tokens;
 	
-	preprocess_token_list(tu, ctx, tokens);
+	preprocess_token_list(tu, ctx, file->raw_tokens);
 	
 	ctx->tokens = token_cache;
 	ctx->cur_index = index_cache;
@@ -938,7 +1065,7 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					
 					printf("***********#include '%s'\n", filename_buffer);
 					
-					preprocess_file(tu, ctx, filename_buffer);
+					preprocess_file(tu, ctx, filename_buffer, 0);
 					
 					state = _SKIP_REST;
 				}
@@ -966,7 +1093,7 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					
 					printf("***********#include <%s>\n", filename_buffer);
 
-					preprocess_file(tu, ctx, filename_buffer);
+					preprocess_file(tu, ctx, filename_buffer, 1);
 
 					state = _SKIP_REST;
 				}

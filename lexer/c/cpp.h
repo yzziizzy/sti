@@ -48,7 +48,25 @@ typedef struct cpp_stack_token {
 	char assoc; 
 } cpp_stack_token_t;
 
+typedef struct cpp_file {
+	char* name;
+	char* dir;
+	char* full_path;
+	
+	cpp_token_list_t* raw_tokens;
+	
+	unsigned int is_system_header : 1;
+	unsigned int is_guarded       : 1;
+	unsigned int already_included : 1;
+	
+	VEC(struct cpp_tile_t*) includes;
+	VEC(struct cpp_tile_t*) included_by;
+	
+} cpp_file_t;
+
 typedef struct cpp_context {
+	cpp_file_t* file;
+	
 	HT(cpp_macro_name_t*) macros; // very mutable
 	VEC(cpp_macro_def_t*) all_defs; // used for reference later
 	
@@ -97,9 +115,9 @@ typedef struct cpp_context {
 	X(_warning, "warning")
 
 
-
 typedef struct cpp_tu {
 	cpp_context_t* root_ctx;
+	HT(cpp_file_t*) files;
 	
 	VEC(char*) system_inc_dirs;
 	VEC(char*) local_inc_dirs;
@@ -114,7 +132,7 @@ typedef struct cpp_tu {
 
 
 cpp_token_list_t* lex_file(cpp_tu_t* tu, char* path);
-void preprocess_file(cpp_tu_t* tu, cpp_context_t* ctx, char* path);
+void preprocess_file(cpp_tu_t* tu, cpp_context_t* ctx, char* path, char is_system);
 void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* tokens);
 
 cpp_macro_def_t* get_macro_def(cpp_context_t* ctx, lexer_token_t* query);

@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
 	
 	cpp_tu_t* tu = calloc(1, sizeof(*tu));
 	
-	preprocess_file(tu, NULL, "./sample.c");
+	preprocess_file(tu, NULL, "./sample.c", 0);
 	
 	cpp_context_t* ctx = tu->root_ctx;
 	
