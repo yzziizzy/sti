@@ -22,5 +22,21 @@ X(A, wrap(foo), C, DD, EE FF)
 #endif
 
 
+#define FOO_LIST \
+	X(int, x) \
+	X(float, y)
+	
+	
+struct Foo {
+	#define X(a, b) a* b;
+	FOO_LIST
+	#undef X
+};
+
+X(1,2)
+
+#include "lexer.h"
+//#include <cpp.h>
+
 
 

@@ -9,9 +9,22 @@
 int main(int argc, char* argv[]) {
 	
 	
+	cpp_tu_t* tu = calloc(1, sizeof(*tu));
 	
+	preprocess_file(tu, NULL, "./sample.c");
 	
-	preprocess_file("./sample.c");
+	cpp_context_t* ctx = tu->root_ctx;
+	
+	printf("\noutput:\n");
+	VEC_EACH(&ctx->out->tokens, i, t) {
+		if(t->type == LEXER_TOK_COMMENT) {}
+		else if(t->type == LEXER_TOK_SPACE) printf(" ");
+		else printf("%s ", t->text);
+		
+		if(t->has_newline) printf("\n");
+	}
+	printf("\n");
+	
 	return 1;
 	
 	lexer_token_t t = {0};
