@@ -23,9 +23,10 @@ inline static size_t HT_nextPOT(size_t in) {
 }
 
 
-struct HT_Pointer_Type {}; // key's length is stated explicitly
-struct HT_Sizeof_Type {}; // key's length is determined by sizeof()
-struct HT_String_Type {}; // null terminated key pointer
+struct HT_Pointer_Type    {}; // key's length is stated explicitly
+struct HT_IntLiteral_Type {}; // key's length is determined by sizeof(), and can be passed in an int64
+struct HT_Sizeof_Type     {}; // key's length is determined by sizeof()
+struct HT_String_Type     {}; // null terminated key pointer
 
 struct HT_Option_None {};
 struct HT_Option_Literal {}; // keys are literal 64 bit values, not pointers to memory
@@ -170,21 +171,23 @@ int oaht_resize(struct HT_base_layout* ht, size_t newSize);
 // *val == NULL && return > 0  means the key was not found;
 int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp);
 int oaht_get_kptr(struct HT_base_layout* ht, void* key, void* val);
+int oaht_get_klit(struct HT_base_layout* ht, uint64_t key, void* val);
 
 #define HT_TYPECHECK(h, a, b) (void*)(1 ? a : (h)->meta[0].b)
 
 #define HT_get(h, key, valp) oaht_get_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep))
+#define HT_getn(h, key, valp) oaht_get_klit(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, valp, valTypep))
 
 #define HT_getp(h, key, valp) oaht_getp_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), (void**)(1 ? valp : &((h)->meta[0].valTypep)))
 
 
 int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val);
-int oaht_set_litn(struct HT_base_layout* ht, uint64_t key, void* val);
+int oaht_set_klit(struct HT_base_layout* ht, uint64_t key, void* val);
 #define HT_set(h, key, valp)  _Generic((h)->meta[0].keyTypeFlag, \
 	struct HT_String_Type: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, &valp, valTypep)), \
 	default: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, &valp, valTypep)) \
 )
-#define HT_setn(h, key, valp)  oaht_set_litn(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, valp, valTypep))
+#define HT_setn(h, key, valp)  oaht_set_klit(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, &valp, valTypep))
 
 /* doesn't work because the compiler is not smart enough to not typecheck the contents of non-chosen _Generic cases...
 #define HT_set(h, key, valp) _Generic(key, \

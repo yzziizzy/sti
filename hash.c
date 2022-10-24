@@ -138,6 +138,10 @@ int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 	return 0;
 }
 
+// zero for success
+int oaht_get_klit(struct HT_base_layout* ht, uint64_t key, void* val) {
+	return oaht_get_kptr(ht, &key, val);
+}
 
 int oaht_get_kptr(struct HT_base_layout* ht, void* key, void* val) {
 	void* p = NULL;
@@ -215,7 +219,7 @@ int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val) {
 }
 
 // zero for success
-int oaht_set_litn(struct HT_base_layout* ht, uint64_t key, void* val) {
+int oaht_set_klit(struct HT_base_layout* ht, uint64_t key, void* val) {
 	return oaht_set_kptr(ht, &key, val);
 }
 

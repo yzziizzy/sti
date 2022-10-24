@@ -219,23 +219,30 @@ int main(int argc, char* argv[]) {
 	}
 	if(test_hash) {
 		int fooval = 0xdeadbeef;
+		int barval = 0xfeedbeef;
 		int* foovalp;
 		int testval = 0;;
 		char* testkey = "foo";
 		
 		HT(int) foo;
 		
-		HT(int, int, Sizeof) bar;
+		HT(int, int) bar;
 		
 		HT_init(&foo, 32);
 		HT_init(&bar, 32);
 		
 		HT_set(&foo, "foo", fooval);
 		//HT_set(&foo, testkey, fooval);
-//		HT_setn(&bar, 64, &fooval);
 		HT_get(&foo, "foo", &testval);
+		printf("foo testval: %x\n", testval);
 		
-		printf("testval: %x\n", testval);
+
+		HT_setn(&bar, 64, barval);
+		testval = 0;
+		HT_getn(&bar, 64, &testval);
+
+		
+		printf("bar testval: %x\n", testval);
 	//	HT_set(&bar, 500, fooval);
 	//	HT_getp(&bar, 500, &foovalp);
 		
