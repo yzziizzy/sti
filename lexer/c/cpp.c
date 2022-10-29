@@ -10,48 +10,63 @@
 
 
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 
+#include "cpp_exp.c"
 
 
-void undef_macro(cpp_context_t* ctx, char* name);
+void undef_macro(cpp_tu_t* tu, char* name);
 
+
+#define CPP_STATE_LIST \
+	X(HASH) \
+	X(HASH_DEF) \
+	X(HASH_DEF_SP) \
+	X(HASH_DEF_SP_ID) \
+	X(HASH_DEF_SP_ID_LP) \
+	X(MACRO_ARGS) \
+	X(MACRO_ARGS_ELIPSIS) \
+	X(MACRO_ARGS_RP) \
+	X(MACRO_BODY) \
+	X(FOUND_NAME) \
+	X(INV_ARGS) \
+	\
+	X(HASH_IFDEF) \
+	X(HASH_IFDEF_ID) \
+	X(HASH_IFNDEF) \
+	X(HASH_IFNDEF_ID) \
+	X(HASH_IF) \
+	X(HASH_ELSE) \
+	X(HASH_ELSEIF) \
+	X(HASH_ENDIF) \
+	\
+	X(HASH_ERROR) \
+	X(HASH_WARNING) \
+	\
+	X(HASH_INC) \
+	X(HASH_INC_SP) \
+	X(HASH_INC_SP_LT) \
+	\
+	X(HASH_UNDEF) \
+	X(HASH_UNDEF_SP) \
+	\
+	X(SKIP_REST)
+	
 enum {
 	_NONE = 0,
-	_HASH, // 1
-	_HASH_DEF, // 2
-	_HASH_DEF_SP, // 3
-	_HASH_DEF_SP_ID, // 4
-	_HASH_DEF_SP_ID_LP, // 5
-	_MACRO_ARGS, // 6
-	_MACRO_ARGS_ELIPSIS, // 7
-	_MACRO_ARGS_RP, // 8
-	_MACRO_BODY, // 9
-	_FOUND_NAME, // 10 
-	_INV_ARGS, // 11	
-	
-	_HASH_IFDEF = 100, // 0
-	_HASH_IFDEF_ID, // 1
-	_HASH_IFNDEF, // 2
-	_HASH_IFNDEF_ID, // 3
-	_HASH_IF, // 4
-	_HASH_ELSE, // 5
-	_HASH_ELSEIF, // 6
-	_HASH_ENDIF, // 7
-	
-	_HASH_ERROR = 200, // 0
-	_HASH_WARNING, // 1
-	
-	_HASH_INC, // 2
-	_HASH_INC_SP, // 3
-	_HASH_INC_SP_LT, // 4
-	
-	_HASH_UNDEF = 300, // 0
-	_HASH_UNDEF_SP, // 1
-	
-	_SKIP_REST = 999,
+	#define X(a, ...) _##a,
+		CPP_STATE_LIST
+	#undef X
 };
 
+
+char* state_names[] = {
+	[_NONE] = "NONE",
+	#define X(a, ...) [_##a] = #a,
+		CPP_STATE_LIST
+	#undef X
+};
 
 
 static void inject_space(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* list) {
@@ -161,22 +176,6 @@ static void inject_pasted(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* li
 	free(tok.text);
 }
 
-int is_defined(cpp_context_t* ctx, lexer_token_t* name) {
-	return NULL != get_macro_def(ctx, name);
-}
-
-int is_integer(lexer_token_t* t, long* val) {
-	char* end;
-	long l = strtol(t->text, &end, 0);
-	if(end != t->text + strlen(t->text)) {
-		if(val) *val = 0;
-		return 0; // not a valid integer
-	}
-	
-	if(val) *val = l;
-	return 1;
-}
-
 
 cpp_token_list_t* lex_file(cpp_tu_t* tu, char* path) {
 	lexer_source_t* src = calloc(1, sizeof(*src));
@@ -200,7 +199,7 @@ cpp_token_list_t* lex_file(cpp_tu_t* tu, char* path) {
 	tok.alloc = 256;
 	tok.text = malloc(tok.alloc * sizeof(*tok.text));
 	
-	for(int i = 0; i < 10800; i++) { // DEBUG: sanity limits
+	for(int i = 0; i < 2000000000; i++) { // DEBUG: sanity limits
 		is_token(src, &tok);
 		if(tok.len == 0) break;
 		
@@ -216,271 +215,10 @@ cpp_token_list_t* lex_file(cpp_tu_t* tu, char* path) {
 	return tokens;
 }
 
-// name, arity, precedence, associativity (L = 0, R = 1)
-#define OPERATOR_LIST \
-	X(PLUS, 2, 40, 0) \
-	X(MINUS, 2, 40, 0) \
-	X(MUL, 2, 30, 0) \
-	X(DIV, 2, 30, 0) \
-	X(MOD, 2, 30, 0) \
-	X(BIT_AND, 2, 80, 0) \
-	X(BIT_OR, 2, 82, 0) \
-	X(BIT_NOT, 1, 20, 1) \
-	X(BIT_XOR, 2, 81, 0) \
-	X(SHR, 2, 50, 0) \
-	X(SHL, 2, 50, 0) \
-	X(LOGIC_AND, 2, 90, 0) \
-	X(LOGIC_OR, 2, 91, 0) \
-	X(LOGIC_NOT, 1, 20, 1) \
-	X(GT, 2, 60, 0) \
-	X(LT, 2, 60, 0) \
-	X(GTE, 2, 60, 0) \
-	X(LTE, 2, 60, 0) \
-	X(NEQ, 2, 70, 0) \
-	X(EQ, 2, 70, 0) \
-	X(UNARY_NEG, 1, 20, 1) \
-	X(DEFINED, 1, 10, 1) \
-	X(LPAREN, -1, 127, 0) \
-	X(RPAREN, -1, -1, 0) \
-
-
-#define X(a, ...) OP_##a,
-enum {
-	OP_NONE = 0,
-	OPERATOR_LIST
-};
-#undef X
-
-#define X(a, ...) [OP_##a] = #a,
-char* operator_names[] = {
-	[OP_NONE] = "none",
-	OPERATOR_LIST
-};
-#undef X
-
-#define X(a, b, c, d) [OP_##a] = {OP_##a, b, c, d},
-cpp_stack_token_t operator_data[] = {
-	[OP_NONE] = {-1, 0, 127, 0},
-	OPERATOR_LIST
-};
-#undef X
-
-
-int probe_operator_type(lexer_token_t* t) {
-	char* s = t->text;
-	int type = OP_NONE;
-	
-	switch(s[0]) {
-		case '=':
-			switch(s[1]) {
-				case '=': type = OP_EQ; break;
-			}
-			break;
-		case '<':
-			switch(s[1]) {
-				case '<': type = OP_SHL; break;
-				case '=': type = OP_LTE; break;
-				default: type = OP_LT; break;
-			}
-			break;
-		case '>':
-			switch(s[1]) {
-				case '>': type = OP_SHR; break;
-				case '=': type = OP_GTE; break;
-				default: type = OP_GT; break;
-			}
-			break;
-		case '!':
-			switch(s[1]) {
-				case '=': type = OP_NEQ; break;
-				default: type = OP_LOGIC_NOT; break;
-			}
-			break;
-		case '~': type = OP_BIT_NOT; break;
-		case '^': type = OP_BIT_XOR; break;
-		case '|':
-			switch(s[1]) {
-				case '|': type = OP_LOGIC_OR; break;
-				default: type = OP_BIT_OR; break;
-			}
-			break;
-		case '&':
-			switch(s[1]) {
-				case '&': type = OP_LOGIC_AND; break;
-				default: type = OP_BIT_AND; break;
-			}
-			break;
-		case '/': type = OP_DIV; break;
-		case '*': type = OP_MUL; break;
-		case '%': type = OP_MOD; break;
-		case '-': type = OP_MINUS; break;
-		case '+': type = OP_PLUS; break;
-		case ')': type = OP_RPAREN; break;
-		case '(': type = OP_LPAREN; break;
-	}
-	
-	return type;
-}
-
-
-void reduce(cpp_context_t* ctx) {
-	int op;
-	
-	VEC_POP(&ctx->oper_stack, op);
-	
-	long lval, rval, res = 0;
-	lexer_token_t* ltok, *rtok;
-	
-	if(operator_data[op].arity > 0) {
-		VEC_POP(&ctx->value_stack, rtok);
-		is_integer(rtok, &rval);
-	}
-	
-	if(operator_data[op].arity > 1) {
-		VEC_POP(&ctx->value_stack, ltok);
-		is_integer(ltok, &lval);
-	}
-	
-	switch(op) {
-		case OP_EQ: res = lval == rval; break;
-		case OP_NEQ: res = lval != rval; break;
-		case OP_GTE: res = lval >= rval; break;
-		case OP_LTE: res = lval <= rval; break;
-		case OP_GT: res = lval > rval; break;
-		case OP_LT: res = lval < rval; break;
-		case OP_PLUS: res = lval + rval; break;
-		case OP_MINUS: res = lval - rval; break;
-		case OP_MUL: res = lval * rval; break;
-		case OP_BIT_NOT: res = ~rval; break;
-		case OP_LOGIC_NOT: res = !rval; break;
-		case OP_LOGIC_AND: res = lval && rval; break;
-		case OP_LOGIC_OR: res = lval || rval; break;
-		case OP_BIT_AND: res = lval & rval; break;
-		case OP_BIT_OR: res = lval | rval; break;
-		case OP_BIT_XOR: res = lval ^ rval; break;
-		case OP_SHR: res = lval >> rval; break;
-		case OP_SHL: res = lval << rval; break;
-		case OP_UNARY_NEG: res = -rval; break;
-		
-		// these are just hacked because this parser doesn't handle logical operator shortcutting
-		case OP_DIV: rval != 0 ? res = lval / rval : 0; break;
-		case OP_MOD: rval != 0 ? res = lval % rval : 0; break;
-		
-		case OP_DEFINED:
-			res = is_defined(ctx, rtok);
-			break;
-		
-		case OP_LPAREN:
-			printf("     evaluating lparen!!!!\n");
-			return;
-			
-		case OP_RPAREN:
-			printf("     evaluating rparen!!!!\n");			
-			return;
-		
-	}
-
-	// BUG: this leaks...
-	lexer_token_t* res_tok = malloc(sizeof(*res_tok));
-	res_tok->type = LEXER_TOK_NUMBER;
-	res_tok->text = sprintfdup("%ld", res);
-
-	VEC_PUSH(&ctx->value_stack, res_tok);
-}
-
-
-long eval_exp(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* exp) {
-	
-	char* _defined = strint_(tu->str_table, "defined");
-	
-	int was_oper = 1;
-	
-	VEC_TRUNC(&ctx->oper_stack);
-	VEC_TRUNC(&ctx->value_stack);
-	
-	
-	VEC_EACH(&exp->tokens, ni, n) {
-	
-		if(n->type == LEXER_TOK_NUMBER || n->type == LEXER_TOK_IDENT) {
-			VEC_PUSH(&ctx->value_stack, n);
-			was_oper = 0;
-		}
-		
-		if(n->type == LEXER_TOK_PUNCT) {
-			// check for operators, rest are 0
-			
-			int op = probe_operator_type(n);
-			
-			if(op == OP_LPAREN) {
-				VEC_PUSH(&ctx->oper_stack, op);
-				printf("  pushing lparen to the stack\n");
-				was_oper = 1;
-			}
-			else if(op == OP_RPAREN) {
-				printf("     executing rparen\n");
-				do {
-					int top = VEC_TAIL(&ctx->oper_stack);
-					printf("       - %s\n", operator_names[top]);
-					
-					if(top == OP_LPAREN) {
-						printf("       - found lparen, exiting loop (top value: --)\n" /*VEC_TAIL(&ctx->value_stack)*/);
-						VEC_POP1(&ctx->oper_stack);
-						break;
-					}
-					
-					reduce(ctx);
-					
-				} while(VEC_LEN(&ctx->oper_stack));
-				
-				was_oper = 0;
-			}
-			else if(op == OP_MINUS && was_oper) {
-				VEC_PUSH(&ctx->oper_stack, OP_UNARY_NEG);
-				printf("  pushing operator UNARY_NEG to the stack\n");
-			}
-			else if(op > 0) {
-				int top = 0;
-				if(VEC_LEN(&ctx->oper_stack)) 
-					top = VEC_TAIL(&ctx->oper_stack);
-				
-				printf("top: %d, op: %d\n", top, op);
-				if(operator_data[top].prec < operator_data[op].prec) {
-					// if(top.prec == r->prec && r->assoc == STI_OP_ASSOC_LEFT) break;
-					reduce(ctx);
-				}
-				
-				VEC_PUSH(&ctx->oper_stack, op);
-				printf("  pushing operator %s to the stack\n", operator_names[op]);
-				was_oper = 1;
-			}
-			else {
-				VEC_PUSH(&ctx->value_stack, n);
-//				printf("  pushing 0 to the stack due to '%s'\n", n->text);
-				was_oper = 0;
-			}
-		}
-		
-	}
-	
-	
-	// finish off the operator stack
-	while(VEC_LEN(&ctx->oper_stack)) {
-		reduce(ctx);
-	}
-	
-	lexer_token_t* final_tok;
-	long final = 0; 
-	VEC_POP(&ctx->value_stack, final_tok);
-	
-	final = strtol(final_tok->text, NULL, 0);
-
-	
-	return final;
-}
-
 
 void cpp_tu_init(cpp_tu_t* tu) {
 	HT_init(&tu->files, 64);
+	HT_init(&tu->macros, 128);
 	
 	string_internment_table_init(&tu->str_table);
 	
@@ -488,6 +226,11 @@ void cpp_tu_init(cpp_tu_t* tu) {
 	CPP_STRING_CACHE_LIST
 #undef X
 
+	tu->fn_buf_len = 0;
+	tu->fn_buf_alloc = 512;
+	tu->filename_buffer = malloc(sizeof(*tu->filename_buffer) * tu->fn_buf_alloc);
+	
+	tu->initialized = 1;
 }
 
 static int is_regular_file(char* path) {
@@ -596,14 +339,16 @@ cpp_file_t* cpp_tu_get_file(cpp_tu_t* tu, char* cwd, char* path, char is_system)
 	return NULL;
 }
 
-void preprocess_file(cpp_tu_t* tu, cpp_context_t* ctx, char* path, char is_system) {
-	if(!ctx) {
+void preprocess_file(cpp_tu_t* tu, cpp_context_t* parent, char* path, char is_system) {
+	int is_first = 0;
+	if(!tu->initialized) {
 		cpp_tu_init(tu);
+		is_first = 1;
 	}
 	
 	char* dir;
-	if(ctx && ctx->file) {
-		dir = ctx->file->dir;
+	if(parent && parent->file) {
+		dir = parent->file->dir;
 	}
 	else {
 		dir = "./";
@@ -616,31 +361,30 @@ void preprocess_file(cpp_tu_t* tu, cpp_context_t* ctx, char* path, char is_syste
 		return;
 	}
 	
+	// lex the file on first load
 	if(!file->raw_tokens) {
 		file->raw_tokens = lex_file(tu, file->full_path);
 		if(!file->raw_tokens) return;
 	}
 	
 	
-	if(!ctx) {
-		ctx = calloc(1, sizeof(*ctx));
-		HT_init(&ctx->macros, 128);
-		ctx->file = file;
-		ctx->out = calloc(1, sizeof(*ctx->out));
-		tu->root_ctx = ctx;
-	}
+	// wrong. macro definitions need to persist out of included files
+	cpp_context_t* ctx = calloc(1, sizeof(*ctx));
+	if(is_first) tu->root_ctx = ctx;
 	
-	// probabl should just push a new context here, but meh
-	cpp_token_list_t* token_cache = ctx->tokens;
-	size_t index_cache = ctx->cur_index;
-	
-	ctx->cur_index = 0;
+
+	ctx->file = file;
+	ctx->out = calloc(1, sizeof(*ctx->out));
+	ctx->parent = parent;
+	if(parent) VEC_PUSH(&parent->children, ctx);
 	ctx->tokens = file->raw_tokens;
 	
 	preprocess_token_list(tu, ctx, file->raw_tokens);
 	
-	ctx->tokens = token_cache;
-	ctx->cur_index = index_cache;
+	// copy the expanded output into the including file
+	if(parent) {
+		VEC_CAT(&parent->out->tokens, &ctx->out->tokens);
+	}
 	
 	return;
 }
@@ -652,12 +396,6 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 #define X(a, b, ...) char* a = tu->a;
 	CPP_STRING_CACHE_LIST
 #undef X
-	
-
-	
-	long fn_buf_len = 0;
-	long fn_buf_alloc = 512;
-	char* filename_buffer = malloc(sizeof(*filename_buffer) * fn_buf_alloc);
 	
 	cpp_macro_name_t* mn;
 	cpp_macro_def_t* m;
@@ -671,14 +409,26 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 	
 	int cond_depth = 0;
 	int out_enable = 1; // don't output anything for failed conditionals
-		
+	int highest_enabled_level = 0;
+	int highest_disabled_level = 99999999;
+	VEC(char) cond_stack;
+	VEC_INIT(&cond_stack);	
+	VEC_PUSH(&cond_stack, 1);	
+	
 	int state = _NONE;
 	
 	int sanity = 0;
 	
 	VEC_EACH(&tokens->tokens, ni, n) {
-		printf(" %s {%ld} p token list loop [%s] %d\n", out_enable ? "" : "X", ni, n->type == LEXER_TOK_SPACE ? " " : n->text, state);
-		if(sanity++ > 400) break;
+		printf(" %s [cd:%d] {%ld} p token list loop [%s] %s     l:c %d:%d\n", 
+			out_enable ? "E" : "X", 
+			cond_depth, 
+			ni, 
+			n->type == LEXER_TOK_SPACE ? " " : n->text, 
+			state_names[state],
+			n->start_line, n->start_col
+			);
+//		if(sanity++ > 400) break;
 		
 		switch(state) {
 			case _NONE:
@@ -722,14 +472,14 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					state = _HASH_DEF_SP;
 				}
 				else {
-					fprintf(stderr, "Whitespace is required after #define at %d:%d\n", n->start_line, n->start_col);
+					fprintf(stderr, "Whitespace is required after #define at %s:%d:%d\n", ctx->file->full_path, n->start_line, n->start_col);
 					state = _NONE;
 				}
 				break;
 			
 			case _HASH_DEF_SP:
 				if(n->type != LEXER_TOK_IDENT) {
-					fprintf(stderr, "An Identifier is required after #define at %d:%d\n", n->start_line, n->start_col);
+					fprintf(stderr, "An Identifier is required after #define at %s:%d:%d\n", ctx->file->full_path, n->start_line, n->start_col);
 					state = _NONE;
 				}
 				
@@ -737,13 +487,13 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				if(out_enable) {
 					m->name = n->text;
 					
-					if(HT_get(&ctx->macros, n->text, &mn)) {
+					if(HT_get(&tu->macros, n->text, &mn)) {
 						mn = calloc(1, sizeof(*mn));
-						HT_set(&ctx->macros, n->text, mn);
+						HT_set(&tu->macros, n->text, mn);
 					}
 					
 					VEC_PUSH(&mn->defs, m);
-					VEC_PUSH(&ctx->all_defs, m);
+					VEC_PUSH(&tu->all_defs, m);
 				}
 				
 				state = _HASH_DEF_SP_ID;
@@ -754,7 +504,15 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					state = _NONE;
 					break;
 				}
-				if(n->type == LEXER_TOK_SPACE) break;
+				
+				// spaces are not allowed between the macro name and the fn parens
+				if(n->type == LEXER_TOK_SPACE) {
+					if(out_enable)
+						m->obj_like = 1;
+					
+					state = _MACRO_BODY;
+				}
+				
 				if(n->text == _lparen) {
 					// function-like macro
 //					printf("fn-like macro\n");
@@ -779,7 +537,7 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				
 			case _MACRO_ARGS:
 				if(n->has_newline) {
-					fprintf(stderr, "Unexpected linebreak at %d:%d\n", n->start_line, n->start_col);
+					fprintf(stderr, "Unexpected linebreak at %s:%d:%d\n", ctx->file->full_path, n->start_line, n->start_col);
 					state = _NONE;
 					break;
 				}
@@ -803,7 +561,7 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 						cached_arg = 0;
 					}
 					else {
-						fprintf(stderr, "An argument name identifier is required at %d:%d\n", n->start_line, n->start_col);
+						fprintf(stderr, "An argument name identifier is required at %s:%d:%d\n", ctx->file->full_path, n->start_line, n->start_col);
 					}
 				}
 				else if(n->text == _elipsis) {
@@ -818,7 +576,8 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					state = _MACRO_ARGS_ELIPSIS;
 				}
 				else if(n->type != LEXER_TOK_SPACE) {
-					fprintf(stderr, "Unexpected token '%s' at %d:%d\n", n->text, n->start_line, n->start_col);
+					fprintf(stderr, "Unexpected token '%s' at %s:%d:%d (%d)\n", n->text, ctx->file->full_path, n->start_line, n->start_col, __LINE__);
+					exit(1);
 				}
 				break;
 
@@ -827,7 +586,7 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					state = _MACRO_ARGS_RP;
 				}
 				else if(n->type != LEXER_TOK_SPACE) {
-					fprintf(stderr, "Unexpected token '%s' at %d:%d\n", n->text, n->start_line, n->start_col);
+					fprintf(stderr, "Unexpected token '%s' at %s:%d:%d (%d)\n", n->text, ctx->file->full_path, n->start_line, n->start_col, __LINE__);
 				}
 				break;
 			
@@ -867,7 +626,11 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				
 							
 			case _HASH_UNDEF:
-			printf("**********************undef\n");
+				if(!out_enable) {
+					state = _SKIP_REST;
+					break;
+				}
+				
 				if(n->type == LEXER_TOK_SPACE) {
 					state = _HASH_UNDEF_SP;
 				}
@@ -882,8 +645,8 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					fprintf(stderr, "An Identifier is required after #undef at %d:%d\n", n->start_line, n->start_col);
 					state = _NONE;
 				}
-				printf("   doing undef for %s;\n", n->text);
-				undef_macro(ctx, n->text);			
+				
+				undef_macro(tu, n->text);			
 				
 				state = _SKIP_REST;
 				break;
@@ -937,7 +700,15 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				
 			case _HASH_IFDEF:
 				if(n->type == LEXER_TOK_IDENT) {
-					if(!is_defined(ctx, n)) {
+					char should_out_enable = is_defined(tu, n);
+					
+					VEC_PUSH(&cond_stack, should_out_enable);
+					
+					if(!should_out_enable) {
+						highest_disabled_level = MIN(cond_depth, highest_disabled_level);
+					}
+					
+					if(out_enable && !should_out_enable) {
 						out_enable = 0;
 					}
 					
@@ -950,7 +721,15 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				
 			case _HASH_IFNDEF:
 				if(n->type == LEXER_TOK_IDENT) {
-					if(is_defined(ctx, n)) {
+					char should_out_enable = !is_defined(tu, n);
+					
+					VEC_PUSH(&cond_stack, should_out_enable);
+					
+					if(!should_out_enable) {
+						highest_disabled_level = MIN(cond_depth, highest_disabled_level);
+					}
+					
+					if(out_enable && !should_out_enable) {
 						out_enable = 0;
 					}
 					
@@ -963,28 +742,57 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 
 				
 			case _HASH_ELSE:
+//				printf("else: cond_depth: %d, hel: %d at %d:%d\n", cond_depth, highest_enabled_level, n->start_line, n->start_col);
+//				printf("  pre out_enable: %d\n", out_enable);
+				
 				if(cond_depth == 0) {
 					fprintf(stderr, "Found unmatched #else\n");
 				}
-				else if(cond_depth == 1) {
-					out_enable = !out_enable;
+				else {
+					char x = VEC_TAIL(&cond_stack);
+					
+					out_enable = !x;
 				}
+				
+//				printf("  out_enable: %d\n", out_enable);
+//				printf("  hel: %d\n\n", highest_enabled_level);
 				
 				if(n->has_newline) state = _NONE;
 				else state = _SKIP_REST;
 				break;
 				
 			case _HASH_ENDIF:
+				printf("\nendif: cond_depth: %d, hel: %d at %d:%d\n", cond_depth, highest_enabled_level, n->start_line, n->start_col);
+				printf("  pre out_enable: %d\n", out_enable);
 				if(cond_depth == 0) {
 					fprintf(stderr, "Found unmatched #endif\n");
-				}
-				else if(cond_depth == 1) {
-					cond_depth = 0;
 					out_enable = 1;
 				}
 				else {
-					cond_depth--;
+					printf("stack len: %ld\n", VEC_LEN(&cond_stack));
+					char x;
+//					if(VEC_LEN(&cond_stack) > 1) {
+						VEC_POP1(&cond_stack);
+						x = VEC_TAIL(&cond_stack);
+//					}
+//					else {
+//						x = 1;
+//					}
+					printf("cond_depth: %d, x: %d\n", cond_depth, x);
+					
+					if(x) out_enable = 1;
+					
+					if(!x) {
+						highest_disabled_level = MIN(cond_depth, highest_disabled_level);
+					}
 				}
+				
+				
+				
+//				printf("  out_enable: %d\n", out_enable);
+//				printf("  hel: %d\n\n", highest_enabled_level);
+				
+				cond_depth--;
 				
 				if(n->has_newline) state = _NONE;
 				else state = _SKIP_REST;
@@ -997,11 +805,11 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 			--------------------------------------*/
 			
 			case _HASH_IF:
-				if(!out_enable) { // don't bother evaluating the expression if output is disabled at a higher level anyway
-					cond_depth++;
-					state = _SKIP_REST;
-					break;
-				}
+//				if(!out_enable) { // don't bother evaluating the expression if output is disabled at a higher level anyway
+//					cond_depth++;
+//					state = _SKIP_REST;
+//					break;
+//				}
 			
 				// buffer up all the expression tokens first
 				if(n->type != LEXER_TOK_SPACE && n->type != LEXER_TOK_COMMENT) {
@@ -1011,13 +819,32 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				
 				// expand macros and do the evaluation at the end of the line
 				if(n->has_newline) {
-					
+//					printf("if: cond_depth: %d, hel: %d at %d:%d\n", cond_depth, highest_enabled_level, n->start_line, n->start_col);
 					// TODO: expand macros
 					cpp_token_list_t* exp_exp = expand_token_list(tu, ctx, &ctx->exp_buffer);
 					
 					long final = eval_exp(tu, ctx, exp_exp);
+					
+					char should_out_enable = final != 0;
+//					printf("  should_enable: %d\n", should_out_enable);
+					
+					VEC_PUSH(&cond_stack, should_out_enable);
+					
+					
+					if(!should_out_enable) {
+						highest_disabled_level = MIN(cond_depth, highest_disabled_level);
+					}
+					
+					
+					// BUG: completely wrong
+					if(out_enable && !should_out_enable) {
+						out_enable = 0;
+					}
+					
+//					printf("  out_enable: %d\n\n", out_enable);
+					
+					
 					cond_depth++;
-					out_enable = final != 0;
 					
 					VEC_FREE(&exp_exp->tokens);
 					free(exp_exp);
@@ -1037,7 +864,12 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 			//   The #include handing code takes advantage of this in parsing filenames literally.
 			
 			case _HASH_INC: 
-				fn_buf_len = 0;
+				if(!out_enable) {
+					state = _SKIP_REST;
+					break;
+				}
+				
+				tu->fn_buf_len = 0;
 				if(n->type == LEXER_TOK_SPACE) {
 					state = _HASH_INC_SP;
 				}
@@ -1053,19 +885,16 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				}
 				else if(n->type == LEXER_TOK_STRING) { // normal file name
 					// strip the double quotes out
-					if(fn_buf_alloc < n->len) {
-						fn_buf_alloc = fn_buf_alloc * 2 + n->len;
-						filename_buffer = realloc(filename_buffer, sizeof(*filename_buffer) * fn_buf_alloc);
+					if(tu->fn_buf_alloc < n->len) {
+						tu->fn_buf_alloc = tu->fn_buf_alloc * 2 + n->len;
+						tu->filename_buffer = realloc(tu->filename_buffer, sizeof(*tu->filename_buffer) * tu->fn_buf_alloc);
 					}
 						
-					strncpy(filename_buffer, n->text + 1, n->len - 2);
-					fn_buf_len = n->len - 2;
-					filename_buffer[fn_buf_len] = 0; 
+					strncpy(tu->filename_buffer, n->text + 1, n->len - 2);
+					tu->fn_buf_len = n->len - 2;
+					tu->filename_buffer[tu->fn_buf_len] = 0; 
 					
-					
-					printf("***********#include '%s'\n", filename_buffer);
-					
-					preprocess_file(tu, ctx, filename_buffer, 0);
+					preprocess_file(tu, ctx, tu->filename_buffer, 0);
 					
 					state = _SKIP_REST;
 				}
@@ -1077,7 +906,7 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					state = _SKIP_REST;
 				}
 				else {
-					fprintf(stderr, "Invalid token after #include (2): '%s'\n", n->text);
+					fprintf(stderr, "Invalid token after #include (2): '%s' at %s:%d:%d\n", n->text, ctx->file->full_path, n->start_line, n->start_col);
 					state = _SKIP_REST;
 				}
 				break;
@@ -1086,33 +915,29 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				// concat all the token text before reaching another doublequote
 				// escapes are ignored
 				
-				printf("NYI: system includes.\n");
+				
 				if(n->text == _gt) {
-					
 					// do the include
-					
-					printf("***********#include <%s>\n", filename_buffer);
-
-					preprocess_file(tu, ctx, filename_buffer, 1);
+					preprocess_file(tu, ctx, tu->filename_buffer, 1);
 
 					state = _SKIP_REST;
 				}
 				else if(n->has_newline) {
 					// issue warning,
 					// do the include
-					
+					fprintf(stderr, "Unexpected EOL in #include at %d:%d\n", n->start_line, n->start_col);
 					state = _NONE;
 				}
 				else {
 					// concat tokens
-					if(fn_buf_alloc < fn_buf_len + n->len + 1) {
-						fn_buf_alloc = fn_buf_alloc * 2 + n->len;
-						filename_buffer = realloc(filename_buffer, sizeof(*filename_buffer) * fn_buf_alloc);
+					if(tu->fn_buf_alloc < tu->fn_buf_len + n->len + 1) {
+						tu->fn_buf_alloc = tu->fn_buf_alloc * 2 + n->len;
+						tu->filename_buffer = realloc(tu->filename_buffer, sizeof(*tu->filename_buffer) * tu->fn_buf_alloc);
 					}
 					
-					strncpy(filename_buffer + fn_buf_len, n->text, n->len);
-					fn_buf_len += n->len;
-					filename_buffer[fn_buf_len] = 0; 
+					strncpy(tu->filename_buffer + tu->fn_buf_len, n->text, n->len);
+					tu->fn_buf_len += n->len;
+					tu->filename_buffer[tu->fn_buf_len] = 0; 
 				}
 				break;
 				
@@ -1133,7 +958,6 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 		was_nl = n->has_newline;
 	}// for
 	
-	free(filename_buffer);
 }
 
 // returns a raw invocation struct with no replacements 
@@ -1178,6 +1002,9 @@ cpp_macro_invocation_t* collect_invocation_args(cpp_tu_t* tu, cpp_context_t* ctx
 					
 					printf("No parens found for macro invocation '%s', not expanding (found '%s')\n", m->name, n->text);
 					return NULL;
+				}
+				else {
+					printf("     skipping space\n");
 				}
 				
 				 // skip witespace between the name and the opening paren 
@@ -1272,12 +1099,12 @@ lexer_token_t* peek_token_raw(cpp_context_t* ctx) {
 }
 
 
-cpp_macro_def_t* get_macro_def(cpp_context_t* ctx, lexer_token_t* query) {
-	if(!ctx) return NULL;
+cpp_macro_def_t* get_macro_def(cpp_tu_t* tu, lexer_token_t* query) {
+//	if(!tu) return NULL;
 	
 	cpp_macro_name_t* name = NULL;
-	if(HT_get(&ctx->macros, query->text, &name) || !name) {
-		return get_macro_def(ctx->parent, query);
+	if(HT_get(&tu->macros, query->text, &name) || !name) {
+		return NULL; //return get_macro_def(tu->parent, query);
 	}
 	
 	return VEC_TAIL(&name->defs);
@@ -1302,10 +1129,10 @@ void expand_token(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* out, cpp_t
 	
 	lexer_token_t* t = VEC_ITEM(&in->tokens, *cursor);
 	
-	cpp_macro_def_t* m = get_macro_def(ctx, t);
+	cpp_macro_def_t* m = get_macro_def(tu, t);
 	if(!m) {
 		// just a regular token. push it to the output
-		printf("    regular token, pushing '%s' to output\n", t->type == LEXER_TOK_SPACE ? " " : t->text);
+//		printf("    regular token, pushing '%s' to output\n", t->type == LEXER_TOK_SPACE ? " " : t->text);
 		VEC_PUSH(&out->tokens, t);
 	}
 	else if(m->fn_like) {
@@ -1363,7 +1190,7 @@ ssize_t arg_index(cpp_macro_def_t* m, lexer_token_t* name) {
 lexer_token_t* next_real_token(cpp_token_list_t* list, size_t* cursor) {
 	
 	size_t i = *cursor + 1;
-	
+	printf("li: %ld, len: %ld\n", i, VEC_LEN(&list->tokens));
 	for(; i < VEC_LEN(&list->tokens); i++) {
 		lexer_token_t* t = VEC_ITEM(&list->tokens, i);
 		
@@ -1371,6 +1198,8 @@ lexer_token_t* next_real_token(cpp_token_list_t* list, size_t* cursor) {
 			*cursor = i;
 			return t;
 		}
+		
+		printf("i: %ld \n", i);
 	}
 	
 	return NULL;
@@ -1408,7 +1237,7 @@ void expand_fnlike_macro(cpp_tu_t* tu, cpp_context_t* ctx, cpp_macro_invocation_
 			size_t next_ind = bti;
 			lexer_token_t* bt_next = next_real_token(&m->body, &next_ind);
 			
-			if(bt_next->text == _concat) {
+			if(bt_next && bt_next->text == _concat) {
 				printf("   Token pasting operator encountered\n");
 				
 				if(bti >= VEC_LEN(&m->body.tokens) - 2) {
@@ -1599,18 +1428,18 @@ void expand_fnlike_macro(cpp_tu_t* tu, cpp_context_t* ctx, cpp_macro_invocation_
 }
 
 
-void undef_macro(cpp_context_t* ctx, char* name) {
+void undef_macro(cpp_tu_t* tu, char* name) {
 	cpp_macro_name_t* mn;
 	
-	if(!HT_get(&ctx->macros, name, &mn)) {
+	if(!HT_get(&tu->macros, name, &mn)) {
 		printf("  undefining %s\n", name);
 		VEC_FREE(&mn->defs);
 		free(mn);
 	
-		HT_delete(&ctx->macros, name);
+		HT_delete(&tu->macros, name);
 	}
 	
-	if(ctx->parent) undef_macro(ctx->parent, name);
+//	if(ctx->parent) undef_macro(ctx->parent, name);
 }
 
 

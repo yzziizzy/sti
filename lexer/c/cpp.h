@@ -53,7 +53,8 @@ typedef struct cpp_file {
 	char* dir;
 	char* full_path;
 	
-	cpp_token_list_t* raw_tokens;
+	cpp_token_list_t* raw_tokens; // used for unguarded files
+	cpp_token_list_t* expanded_tokens; // used for guarded files
 	
 	unsigned int is_system_header : 1;
 	unsigned int is_guarded       : 1;
@@ -67,8 +68,7 @@ typedef struct cpp_file {
 typedef struct cpp_context {
 	cpp_file_t* file;
 	
-	HT(cpp_macro_name_t*) macros; // very mutable
-	VEC(cpp_macro_def_t*) all_defs; // used for reference later
+
 	
 	cpp_token_list_t* tokens;
 	cpp_token_list_t* out;
@@ -80,6 +80,7 @@ typedef struct cpp_context {
 	cpp_token_list_t exp_buffer;
 	
 	struct cpp_context* parent;
+	VEC(struct cpp_context*) children;
 } cpp_context_t;
 
 
@@ -116,6 +117,11 @@ typedef struct cpp_context {
 
 
 typedef struct cpp_tu {
+	char initialized;
+	
+	HT(cpp_macro_name_t*) macros; // very mutable
+	VEC(cpp_macro_def_t*) all_defs; // used for reference later
+
 	cpp_context_t* root_ctx;
 	HT(cpp_file_t*) files;
 	
@@ -127,15 +133,20 @@ typedef struct cpp_tu {
 #define X(a, ...) char* a;
 	CPP_STRING_CACHE_LIST
 #undef X
+
+	long fn_buf_len;
+	long fn_buf_alloc;
+	char* filename_buffer;
+
 } cpp_tu_t;
 
 
 
 cpp_token_list_t* lex_file(cpp_tu_t* tu, char* path);
-void preprocess_file(cpp_tu_t* tu, cpp_context_t* ctx, char* path, char is_system);
+void preprocess_file(cpp_tu_t* tu, cpp_context_t* parent, char* path, char is_system);
 void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* tokens);
 
-cpp_macro_def_t* get_macro_def(cpp_context_t* ctx, lexer_token_t* query);
+cpp_macro_def_t* get_macro_def(cpp_tu_t* tu, lexer_token_t* query);
 void expand_fnlike_macro(cpp_tu_t* tu, cpp_context_t* ctx, cpp_macro_invocation_t* inv);
 cpp_token_list_t* expand_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* in);
 lexer_token_t* next_real_token(cpp_token_list_t* list, size_t* cursor);

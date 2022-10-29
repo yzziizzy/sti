@@ -41,9 +41,10 @@
 
 #define CHECK_BUF(t, n) \
 do { \
-	if(n >= (t)->alloc) { \
+	if(n + 1 >= (t)->alloc) { \
 		(t)->alloc *= 2; \
 		(t)->text = realloc((t)->text, (t)->alloc *  sizeof(*(t)->text)); \
+		buf = (t)->text; \
 	} \
 } while(0);
 
@@ -335,6 +336,7 @@ SL_COMMENT:
 	s++;
 	while(1) {
 		if(*s == '\r' || *s == '\n') {
+			line++;
 			break;
 		}
 		
@@ -351,7 +353,7 @@ SL_COMMENT:
 
 ML_COMMENT: {
 	s++;
-	int state = 0; 
+	int state = 0; // used to check for the * / sequence
 	while(1) {
 		ESCAPED_LB(continue, );
 		if(state == 1) {
@@ -366,6 +368,8 @@ ML_COMMENT: {
 		}
 		
 		if(*s == '*') state = 1;
+		
+		if(*s == '\n') line++;
 		
 		CHECK_BUF(t, n);
 		buf[n++] = *s;

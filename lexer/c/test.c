@@ -10,8 +10,13 @@ int main(int argc, char* argv[]) {
 	
 	
 	cpp_tu_t* tu = calloc(1, sizeof(*tu));
+	// need to pre-define __X86_64__
+	
+//	VEC_PUSH(&tu->system_inc_dirs, "/");
+	VEC_PUSH(&tu->system_inc_dirs, "/usr/include/");
 	
 	preprocess_file(tu, NULL, "./sample.c", 0);
+//	preprocess_file(tu, NULL, "/usr/include/stdint.h", 1);
 	
 	cpp_context_t* ctx = tu->root_ctx;
 	

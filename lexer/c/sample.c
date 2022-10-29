@@ -12,7 +12,7 @@
 
 X(A, wrap(foo), C, DD, EE FF)
 */
-
+/*
 #define ELEVEN 11
 
 #if -(ELEVEN-2) == -19 % 10
@@ -32,11 +32,56 @@ struct Foo {
 	FOO_LIST
 	#undef X
 };
+*/
+
 
 X(1,2)
 
-#include "lexer.h"
-//#include <cpp.h>
+#define __A 123
+#define __B 345
+
+# if __A == __B
+	false
+# else
+	true
+# endif
+
+
+
+/*
+#if 1 == 1
+	yes 1
+		
+	#if 1
+		yes 2
+		
+		#if 0
+			no 1
+			#if 1
+				no 2
+				#if 1 
+					no 3
+				#else
+					no 4
+				#endif
+			#else
+				no 5
+			#endif
+		#else
+			yes 3
+		#endif	
+	#else
+		no 6
+	#endif
+	yes 4 final
+#else
+	no 7
+#endif	
+
+foo
+*/
+//#include "lexer.h"
+//#include <bits/wctype-wchar.h>
 
 
 
