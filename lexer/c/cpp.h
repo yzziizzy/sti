@@ -93,7 +93,7 @@ typedef struct cpp_context {
 	X(_dquote, "\"") \
 	X(_elipsis, "...") \
 	X(_else, "else") \
-	X(_elseif, "elseif") \
+	X(_elif, "elif") \
 	X(_endif, "endif") \
 	X(_error, "error") \
 	X(_gt, ">") \

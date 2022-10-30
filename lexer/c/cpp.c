@@ -254,7 +254,7 @@ static cpp_file_t* init_file(cpp_tu_t* tu, char* full_path, char* include_name) 
 	return file;
 } 
 
-// BUG: needs to include relative to the current file being parsed
+
 cpp_file_t* cpp_tu_get_file(cpp_tu_t* tu, char* cwd, char* path, char is_system) {
 	cpp_file_t* file;
 	char* full_path, *full_path_bad;
@@ -368,7 +368,6 @@ void preprocess_file(cpp_tu_t* tu, cpp_context_t* parent, char* path, char is_sy
 	}
 	
 	
-	// wrong. macro definitions need to persist out of included files
 	cpp_context_t* ctx = calloc(1, sizeof(*ctx));
 	if(is_first) tu->root_ctx = ctx;
 	
@@ -451,7 +450,7 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				else if(n->text == _ifdef) state = _HASH_IFDEF;
 				else if(n->text == _ifndef) state = _HASH_IFNDEF;
 				else if(n->text == _else) state = _HASH_ELSE;
-				else if(n->text == _elseif) state = _HASH_ELSEIF;
+				else if(n->text == _elif) state = _HASH_ELSEIF;
 				else if(n->text == _endif) state = _HASH_ENDIF;
 				else if(n->text == _if) {
 					VEC_TRUNC(&ctx->exp_buffer.tokens);

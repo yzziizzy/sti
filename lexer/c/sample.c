@@ -46,6 +46,12 @@ X(1,2)
 	true
 # endif
 
+# if __A == __B
+	false
+# else
+	true
+# endif
+
 
 
 /*
@@ -81,7 +87,7 @@ X(1,2)
 foo
 */
 //#include "lexer.h"
-//#include <bits/wctype-wchar.h>
+#include <stdint.h>
 
 
 
