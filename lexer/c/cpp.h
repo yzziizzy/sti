@@ -41,12 +41,33 @@ typedef struct cpp_macro_name {
 } cpp_macro_name_t;
 
 
+typedef struct cpp_macro_if {
+	cpp_token_list_t* raw;
+	cpp_token_list_t* expanded;
+	long result; // final result of the controlling expression
+	
+	
+	char disabled_higher; // flag for if a higher layer has already disabled output
+	char net_enabled; // whether this block is enabled all things considered
+	char type; // 'i' = if, d = ifdef, n = ifndef, e = else, 'l' = elif
+	
+	int decl_line; // first line with this block's #if/#else on it
+	int first_controlled_line; // first and last line of the interior block
+	int last_controlled_line;
+	
+	struct cpp_macro_if* parent; // for nested conditionals
+	struct cpp_macro_if* first; // the first #if in the chain
+	struct cpp_macro_if* prev, *next; // the chain of #elif/#elses
+} cpp_macro_if_t;
+
+
 typedef struct cpp_stack_token { 
 	char type;
 	char arity; 
 	char prec; 
 	char assoc; 
 } cpp_stack_token_t;
+
 
 typedef struct cpp_file {
 	char* name;
@@ -122,6 +143,8 @@ typedef struct cpp_tu {
 	HT(cpp_macro_name_t*) macros; // very mutable
 	VEC(cpp_macro_def_t*) all_defs; // used for reference later
 
+	VEC(cpp_macro_if_t*) ifs; // temp, just for info
+	
 	cpp_context_t* root_ctx;
 	HT(cpp_file_t*) files;
 	

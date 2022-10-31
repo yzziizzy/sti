@@ -21,12 +21,21 @@ int main(int argc, char* argv[]) {
 	cpp_context_t* ctx = tu->root_ctx;
 	
 	printf("\noutput:\n");
+	int was_ws = 0;
 	VEC_EACH(&ctx->out->tokens, i, t) {
 		if(t->type == LEXER_TOK_COMMENT) {}
-		else if(t->type == LEXER_TOK_SPACE) printf(" ");
-		else printf("%s ", t->text);
+		else if(t->type == LEXER_TOK_SPACE) {
+			if(was_ws) continue;
+			printf(" ");
+			was_ws = 1;
+			if(t->has_newline) printf("\n");
+		}
+		else {
+			printf("%s ", t->text);
 		
-		if(t->has_newline) printf("\n");
+			was_ws = 0;
+			if(t->has_newline) printf("\n");
+		}
 	}
 	printf("\n");
 	

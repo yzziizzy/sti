@@ -43,7 +43,7 @@
 do { \
 	if(n + 1 >= (t)->alloc) { \
 		(t)->alloc *= 2; \
-		(t)->text = realloc((t)->text, (t)->alloc *  sizeof(*(t)->text)); \
+		(t)->text = realloc((t)->text, (t)->alloc * sizeof(*(t)->text)); \
 		buf = (t)->text; \
 	} \
 } while(0);

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 
 
 #define MURMUR_SEED 718281828
@@ -151,6 +152,7 @@ char* strnint_(struct string_internment_table* tab, char* s, size_t slen) {
 	
 	tab->ht.buckets[bi].hash = hash[0];
 	tab->ht.buckets[bi].value = ps;
+	tab->ht.fill++;
 	
 	return ps;
 }
@@ -166,10 +168,12 @@ static int resize(string_internment_table_t* tab, size_t new_size) {
 	old = tab->ht.buckets;
 	
 	buckets = calloc(1, new_size * sizeof(*buckets));
+	tab->ht.buckets = buckets;
+	tab->ht.alloc_size = new_size;
 	
 	for(i = 0, n = 0; i < old_len && n < tab->ht.fill; i++) {
 		
-		op = &old[n];
+		op = &old[n++];
 		
 		if(op->value == NULL) {
 			continue;
@@ -177,13 +181,8 @@ static int resize(string_internment_table_t* tab, size_t new_size) {
 		
 		bi = find_bucket_strint(tab, op->hash, op->value);
 		buckets[bi] = *op;
-		
-		n++;
 	}
 	
-	tab->ht.buckets = buckets;
-	tab->ht.alloc_size = new_size;
-
 	free(old);
 	
 	return 0;
@@ -222,7 +221,8 @@ static ptrdiff_t find_bucket_strint(string_internment_table_t* tab, uint64_t has
 	} while(bi != startBucket);
 	
 	// should never reach here if the table is maintained properly
-	
+//	fprintf(stderr, "Invalid bucket -1 in strint\n");
+	assert(0);
 	
 	return -1;
 }
@@ -234,9 +234,12 @@ static ptrdiff_t find_bucket_n_strint(string_internment_table_t* tab, uint64_t h
 	bi = hash % tab->ht.alloc_size; 
 	startBucket = bi;
 	
+	
 	do {
-		
 		hash_bucket_t* bucket = tab->ht.buckets + bi;
+		
+		
+//		printf("%ld v: %s\n", bi,  bucket->value);
 		
 		// empty bucket
 		if(bucket->value == NULL) {
@@ -256,7 +259,8 @@ static ptrdiff_t find_bucket_n_strint(string_internment_table_t* tab, uint64_t h
 	} while(bi != startBucket);
 	
 	// should never reach here if the table is maintained properly
-	
+//	fprintf(stderr, "Invalid bucket -1 in strint\n");
+	assert(0);
 	
 	return -1;
 }
