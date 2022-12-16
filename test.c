@@ -168,6 +168,7 @@ int main(int argc, char* argv[]) {
 	char test_range = 0;
 	char test_ini = 0;
 	char test_hash = 0;
+	char test_utf = 0;
 	
 	
 	//char* source = readWholeFile("./objtext.txt", NULL);
@@ -187,7 +188,7 @@ int main(int argc, char* argv[]) {
 	
 // 	for(int i = 0; x[i]; i++) printf("%c", x[i]);
 
-	while ((c = getopt (argc, argv, "AtchsSvf1piInrR")) != -1) {
+	while ((c = getopt (argc, argv, "AtchsSvf1piInrRu")) != -1) {
 		switch(c) {
 			case 't': test_talloc = 1; break;
 			case 's': test_sets = 1; break;
@@ -204,10 +205,22 @@ int main(int argc, char* argv[]) {
 			case 'R': test_range = 1; break;
 			case 'h': test_heap = 1; break;
 			case 'A': test_hash = 1; break;
+			case 'u': test_utf = 1; break;
 		}
 	}
 	
 	
+
+	if(test_utf) {
+		
+		unsigned char* t = "abca""\xc6""\x80""czxg""\xc6""\x80""sdf"; // 10
+//		unsigned char* t = "abca""\xc6""\x80""c"; // 4
+//		unsigned char* t = "abca""\xc6""\x81""c"; // NULL
+		unsigned char* x = strrchr8(t, 384);
+		
+		if(!x) printf("got NULL\n");
+		else printf("got: %d\n", (int)(x - t));
+	}
 
 	
 	if(test_range) {

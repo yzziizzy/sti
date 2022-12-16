@@ -55,7 +55,7 @@ char* strchr8p(const char* s, char* c);
 
 
 
-// char* strrchr8(const char* s, uint32_t codepoint);
+char* strrchr8(const char* s, uint32_t codepoint);
 // char* strrchr8p(const char* s, char* c);
 // size_t strcspn8(const char* a, const char* b);
 // char* strpbrk8(const char* a, const char* b);
@@ -145,5 +145,6 @@ inline static uint32_t* strtok32(uint32_t* s, const uint32_t* delim) {
 //   Strip emoji
 //   Convert all emoji to random list of supplied emoji
 //   printf
+//   trim
 
 #endif // __sti__utf_h__

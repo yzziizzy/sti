@@ -206,6 +206,33 @@ char* strchr8(const char* s, uint32_t codepoint) {
 	}
 }
 
+char* strrchr8(const char* s, uint32_t codepoint) {
+	uint8_t c8[5];
+	int sz;
+	uint8_t* us = (uint8_t*)s;
+	
+	sz = utf32_to_utf8(codepoint, c8);
+	
+	const uint8_t* p = NULL;
+	
+	for(; *us; us++) {
+		if(*us == c8[0]) {
+			
+			// check for a full match of the entire sequence
+			for(int n = 1;; n++) {
+				if(n >= sz) {
+					// success. save the starting spot
+					p = us;
+					break;
+				}
+				
+				if(us[n] != c8[n]) break; // match failed
+			}
+		}
+	}
+	
+	return (char*)p;
+}
 
 // c is a pointer to a single utf8 character, up to 4 bytes
 // returns NULL on not found or if codepoint is invalid
