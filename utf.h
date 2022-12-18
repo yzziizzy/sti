@@ -25,6 +25,38 @@
 
 // utf8 functions
 
+/*
+Naming Convention
+Mostly derived from string.h
+
+str [n|k] r? {operation} [8|32] p?
+
+str: consistent prefix
+n: limited by bytes
+k: limited by codepoints (characters)
+r: reverse; starts at the end of the string
+operation: see below
+8: operates on utf8
+32: operates on utf32
+p: (utf8 only) accepts a pointer to a potentially multibyte encoded sequence instead of a 32-bit codepoint
+
+Operations:
+	cat: append onto existing string; strcat
+	chr: search for a charater; strchr
+	cmp: compare; strcmp
+	colwsp: collapse whitespace. All sequences of whitespace are converted into a single copy of the provided character
+	cpy: copy; strcpy
+	cspn: return length of inverse prefix substring
+	dup: duplicate into newly allocated memory; strdup
+	len: calculate length; strlen 
+	pbrk: search for the first of any of a set of characters
+	spn: return length of prefix substring
+	skip: search for the first character not in a set of characters (strspn, but returns a pointer)
+	str: search for a substring; strstr
+	ltrim: remove a prefix of characters in a set from the beginning of the string
+	rtrim: remove a suffix of characters in a set from the end of the string
+	trim: remove a sequence characters in a set from the beginning and end of the string
+*/
 
 // returns the number of characters in a utf8 string
 size_t charlen8(const char* u8);
@@ -51,12 +83,12 @@ int utf8_has_multibyte(const uint8_t* u8);
 char* strchr8(const char* s, uint32_t codepoint);
 // c is a pointer to a single utf8 character, up to 4 bytes
 // returns NULL on not found or if codepoint is invalid
-char* strchr8p(const char* s, char* c);
+char* strchr8p(const char* s, const char* c);
 
 
 
 char* strrchr8(const char* s, uint32_t codepoint);
-// char* strrchr8p(const char* s, char* c);
+char* strrchr8p(const char* s, const char* c);
 // size_t strcspn8(const char* a, const char* b);
 // char* strpbrk8(const char* a, const char* b);
 // char* strtok8_r(char* s, const char* delim, char** saveptr);
@@ -69,10 +101,16 @@ char* strrchr8(const char* s, uint32_t codepoint);
 // some normal string functions are utf8 safe. *8 versions are provided here so you don't have
 //   to remember which ones are which
 inline static size_t strlen8(const char* s) { return strlen(s); }
+
 inline static char* strcat8(char* dst, const char* src) { return strcat(dst, src); }
 inline static char* strncat8(char* dst, const char* src, size_t len) { return strncat(dst, src, len); }
+char* strkcat8(char* dst, const char* src, size_t clen);
+
+
 inline static char* strcpy8(char* dst, const char* src) { return strcpy(dst, src); }
 inline static char* strncpy8(char* dst, const char* src, size_t len) { return strncpy(dst, src, len); }
+
+
 inline static int   strcmp8(const char* a, const char* b) { return strcmp(a, b); }
 inline static int   strncmp8(const char* a, const char* b, size_t len) { return strncmp(a, b, len); }
 inline static char* strstr8(const char* a, const char* b) { return strstr(a, b); }

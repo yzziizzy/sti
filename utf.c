@@ -186,6 +186,34 @@ MALFORMED_1:
 }
 
 
+char* strkcat8(char* dst, const char* src, size_t clen) {
+	size_t b = 0; // bytes
+	size_t c = 0; // chars
+	
+	uint8_t* ud = (uint8_t*)dst;
+	uint8_t* us = (uint8_t*)src;
+	
+	while(*ud) ud++; // skip to the end of dst
+	
+	for(size_t c = 0; c < clen; c++) {
+		int sz = utf8_char_size(us + b);
+		
+		for(int i = 0; i < sz; i++) {
+			if(!us[b]) goto NULL_TERM;
+			
+			ud[b] = us[b];
+			b++;
+		}
+	}
+
+NULL_TERM:
+
+	ud[b] = 0;
+	
+	return dst;
+}
+
+
 // returns NULL on not found or if codepoint is invalid
 char* strchr8(const char* s, uint32_t codepoint) {
 	uint8_t c8[5];
@@ -236,15 +264,44 @@ char* strrchr8(const char* s, uint32_t codepoint) {
 
 // c is a pointer to a single utf8 character, up to 4 bytes
 // returns NULL on not found or if codepoint is invalid
-char* strchr8p(const char* s, char* c) {
+char* strchr8p(const char* s, const char* c) {
 	uint8_t c8[5];
 	int sz;
 	
-	sz = utf8_char_size(s);
+	sz = utf8_char_size(c);
 	for(int i = 0; i < sz; i++) c8[i] = c[i];
 	c8[sz] = 0;
 	
 	return strstr(s, c8);
+}
+
+// c is a pointer to a single utf8 character, up to 4 bytes
+// returns NULL on not found or if codepoint is invalid
+char* strrchr8p(const char* s, const char* c) {
+	int sz;
+	uint8_t* us = (uint8_t*)s;
+	
+	sz = utf8_char_size(c);
+	
+	const uint8_t* p = NULL;
+	
+	for(; *us; us++) {
+		if(*us == c[0]) {
+			
+			// check for a full match of the entire sequence
+			for(int n = 1;; n++) {
+				if(n >= sz) {
+					// success. save the starting spot
+					p = us;
+					break;
+				}
+				
+				if(us[n] != c[n]) break; // match failed
+			}
+		}
+	}
+	
+	return (char*)p;
 }
 
 
