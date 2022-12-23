@@ -10,6 +10,7 @@
 #include <errno.h>
 
 
+#include <fnmatch.h> // fnmatch
 #include <sys/types.h> // opendir
 #include <dirent.h> // readdir
 #include <unistd.h> // pathconf
@@ -53,7 +54,7 @@ int is_path_a_dir(char* path) {
 
 
 // returns negative on error, nonzero if scanning was halted by the callback
-int recurseDirs(
+int recurse_dirs(
 	char* path, 
 	readDirCallbackFn fn, 
 	void* data, 
@@ -118,7 +119,7 @@ int recurseDirs(
 				stop = fn(fullPath, n, data);
 			}
 			if(depth != 0) {
-				stop |= recurseDirs(fullPath, fn, data, depth - 1, flags);
+				stop |= recurse_dirs(fullPath, fn, data, depth - 1, flags);
 			}
 		}
 		else if(type == DT_REG) {
@@ -142,7 +143,7 @@ char* path_join_(size_t nargs, ...) {
 	char* out, *end;
 	size_t j_len;
 	char* joiner = "/";
-	int escape;
+	int escape = 0;
 
 	if(nargs == 0) return NULL;
 
@@ -207,7 +208,7 @@ char* path_join_(size_t nargs, ...) {
 
 
 // gets a pointer to the first character of the file extension, or to the null terminator if none
-char* pathExt(char* path) {
+char* path_ext(char* path) {
 	int i;
 	int len = strlen(path);
 	
@@ -222,7 +223,7 @@ char* pathExt(char* path) {
 
 // gets a pointer to the first character of the file extension, or to the null terminator if none
 // also provides the length of the path without the period and extension
-char* pathExt2(char* path, int* end) {
+char* path_ext2(char* path, int* end) {
 	int i;
 	int len = strlen(path);
 	
@@ -249,13 +250,13 @@ char* pathExt2(char* path, int* end) {
 // returns a null terminated string. srcLen does NOT include the null terminator
 // nulls inside the string are not escaped or removed; the first null is not
 //   necessarily the terminating null
-char* readWholeFile(char* path, size_t* srcLen) {
+char* read_whole_file(char* path, size_t* srcLen) {
 	return readWholeFileExtra(path, 0, srcLen);
 }
 
 // reserves extra space in memory just in case you want to append a \n or something
 // srcLen reflects the length of the content, not the allocation
-char* readWholeFileExtra(char* path, size_t extraAlloc, size_t* srcLen) {
+char* read_whole_file_extra(char* path, size_t extraAlloc, size_t* srcLen) {
 	size_t fsize, total_read = 0, bytes_read;
 	char* contents;
 	FILE* f;
@@ -378,6 +379,39 @@ char** multi_wordexp_dup(char* input, size_t* out_len) {
 	wordfree(&p);
 	
 	return out;
+}
+
+
+
+
+
+static int rglob_fn(char* full_path, char* file_name, void* _results) {
+	rglob* res = (rglob*)_results;
+	
+	if(0 == fnmatch(res->pattern, file_name, 0)) {
+		if(res->len >= res->alloc) {
+			res->alloc *= 2;
+			res->entries = realloc(res->entries, sizeof(*res->entries) * res->alloc);
+		}
+		
+		res->entries[res->len].type = -1;
+		res->entries[res->len].full_path = strdup(full_path);
+		res->entries[res->len].file_name = strdup(file_name);
+		res->len++;
+	}
+	
+	return 0;
+}
+
+void recursive_glob(char* base_path, char* pattern, int flags, rglob* results) {
+	
+	// to pass into recurse_dirs()
+	results->pattern = pattern;
+	results->len = 0;
+	results->alloc = 32;
+	results->entries = malloc(sizeof(*results->entries) * results->alloc);
+	
+	recurse_dirs(base_path, rglob_fn, results, -1, flags);
 }
 
 

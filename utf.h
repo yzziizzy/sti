@@ -29,16 +29,19 @@
 Naming Convention
 Mostly derived from string.h
 
-str [n|k] r? {operation} [8|32] p?
+str [n|k] r? case? {operation} [8|32] p?
 
 str: consistent prefix
 n: limited by bytes
 k: limited by codepoints (characters)
 r: reverse; starts at the end of the string
+case: case-insensitive
 operation: see below
 8: operates on utf8
 32: operates on utf32
 p: (utf8 only) accepts a pointer to a potentially multibyte encoded sequence instead of a 32-bit codepoint
+
+TODO: alloca versions of dup
 
 Operations:
 	cat: append onto existing string; strcat
@@ -48,14 +51,25 @@ Operations:
 	cpy: copy; strcpy
 	cspn: return length of inverse prefix substring
 	dup: duplicate into newly allocated memory; strdup
-	len: calculate length; strlen 
+	dupa: duplicate onto the stack using alloca
+	len: calculate length; strlen
 	pbrk: search for the first of any of a set of characters
+	rev: reverse the string
 	spn: return length of prefix substring
 	skip: search for the first character not in a set of characters (strspn, but returns a pointer)
 	str: search for a substring; strstr
+	tolower: convert the string to lowercase
+	toupper: convert the string to uppercase
 	ltrim: remove a prefix of characters in a set from the beginning of the string
 	rtrim: remove a suffix of characters in a set from the end of the string
 	trim: remove a sequence characters in a set from the beginning and end of the string
+	
+	
+Arguments:
+	char* c8; a pointer to a single utf8 character, up to 4 bytes
+	uint32_t c32; a unicode codepoint (utf32)
+	size_t blen; operation limit, in bytes
+	size_t clen; operation limit, in codepoints
 */
 
 // returns the number of characters in a utf8 string
@@ -79,16 +93,7 @@ int utf8_char_size(const char* u8);
 int utf8_has_multibyte(const uint8_t* u8);
 
 
-// returns NULL on not found or if codepoint is invalid
-char* strchr8(const char* s, uint32_t codepoint);
-// c is a pointer to a single utf8 character, up to 4 bytes
-// returns NULL on not found or if codepoint is invalid
-char* strchr8p(const char* s, const char* c);
 
-
-
-char* strrchr8(const char* s, uint32_t codepoint);
-char* strrchr8p(const char* s, const char* c);
 // size_t strcspn8(const char* a, const char* b);
 // char* strpbrk8(const char* a, const char* b);
 // char* strtok8_r(char* s, const char* delim, char** saveptr);
@@ -100,15 +105,30 @@ char* strrchr8p(const char* s, const char* c);
 
 // some normal string functions are utf8 safe. *8 versions are provided here so you don't have
 //   to remember which ones are which
+
+
 inline static size_t strlen8(const char* s) { return strlen(s); }
 
 inline static char* strcat8(char* dst, const char* src) { return strcat(dst, src); }
 inline static char* strncat8(char* dst, const char* src, size_t len) { return strncat(dst, src, len); }
-char* strkcat8(char* dst, const char* src, size_t clen);
+              char* strkcat8(char* dst, const char* src, size_t clen);
+
+
+// returns NULL on not found or if codepoint is invalid
+char* strchr8(const char* s, uint32_t c32);
+
+// c8 is a pointer to a single utf8 character, up to 4 bytes
+// returns NULL on not found or if codepoint is invalid
+char* strchr8p(const char* s, const char* c8);
+char* strrchr8(const char* s, uint32_t c32);
+char* strrchr8p(const char* s, const char* c8);
+
+char* strnchr8(const char* s, uint32_t c32, size_t blen);
 
 
 inline static char* strcpy8(char* dst, const char* src) { return strcpy(dst, src); }
-inline static char* strncpy8(char* dst, const char* src, size_t len) { return strncpy(dst, src, len); }
+inline static char* strncpy8(char* dst, const char* src, size_t blen) { return strncpy(dst, src, blen); }
+              char* strkcpy8(char* dst, const char* src, size_t clen);
 
 
 inline static int   strcmp8(const char* a, const char* b) { return strcmp(a, b); }

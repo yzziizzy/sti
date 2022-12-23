@@ -21,6 +21,11 @@ size_t strlnlen(const char* s);
 // strdup a line
 char* strlndup(const char* s);
 
+// use alloca
+//char* strdupa(const char* s);
+
+// TODO: string-reverse
+
 // line count;
 size_t strlinecnt(const char* s);
 

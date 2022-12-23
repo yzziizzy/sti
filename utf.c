@@ -11,7 +11,7 @@
 
 
 uint32_t* utf8_to_utf32(uint8_t* u8, size_t* outLen) {
-	size_t u8len = strlen(u8);
+	size_t u8len = strlen((char*)u8);
 	
 	uint32_t* u32 = malloc((u8len + 1) * sizeof(u32)); // just overallocate
 	
@@ -188,7 +188,6 @@ MALFORMED_1:
 
 char* strkcat8(char* dst, const char* src, size_t clen) {
 	size_t b = 0; // bytes
-	size_t c = 0; // chars
 	
 	uint8_t* ud = (uint8_t*)dst;
 	uint8_t* us = (uint8_t*)src;
@@ -196,7 +195,7 @@ char* strkcat8(char* dst, const char* src, size_t clen) {
 	while(*ud) ud++; // skip to the end of dst
 	
 	for(size_t c = 0; c < clen; c++) {
-		int sz = utf8_char_size(us + b);
+		int sz = utf8_char_size((char*)us + b);
 		
 		for(int i = 0; i < sz; i++) {
 			if(!us[b]) goto NULL_TERM;
@@ -215,31 +214,31 @@ NULL_TERM:
 
 
 // returns NULL on not found or if codepoint is invalid
-char* strchr8(const char* s, uint32_t codepoint) {
+char* strchr8(const char* s, uint32_t c32) {
 	uint8_t c8[5];
 	int sz;
 	
-	sz = utf32_to_utf8(codepoint, c8);
+	sz = utf32_to_utf8(c32, c8);
 	
 	switch(sz) {
-		case 1: return strchr(s, codepoint);
+		case 1: return strchr(s, c32);
 		case 2:
 		case 3:
 		case 4:
 			c8[sz] = 0;
-			return strstr(s, c8);
+			return strstr(s, (char*)c8);
 		
 		default:
 			return NULL;
 	}
 }
 
-char* strrchr8(const char* s, uint32_t codepoint) {
+char* strrchr8(const char* s, uint32_t c32) {
 	uint8_t c8[5];
 	int sz;
 	uint8_t* us = (uint8_t*)s;
 	
-	sz = utf32_to_utf8(codepoint, c8);
+	sz = utf32_to_utf8(c32, c8);
 	
 	const uint8_t* p = NULL;
 	
@@ -272,7 +271,7 @@ char* strchr8p(const char* s, const char* c) {
 	for(int i = 0; i < sz; i++) c8[i] = c[i];
 	c8[sz] = 0;
 	
-	return strstr(s, c8);
+	return strstr(s, (char*)c8);
 }
 
 // c is a pointer to a single utf8 character, up to 4 bytes
@@ -304,6 +303,56 @@ char* strrchr8p(const char* s, const char* c) {
 	return (char*)p;
 }
 
+
+
+char* strnchr8(const char* src, uint32_t c32, size_t blen) {
+	uint8_t c8[5];
+	int sz;
+	uint8_t* us = (uint8_t*)src;
+	
+	sz = utf32_to_utf8(c32, c8);
+	
+	for(int b = 0; b < blen; b++) {
+		if(b >= blen) return NULL;
+		for(int x = 0; x < sz; x++) {
+			if(c8[x] != us[b + x] || b + x >= blen) {
+				// failed match
+				goto RETRY;
+			}
+			 
+		}
+			
+		return (char*)(us + b);
+			
+	RETRY:
+	}
+	
+	return NULL;
+}
+
+
+char* strkcpy8(char* dst, const char* src, size_t clen) {
+	size_t b = 0; // bytes
+	
+	uint8_t* ud = (uint8_t*)dst;
+	uint8_t* us = (uint8_t*)src;
+	
+	for(size_t c = 0; c < clen; c++) {
+		int sz = utf8_char_size((char*)us + b);
+		
+		for(int i = 0; i < sz; i++) {
+			if(!us[b]) goto NULL_TERM;
+			
+			ud[b] = us[b];
+			b++;
+		}
+	}
+
+NULL_TERM:
+	ud[b] = 0;
+	
+	return dst;
+}
 
 
 // in bytes, not including (4-byte) null terminator

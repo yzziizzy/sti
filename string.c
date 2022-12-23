@@ -1087,7 +1087,7 @@ END_STR:
 	return 0;
 }
 
-
+/*
 static void indirect(int amt, int index, void** a, void** b, void** c) {
 	if(index == 0) {
 		while(amt-- > 0) *a = *((void**)(*a));
@@ -1099,7 +1099,7 @@ static void indirect(int amt, int index, void** a, void** b, void** c) {
 		while(amt-- > 0) *c = *((void**)(*c));
 	}
 }
-
+*/
 
 int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 	(void)out;
