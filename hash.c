@@ -15,7 +15,7 @@
 
  
 static uint64_t hash_key(char* key, int64_t len);
-static uint64_t hash_int64_key(uint64_t key);
+//static uint64_t hash_int64_key(uint64_t key);
  
  
 
@@ -250,7 +250,7 @@ int oaht_resize(struct HT_base_layout* ht, size_t newSize) {
 
 		#define BK ((struct bucket*)(ht->buckets + (ht->stride * bi))) 
 		
-		size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+//		size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
 		
 		bi = oaht_find_bucket(ht, OP->hash, ht->key_mode == 'i' ? (char*)&OP->key : (char*)OP->key);
 		memcpy(BK, OP, ht->stride);
@@ -307,7 +307,7 @@ int oaht_delete(struct HT_base_layout* ht, char* key) {
 	
 	//
 	empty_bi = bi;
-	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+//	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
 	
 	do {
 		bi = (bi + 1) % ht->alloc_size;
@@ -438,6 +438,7 @@ static uint64_t hash_key(char* key, int64_t len) {
 	return hash[0] == 0 ? 1 : hash[0];
 }
 
+/*
 static uint64_t hash_int64_key(uint64_t key) {
 	uint64_t hash[2];
 	
@@ -445,4 +446,4 @@ static uint64_t hash_int64_key(uint64_t key) {
 	
 	return hash[0] == 0 ? 1 : hash[0];
 }
-
+*/
