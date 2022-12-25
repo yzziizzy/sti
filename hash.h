@@ -185,7 +185,7 @@ int oaht_get_klit(struct HT_base_layout* ht, uint64_t key, void* val);
 int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val);
 int oaht_set_klit(struct HT_base_layout* ht, uint64_t key, void* val);
 #define HT_set(h, key, valp)  _Generic((h)->meta[0].keyTypeFlag, \
-	struct HT_String_Type: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, &key, keyTypep), HT_TYPECHECK(h, &valp, valTypep)), \
+	struct HT_String_Type: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, &valp, valTypep)), \
 	default: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, &key, keyTypep), HT_TYPECHECK(h, &valp, valTypep)) \
 )
 #define HT_setn(h, key, valp)  oaht_set_klit(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, &valp, valTypep))
