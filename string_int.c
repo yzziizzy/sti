@@ -73,7 +73,7 @@ void string_internment_table_init(struct string_internment_table** ptab) {
 
 
 
-char* intern_string(struct string_internment_table* tab, char* s, int64_t len) {
+static char* intern_string(struct string_internment_table* tab, char* s, int64_t len) {
 	char* slot;
 
 	
@@ -173,12 +173,13 @@ static int resize(string_internment_table_t* tab, size_t new_size) {
 	
 	for(i = 0, n = 0; i < old_len && n < tab->ht.fill; i++) {
 		
-		op = &old[n++];
+		op = &old[i];
 		
 		if(op->value == NULL) {
 			continue;
 		}
 		
+		n++;
 		bi = find_bucket_strint(tab, op->hash, op->value);
 		buckets[bi] = *op;
 	}
