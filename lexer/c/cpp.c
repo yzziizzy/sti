@@ -283,7 +283,7 @@ cpp_file_t* cpp_tu_get_file(cpp_tu_t* tu, char* cwd, char* path, char is_system)
 				
 				file = init_file(tu, full_path, path);
 				file->is_system_header = 1;
-				free(full_path);
+//				free(full_path);
 				return file;
 			}
 			
@@ -431,12 +431,12 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 	int sanity = 0;
 	
 	VEC_EACH(&tokens->tokens, ni, n) {
-		//*
-		printf(" %s {%ld} wnl:%d p token list loop [%s]{%p|%p} %s     %s:%d:%d\n", 
+		/*
+		printf(" %s {%ld} wnl:%d p token list loop [%s] %s     %s:%d:%d\n", 
 			out_enable ? "E" : "X", 
 			ni,
 			was_nl, 
-			n->type == LEXER_TOK_SPACE ? " " : n->text, _hash, n->text,
+			n->type == LEXER_TOK_SPACE ? " " : n->text,
 			state_names[state],
 			ctx->file->name, n->start_line, n->start_col
 			); //*/
@@ -593,8 +593,10 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				else if(n->text == _ident) state = _SKIP_REST;
 				else if(n->type != LEXER_TOK_SPACE && n->type != LEXER_TOK_COMMENT) { state = _SKIP_REST;
 				
-				
+					printf("_endif: %p '%s', token: %p, '%s'\n", _endif, _endif, n->text, n->text);
 					fprintf(stderr, "Unknown PP directive: %s at %s:%d:%d\n", n->text, ctx->file->full_path, n->start_line, n->start_col);
+					
+					exit(1);
 				}
 				break;
 				
@@ -678,7 +680,6 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				}
 				if(n->text == _rparen && pdepth == 0) {
 					if(cached_arg) {
-						// printf("pushing arg: %s\n", cached_arg);
 						if(out_enable)
 							VEC_PUSH(&m->args, cached_arg);
 						cached_arg = 0;
@@ -686,7 +687,6 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					state = _MACRO_ARGS_RP;
 				}
 				else if(n->type == LEXER_TOK_IDENT) {
-					if(out_enable) 
 						cached_arg = n->text;
 				}
 				else if(n->text == _comma) {
@@ -697,6 +697,7 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 					}
 					else {
 						fprintf(stderr, "An argument name identifier is required at %s:%d:%d\n", ctx->file->full_path, n->start_line, n->start_col);
+						exit(1);
 					}
 				}
 				else if(n->text == _elipsis) {
@@ -712,7 +713,6 @@ void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* t
 				}
 				else if(n->type != LEXER_TOK_SPACE) {
 					fprintf(stderr, "Unexpected token '%s' at %s:%d:%d (%d)\n", n->text, ctx->file->full_path, n->start_line, n->start_col, __LINE__);
-					exit(1);
 				}
 				break;
 

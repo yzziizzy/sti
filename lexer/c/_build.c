@@ -8,6 +8,7 @@
 char* sources[] = { "test.c",
 	"cpp.c", 
 	"lexer.c", 
+	"parser.c", 
 	"sti/sti.c", 
 	NULL,
 };

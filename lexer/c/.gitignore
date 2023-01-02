@@ -1,3 +1,5 @@
 build/**
 lextest
 ._build
+.gpuedit.session
+sti

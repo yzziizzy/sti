@@ -7,6 +7,10 @@
 #include "sti/sti.h"
 
 
+typedef struct cpp_error {
+	long line;
+	long col;
+} cpp_error_t;
 
 typedef struct cpp_token_list {
 	VEC(lexer_token_t*) tokens;
@@ -89,8 +93,6 @@ typedef struct cpp_file {
 typedef struct cpp_context {
 	cpp_file_t* file;
 	
-
-	
 	cpp_token_list_t* tokens;
 	cpp_token_list_t* out;
 	int cur_index;
@@ -102,6 +104,8 @@ typedef struct cpp_context {
 	
 	struct cpp_context* parent;
 	VEC(struct cpp_context*) children;
+	
+	VEC(struct cpp_error_t*) errors;
 } cpp_context_t;
 
 

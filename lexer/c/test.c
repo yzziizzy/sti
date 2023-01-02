@@ -4,6 +4,7 @@
 
 #include "lexer.h"
 #include "cpp.h"
+#include "parser.h"
 
 
 int main(int argc, char* argv[]) {
@@ -14,10 +15,18 @@ int main(int argc, char* argv[]) {
 	
 //	VEC_PUSH(&tu->system_inc_dirs, "/");
 	VEC_PUSH(&tu->system_inc_dirs, "/usr/include/");
+	VEC_PUSH(&tu->system_inc_dirs, "/usr/lib/gcc/x86_64-pc-linux-gnu/11.2.1/include/");
 	
 	preprocess_file(tu, NULL, "./sample.c", 0);
 //	preprocess_file(tu, NULL, "/usr/include/stdint.h", 1);
 	
+	/*
+	c_ast_tu_t* atu = calloc(1, sizeof(*atu));
+	atu->cpp = tu;
+	c_ast_tu_init(atu);
+	c_parser_tu(atu);
+	*/
+	/*
 	cpp_context_t* ctx = tu->root_ctx;
 	
 	printf("\noutput:\n");
@@ -38,27 +47,9 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	printf("\n");
-	
-	return 1;
-	
-	lexer_token_t t = {0};
-	t.alloc = 256;
-	t.text = malloc(t.alloc * sizeof(*t.text));
-	
-	lexer_source_t src = {0};
-	src.text = ".x345";
-	src.text = "/*fo*o*\\\n/";
-	src.text = "//foo\\\nbar";
-	src.text = "...";
-	src.text = "..";
-	src.text = "..\\\n.";
-	src.text = "\\\n.";
-	src.text = ".0";
-	src.text = ".\\\nx0";
-	src.text = ".x0";
-
-	src.head = src.text;
-	is_token(&src, &t);
-	
-	printf("%s: '%.*s'\n", lexer_token_type_names[t.type], (int)t.len, t.text);
+	*/
+	return 0;
 }
+
+
+
