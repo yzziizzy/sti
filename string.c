@@ -1350,3 +1350,27 @@ int isnprintfv(char* out, ptrdiff_t out_sz, char* fmt, void** args) {
 #endif
 	return 0;
 }
+
+
+
+
+
+#ifdef STI_REPLACE_STD_STRING
+
+#if !__has_builtin(__builtin_memcpy)
+void* memcpy(void* restrict dst, const void *restrict src, size_t n) {
+	void* d = dst;
+	while(n--) *dst++ = *src++;
+	return d;
+}	
+#endif
+
+#if !__has_builtin(__builtin_memset)
+void* memset(void* s, int c, size_t n) {
+	while(n--) ((unsigned char*)s)[n] = c;
+	return s;
+}
+#endif
+
+
+#endif // STI_REPLACE_STD_STRING

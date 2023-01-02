@@ -55,6 +55,8 @@ char* read_whole_file(char* path, size_t* srcLen);
 char* read_whole_file_extra(char* path, size_t extraAlloc, size_t* srcLen);
 
 
+char* write_whole_file(char* path, void* data, size_t len);
+
 // return 0 to continue, nonzero to stop all directory scanning
 typedef int (*readDirCallbackFn)(char* /*fullPath*/, char* /*fileName*/, void* /*data*/);
 

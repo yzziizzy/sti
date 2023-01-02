@@ -288,6 +288,27 @@ char* read_whole_file_extra(char* path, size_t extraAlloc, size_t* srcLen) {
 	return contents;
 }
 
+char* write_whole_file(char* path, void* data, size_t len) {
+	size_t total_written = 0, bytes_written;
+	FILE* f;
+	
+	
+	f = fopen(path, "wb");
+	if(!f) {
+		fprintf(stderr, "Could not open file \"%s\"\n", path);
+		return 1;
+	}
+	
+	while(total_written < len) {
+		bytes_written = fwrite(data + total_written, sizeof(char), len - total_written, f);
+		total_written += bytes_written;
+	}
+	
+	fclose(f);
+	
+	return 0;
+}
+
 
 // works like realpath(), except also handles ~/
 char* resolve_path(char* in) {
