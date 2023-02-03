@@ -10,6 +10,78 @@
 
 #include "macros.h"
 
+
+
+
+/*
+Naming Convention
+Mostly derived from string.h
+
+str n? r? case? {operation} _inplace?
+
+str: consistent prefix
+n: limited by bytes
+r: reverse; starts at the end of the string
+case: case-insensitive
+operation: see below
+_inplace: modifies the source buffer
+
+Operations:
+	cat: append onto existing string; strcat
+	chr: search for a character; strchr
+	cmp: compare; strcmp
+	colwsp: collapse whitespace. All sequences of whitespace are converted into a single copy of the provided character
+	cpy: copy; strcpy
+	cspn: return length of inverse prefix substring (postfix for 'r' version)
+	dup: duplicate into newly allocated memory; strdup
+	dupa: duplicate onto the stack using alloca
+	len: calculate length; strlen
+	pbrk: search for the first of any of a set of characters
+	rev: reverse the string
+	spn: return length of prefix substring (postfix for 'r' version)
+	skip: search for the first character not in a set of characters (strspn, but returns a pointer)
+	str: search for a substring; strstr
+	tolower: convert the string to lowercase
+	toupper: convert the string to uppercase
+	ltrim: remove a prefix of characters in a set from the beginning of the string
+	rtrim: remove a suffix of characters in a set from the end of the string
+	trim: remove a sequence characters in a set from the beginning and end of the string
+	
+	
+Arguments:
+	int c; a single ascii character
+	size_t len; operation limit, in bytes
+	
+*/
+
+// regular ascii functions:
+// spn functions return the number of characters spanned
+
+
+// TODO: char* strnchr(const char* s, int c, size_t n); // returns a pointer to the found char, or NULL
+// TODO: size_t strncspn(const char* s, const char* reject, size_t n);
+// TODO: char* strnpbrk(const char* s, const char* accept, size_t n);
+// TODO: char* strrev(char* s); // returns s
+// TODO: char* strnrev(const char* s, size_t n); // returns s
+// TODO: char* strrpbrk(const char* s, const char* accept); // returns a pointer to the first match character
+
+// TODO: size_t strrcspn(const char* s, const char* reject);
+// TODO: char* strnrpbrk(const char* s, const char* accept, size_t n); // returns a pointer to the first match character
+// TODO: size_t strnrcspn(const char* s, const char* reject, size_t n);
+// TODO: size_t strnrspn(const char* s, const char* accept, size_t n);
+// TODO: char* strnltrim(char* s, const char* charset, size_t n); // moves chars to left, returns s
+// TODO: char* strcolwsp(char* s); // does not trim, returns s
+
+// TODO: char* strncolwsp(char* s, size_t n); // does not trim, returns s
+// TODO: char* strcolwsptrim(char* s); // also trims, returns s
+// TODO: char* strcapwords(char* s); // capitalize the first letter following whitespace, and the beginning of the string, returns s
+// TODO: char* strcapsentences(char* s); //  capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
+// TODO: char* strncapwords(char* s, size_t n) -- capitalize the first letter following whitespace, and the beginning of the string, returns s
+// TODO: char* strncapsentences(char* s, size_t n) -- capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
+
+
+
+
 // limited strspn
 size_t strnspn(const char* s, size_t count, const char* accept);
 
