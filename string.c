@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdarg.h>
+#include <ctype.h>
 
 #include "string.h"
 
@@ -20,6 +20,294 @@ static inline int is_x_digit(int c) {
 
 
 
+// returns a pointer to the found char, or NULL
+char* strnchr(const char* s, int c, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        if (s[i] == c) return (char*)&s[i];
+    }
+
+    return NULL;
+}
+
+// returns s
+char* strrev(char* s) {
+    size_t len = 0;
+
+    while (s[len]) len++;
+
+    char tmp = '\0';
+
+    for (size_t i = 0, back = len - 1; i < len / 2; i++, back--) {
+        tmp = s[back];
+        s[back] = s[i];
+        s[i] = tmp;
+    }
+
+    return s;
+}
+
+// returns s
+char* strnrev(const char* s, size_t n) {
+    char tmp = '\0', *result = (char*)s;
+
+    for (size_t i = 0, back = n - 1; i < n / 2; i++, back--) {
+        tmp = result[back];
+        result[back] = result[i];
+        result[i] = tmp;
+    }
+
+    return result;
+}
+
+// returns a pointer to the first match character
+char* strnpbrk(const char* s, const char* accept, size_t n) {
+    int8_t table[256] = {0};
+
+    for (size_t j = 0; accept[j] != '\0'; j++)
+        table[(uint8_t)accept[j]] = 1;
+
+    for (size_t i = 0; i < n; i++)
+        if (table[(uint16_t)s[i]]) return (char*)&s[i];
+
+    return NULL;
+}
+
+// returns a pointer to the first match character
+char* strrpbrk(const char* s, const char* accept) {
+    int8_t table[256] = {0};
+
+    for (size_t j = 0; accept[j] != '\0'; j++)
+        table[(uint8_t)accept[j]] = 1;
+
+    char *result = NULL;
+
+    for (size_t i = 0; s[i] != '\0'; i++)
+        if (table[(uint16_t)s[i]]) result = (char*)&s[i];
+
+    return result;
+}
+
+// returns a pointer to the first match character
+char* strnrpbrk(const char* s, const char* accept, size_t n) {
+    int8_t table[256] = {0};
+
+    for (size_t j = 0; accept[j] != '\0'; j++)
+        table[(uint8_t)accept[j]] = 1;
+
+    char *result = NULL;
+
+    for (size_t i = 0; i < n; i++)
+        if (table[(uint16_t)s[i]]) result = (char*)&s[i];
+
+    return result;
+}
+
+
+// The length of the initial part of "s" not containing any of the characters that are part of "reject".
+size_t strncspn(const char* s, const char* reject, size_t n) {
+    int8_t table[256] = {0};
+
+    for (size_t j = 0; reject[j] != '\0'; j++)
+        table[(uint8_t)reject[j]] = 1;
+
+    size_t i = 0;
+
+    for (; i < n; i++)
+        if (table[(uint16_t)s[i]]) return i;
+
+    return i;
+}
+
+// The length of the initial part of "s" not containing any of the characters that are part of "reject".
+size_t strrcspn(const char* s, const char* reject) {
+    int8_t table[256] = {0};
+
+    for (size_t j = 0; reject[j] != '\0'; j++)
+        table[(uint8_t)reject[j]] = 1;
+
+    size_t i = 0, count = 0;
+
+    for (; s[i] != '\0'; i++)
+        if (table[(uint16_t)s[i]]) count = 0;
+        else count++;
+
+    return count;
+}
+
+// The length of the initial part of "s" not containing any of the characters that are part of "reject".
+size_t strnrcspn(const char* s, const char* reject, size_t n) {
+    int8_t table[256] = {0};
+
+    for (size_t j = 0; reject[j] != '\0'; j++)
+        table[(uint8_t)reject[j]] = 1;
+
+    size_t i = 0, count = 0;
+
+    for (; i < n; i++)
+        if (table[(uint16_t)s[i]]) count = 0;
+        else count++;
+
+    return count;
+}
+
+// return the number of characters spanned
+size_t strnrspn(const char* s, const char* accept, size_t n) {
+    int8_t table[256] = {0};
+
+    for (size_t j = 0; accept[j] != '\0'; j++)
+        table[(uint8_t)accept[j]] = 1;
+
+    size_t i = 0, count = 0;
+
+    for (; i < n; i++)
+        if (!table[(uint16_t)s[i]]) count = 0;
+        else count++;
+
+    return count;
+}
+
+// moves chars to left, returns s
+char* strnltrim(char* s, const char* charset, size_t n) {
+    int8_t table[256] = {0};
+
+    for (size_t j = 0; charset[j] != '\0'; j++)
+        table[(uint8_t)charset[j]] = 1;
+
+    size_t i = 0;
+
+    while (i < n && table[(uint8_t)s[i]]) i++;
+
+    memmove(s, s + i, n - i);
+
+    return s;
+}
+
+// does not trim, returns s
+char* strcolwsp(char* s, int c) {
+    size_t size = 0;
+    uint8_t multiple = 0;
+
+    for (size_t i = 0; s[i] != '\0'; i++) {
+        if (isspace(s[i])) {
+            if (!multiple) {
+                s[size++] = c;
+                multiple = 1;
+            }
+        }
+        else {
+            s[size++] = s[i];
+            multiple = 0;
+        }
+    }
+
+    s[size] = '\0';
+
+    return s;
+}
+
+// does not trim, returns s
+char* strncolwsp(char* s, int c, size_t n) {
+    size_t size = 0;
+    uint8_t multiple = 0;
+
+    for (size_t i = 0; i < n; i++) {
+        if (isspace(s[i])) {
+            if (!multiple) {
+                s[size++] = c;
+                multiple = 1;
+            }
+        }
+        else {
+            s[size++] = s[i];
+            multiple = 0;
+        }
+    }
+
+    s[size] = '\0';
+
+    return s;
+}
+
+// also trims, returns s
+char* strcolwsptrim(char* s, int c) {
+    size_t size = 0;
+    uint8_t multiple = 0;
+
+    for (size_t i = 0; s[i] != '\0'; i++) {
+        if (isspace(s[i])) {
+            if (!multiple && size > 0) {
+                s[size++] = c;
+                multiple = 1;
+            }
+        }
+        else {
+            s[size++] = s[i];
+            multiple = 0;
+        }
+    }
+
+    if (size > 0)
+        if (isspace(s[size - 1]))
+            size--;
+
+    s[size] = '\0';
+
+    return s;
+}
+
+// capitalize the first letter following whitespace, and the beginning of the string, returns s
+char* strcapwords(char* s) {
+    for (size_t i = 0; s[i] != '\0'; i++) {
+        if (i == 0) s[i] = toupper(s[i]);
+        else if (isspace(s[i])) {
+            while (isspace(s[++i]));
+
+            s[i] = toupper(s[i]);
+        }
+    }
+
+    return s;
+}
+
+// capitalize the first letter following whitespace, and the beginning of the string, returns s
+char* strncapwords(char* s, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        if (i == 0) s[i] = toupper(s[i]);
+        else if (isspace(s[i])) {
+            while (isspace(s[++i]));
+
+            s[i] = toupper(s[i]);
+        }
+    }
+
+    return s;
+}
+
+// capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
+char* strcapsentences(char* s) {
+    for (size_t i = 0; s[i] != '\0'; i++) {
+        if (i == 0) s[i] = toupper(s[i]);
+        else if (s[i] == '.' || s[i] == '!' || s[i] == '?') {
+            while (isspace(s[++i]));
+            s[i] = toupper(s[i]);
+        }
+    }
+
+    return s;
+}
+
+// capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
+char* strncapsentences(char* s, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        if (i == 0) s[i] = toupper(s[i]);
+        else if (s[i] == '.' || s[i] == '!' || s[i] == '?') {
+            while (isspace(s[++i]));
+            s[i] = toupper(s[i]);
+        }
+    }
+
+    return s;
+}
 
 // length of the line, or length of the string if no \n found
 size_t strlnlen(const char* s) {
