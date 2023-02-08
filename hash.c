@@ -333,6 +333,7 @@ int oaht_delete(struct HT_base_layout* ht, char* key) {
 	} while(1);
 	
 	E_BK->hash = 0;
+	E_BK->key = 0;
 	ht->fill--;
 	
 	return 0;
@@ -367,7 +368,7 @@ int oaht_nextp(struct HT_base_layout* ht, void** iter, void** key, void** valp) 
 			*key = NULL;
 			return 0;
 		}
-	} while(!B->key);
+	} while(!B->hash);
 	
 	*key = B->key;
 	
