@@ -61,43 +61,44 @@ char* strnrev(const char* s, size_t n) {
 
 // returns a pointer to the first match character
 char* strnpbrk(const char* s, const char* accept, size_t n) {
-    int8_t table[256] = {0};
+    uint64_t table[4] = {0};
 
     for (size_t j = 0; accept[j] != '\0'; j++)
-        table[(uint8_t)accept[j]] = 1;
+        table[accept[j] >> 6] |= 1 << (accept[j] & 63);
 
     for (size_t i = 0; i < n; i++)
-        if (table[(uint16_t)s[i]]) return (char*)&s[i];
+        if (table[s[i] >> 6] & 1 << (s[i] & 63)) return (char*)&s[i];
+
 
     return NULL;
 }
 
 // returns a pointer to the first match character
 char* strrpbrk(const char* s, const char* accept) {
-    int8_t table[256] = {0};
+    uint64_t table[4] = {0};
 
     for (size_t j = 0; accept[j] != '\0'; j++)
-        table[(uint8_t)accept[j]] = 1;
+        table[accept[j] >> 6] |= 1 << (accept[j] & 63);
 
     char *result = NULL;
 
     for (size_t i = 0; s[i] != '\0'; i++)
-        if (table[(uint16_t)s[i]]) result = (char*)&s[i];
+        if (table[s[i] >> 6] & 1 << (s[i] & 63)) result = (char*)&s[i];
 
     return result;
 }
 
 // returns a pointer to the first match character
 char* strnrpbrk(const char* s, const char* accept, size_t n) {
-    int8_t table[256] = {0};
+    uint64_t table[4] = {0};
 
     for (size_t j = 0; accept[j] != '\0'; j++)
-        table[(uint8_t)accept[j]] = 1;
+        table[accept[j] >> 6] |= 1 << (accept[j] & 63);
 
     char *result = NULL;
 
     for (size_t i = 0; i < n; i++)
-        if (table[(uint16_t)s[i]]) result = (char*)&s[i];
+        if (table[s[i] >> 6] & 1 << (s[i] & 63)) result = (char*)&s[i];
 
     return result;
 }
@@ -105,30 +106,30 @@ char* strnrpbrk(const char* s, const char* accept, size_t n) {
 
 // The length of the initial part of "s" not containing any of the characters that are part of "reject".
 size_t strncspn(const char* s, const char* reject, size_t n) {
-    int8_t table[256] = {0};
+    uint64_t table[4] = {0};
 
     for (size_t j = 0; reject[j] != '\0'; j++)
-        table[(uint8_t)reject[j]] = 1;
+        table[reject[j] >> 6] |= 1 << (reject[j] & 63);
 
     size_t i = 0;
 
     for (; i < n; i++)
-        if (table[(uint16_t)s[i]]) return i;
+        if (table[s[i] >> 6] & 1 << (s[i] & 63)) return i;
 
     return i;
 }
 
 // The length of the initial part of "s" not containing any of the characters that are part of "reject".
 size_t strrcspn(const char* s, const char* reject) {
-    int8_t table[256] = {0};
+    uint64_t table[4] = {0};
 
     for (size_t j = 0; reject[j] != '\0'; j++)
-        table[(uint8_t)reject[j]] = 1;
+        table[reject[j] >> 6] |= 1 << (reject[j] & 63);
 
     size_t i = 0, count = 0;
 
     for (; s[i] != '\0'; i++)
-        if (table[(uint16_t)s[i]]) count = 0;
+        if (table[s[i] >> 6] & 1 << (s[i] & 63)) count = 0;
         else count++;
 
     return count;
@@ -136,15 +137,16 @@ size_t strrcspn(const char* s, const char* reject) {
 
 // The length of the initial part of "s" not containing any of the characters that are part of "reject".
 size_t strnrcspn(const char* s, const char* reject, size_t n) {
-    int8_t table[256] = {0};
+    uint8_t v, index;
+    uint64_t table[4] = {0};
 
     for (size_t j = 0; reject[j] != '\0'; j++)
-        table[(uint8_t)reject[j]] = 1;
+        table[reject[j] >> 6] |= 1 << (reject[j] & 63);
 
     size_t i = 0, count = 0;
 
     for (; i < n; i++)
-        if (table[(uint16_t)s[i]]) count = 0;
+        if (table[s[i] >> 6] & 1 << (s[i] & 63)) count = 0;
         else count++;
 
     return count;
@@ -152,30 +154,35 @@ size_t strnrcspn(const char* s, const char* reject, size_t n) {
 
 // return the number of characters spanned
 size_t strnrspn(const char* s, const char* accept, size_t n) {
-    int8_t table[256] = {0};
+    uint64_t table[4] = {0};
 
     for (size_t j = 0; accept[j] != '\0'; j++)
-        table[(uint8_t)accept[j]] = 1;
+        table[accept[j] >> 6] |= 1 << (accept[j] & 63);
 
     size_t i = 0, count = 0;
 
     for (; i < n; i++)
-        if (!table[(uint16_t)s[i]]) count = 0;
+        if (!(table[s[i] >> 6] & 1 << (s[i] & 63))) count = 0;
         else count++;
+
 
     return count;
 }
 
 // moves chars to left, returns s
 char* strnltrim(char* s, const char* charset, size_t n) {
-    int8_t table[256] = {0};
+    uint8_t v, index;
+    uint64_t table[4] = {0};
 
     for (size_t j = 0; charset[j] != '\0'; j++)
-        table[(uint8_t)charset[j]] = 1;
+        table[charset[j] >> 6] |= 1 << (charset[j] & 63);
 
     size_t i = 0;
 
-    while (i < n && table[(uint8_t)s[i]]) i++;
+    while (i < n) {
+        if (!(table[s[i] >> 6] & 1 << (s[i] & 63))) break;
+        i++;
+    }
 
     memmove(s, s + i, n - i);
 
