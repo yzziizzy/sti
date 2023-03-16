@@ -20,6 +20,7 @@
 #include "ring.h"
 #include "ini.h"
 #include "string_int.h"
+#include "matrix.h"
 
 // heavily dependent on Linux
 #include "memarena.h"

@@ -288,7 +288,7 @@ char* read_whole_file_extra(char* path, size_t extraAlloc, size_t* srcLen) {
 	return contents;
 }
 
-char* write_whole_file(char* path, void* data, size_t len) {
+int write_whole_file(char* path, void* data, size_t len) {
 	size_t total_written = 0, bytes_written;
 	FILE* f;
 	

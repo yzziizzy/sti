@@ -20,6 +20,7 @@
 #include "ring.c"
 #include "ini.c"
 #include "string_int.c"
+#include "matrix.c"
 //#include "sort.c"
 
 // semi-platform-dependent
