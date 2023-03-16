@@ -58,29 +58,42 @@ Arguments:
 // spn functions return the number of characters spanned
 
 
-// TODO: char* strnchr(const char* s, int c, size_t n); // returns a pointer to the found char, or NULL
-// TODO: size_t strncspn(const char* s, const char* reject, size_t n);
-// TODO: char* strnpbrk(const char* s, const char* accept, size_t n);
-// TODO: char* strrev(char* s); // returns s
-// TODO: char* strnrev(const char* s, size_t n); // returns s
-// TODO: char* strrpbrk(const char* s, const char* accept); // returns a pointer to the first match character
+// returns a pointer to the found char, or NULL
+char* strnchr(const char* s, int c, size_t n);
 
-// TODO: size_t strrcspn(const char* s, const char* reject);
-// TODO: char* strnrpbrk(const char* s, const char* accept, size_t n); // returns a pointer to the first match character
-// TODO: size_t strnrcspn(const char* s, const char* reject, size_t n);
-// TODO: size_t strnrspn(const char* s, const char* accept, size_t n);
-// TODO: char* strnltrim(char* s, const char* charset, size_t n); // moves chars to left, returns s
-// TODO: char* strcolwsp(char* s); // does not trim, returns s
+// returns s
+char* strrev(char* s);
+char* strnrev(const char* s, size_t n);
 
-// TODO: char* strncolwsp(char* s, size_t n); // does not trim, returns s
-// TODO: char* strcolwsptrim(char* s); // also trims, returns s
-// TODO: char* strcapwords(char* s); // capitalize the first letter following whitespace, and the beginning of the string, returns s
-// TODO: char* strcapsentences(char* s); //  capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
-// TODO: char* strncapwords(char* s, size_t n) -- capitalize the first letter following whitespace, and the beginning of the string, returns s
-// TODO: char* strncapsentences(char* s, size_t n) -- capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
+// returns a pointer to the first match character
+char* strnpbrk(const char* s, const char* accept, size_t n);
+char* strrpbrk(const char* s, const char* accept);
+char* strnrpbrk(const char* s, const char* accept, size_t n);
 
+// The length of the initial part of "s" not containing any of the characters that are part of "reject".
+size_t strncspn(const char* s, const char* reject, size_t n);
+size_t strrcspn(const char* s, const char* reject);
+size_t strnrcspn(const char* s, const char* reject, size_t n);
 
+//return the number of characters spanned
+size_t strnrspn(const char* s, const char* accept, size_t n);
 
+// moves chars to left, returns s
+char* strnltrim(char* s, const char* charset, size_t n);
+
+// does not trim, returns s
+char* strcolwsp(char* s, int c);
+char* strncolwsp(char* s, int c, size_t n);
+// also trims, returns s
+char* strcolwsptrim(char* s, int c);
+
+// capitalize the first letter following whitespace, and the beginning of the string, returns s
+char* strcapwords(char* s);
+char* strncapwords(char* s, size_t n);
+
+//  capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
+char* strcapsentences(char* s);
+char* strncapsentences(char* s, size_t n);
 
 // limited strspn
 size_t strnspn(const char* s, size_t count, const char* accept);
