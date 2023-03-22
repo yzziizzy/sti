@@ -9,6 +9,7 @@
 #include "hash_fns/MurmurHash3.h"
 #include "hash.h"
 
+#include <stdlib.h>
 
 
 #define MURMUR_SEED 718281828
@@ -54,13 +55,13 @@ static ptrdiff_t oaht_find_bucket(struct HT_base_layout* ht, uint64_t hash, void
 	struct bucket {
 		uint64_t hash;
 		void* key;
-		char value[0];
+		char value[];
 	};
 	
 	do {
 // 		struct hash_bucket* bucket;
 		
-		struct bucket* bucket = (struct bucket*)(ht->buckets + (bi * ht->stride));
+		struct bucket* bucket = (struct bucket*)((char*)ht->buckets + (bi * ht->stride));
 		
 		// empty bucket
 		if(bucket->key == NULL) {
@@ -126,15 +127,15 @@ int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 		return 1;
 	}
 	
-	uint64_t bhash = *(uint64_t*)(ht->buckets + (bi * ht->stride));
+	uint64_t bhash = *(uint64_t*)((char*)ht->buckets + (bi * ht->stride));
 	if(!bhash) return 1;
 	
 	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
 //	printf("oaht get - bi: %ld (alloc %ld, stride %ld)\n", bi, ht->alloc_size, ht->stride);
 	
 	//                         index             hash               key    
-	*valp = ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width;
-	memcpy(*valp, ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width, ht->stride - 8 - 8);
+	*valp = (char*)ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width;
+	memcpy(*valp, (char*)ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width, ht->stride - 8 - 8);
 	return 0;
 }
 
@@ -192,7 +193,7 @@ int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val) {
 	
 // 	printf("oaht set - bi: %ld (alloc %ld, stride %ld)\n", bi, ht->alloc_size, ht->stride);
 
-	void* b = ht->buckets + (ht->stride * bi);
+	char* b = (char*)ht->buckets + (ht->stride * bi);
 	#define BK ((struct bucket*)b)
 	
 	if(BK->hash == 0) {
@@ -248,7 +249,7 @@ int oaht_resize(struct HT_base_layout* ht, size_t newSize) {
 			continue;
 		}
 
-		#define BK ((struct bucket*)(ht->buckets + (ht->stride * bi))) 
+		#define BK ((struct bucket*)((char*)ht->buckets + (ht->stride * bi))) 
 		
 //		size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
 		
@@ -269,7 +270,7 @@ int oaht_resize(struct HT_base_layout* ht, size_t newSize) {
 
 
 // zero for success
-int oaht_delete(struct HT_base_layout* ht, char* key) {
+int oaht_delete(struct HT_base_layout* ht, void* key) {
 	uint64_t hash;
 	int64_t bi, empty_bi, nat_bi;
 	
@@ -298,8 +299,8 @@ int oaht_delete(struct HT_base_layout* ht, char* key) {
 	//   move it to the working bucket.
 	//   
 
-	#define BK ((struct bucket*)(ht->buckets + (ht->stride * bi))) 
-	#define E_BK ((struct bucket*)(ht->buckets + (ht->stride * empty_bi))) 
+	#define BK ((struct bucket*)((char*)ht->buckets + (ht->stride * bi))) 
+	#define E_BK ((struct bucket*)((char*)ht->buckets + (ht->stride * empty_bi))) 
 	
 	
 	// nothing to delete, bail early
@@ -354,15 +355,15 @@ int oaht_nextp(struct HT_base_layout* ht, void** iter, void** key, void** valp) 
 
 	#define B ((struct bucket*)b)
 
-	void* b = *iter;
+	char* b = *iter;
 	
 	// for starting the loop
-	if(b == NULL) b = ht->buckets - ht->stride;
+	if(b == NULL) b = (char*)ht->buckets - ht->stride;
 	
 	// TODO: make sure strings and pointers and such are all reasonably handled for the key
 	do {
 		b += ht->stride;
-		if(b >= ht->buckets + (ht->alloc_size * ht->stride)) {
+		if(b >= (char*)ht->buckets + (ht->alloc_size * ht->stride)) {
 			// end of the list
 			*valp = NULL;
 			*key = NULL;
@@ -393,14 +394,14 @@ int oaht_next(struct HT_base_layout* ht, void** iter, void** key, void* val) {
 
 	#define B ((struct bucket*)b)
 
-	void* b = *iter;
+	char* b = *iter;
 	
 	// a tiny bit of idiot-proofing
-	if(b == NULL) b = ht->buckets - ht->stride;
+	if(b == NULL) b = (char*)ht->buckets - ht->stride;
 	
 	do {
 		b += ht->stride;
-		if(b >= ht->buckets + (ht->alloc_size * ht->stride)) {
+		if(b >= (char*)ht->buckets + (ht->alloc_size * ht->stride)) {
 			// end of the list
 			*key = NULL;
 			return 0;

@@ -33,7 +33,7 @@ typedef struct sti_matrix {
 
 sti_matrix* sti_matrix_new(int c, int r);
 sti_matrix* sti_matrix_same_size(sti_matrix* m);
-sti_matrix* sti_matrix_size_for_mul(sti_matrix* m);
+sti_matrix* sti_matrix_size_for_mul(sti_matrix* a, sti_matrix* b);
 
 sti_matrix* sti_matrix_copy(sti_matrix* m);
 

@@ -6,7 +6,7 @@
 
 
 
-#define M(m, c, r) m->data[(c) + (r) * m->c]
+#define M(m, _c, _r) m->data[(_c) + (_r) * m->c]
 
 
 
@@ -17,7 +17,7 @@ sti_matrix* sti_matrix_new(int c, int r) {
 	mat->r = r;
 	mat->c = c;
 	
-	return mat
+	return mat;
 }
 
 
@@ -47,7 +47,7 @@ void sti_matrix_set(sti_matrix* m, float v) {
 	
 	if(v == 0) {
 		memset(m->data, 0, sizeof(m->data) * m->c * m->r);
-		return
+		return;
 	}
 	
 	long sz = m->c * m->r;
@@ -60,7 +60,7 @@ void sti_matrix_set(sti_matrix* m, float v) {
 void sti_matrix_ident(sti_matrix* m) {
 	for(int i = 0; i < m->c; i++)
 	for(int j = 0; j < m->r; j++) {
-		m->data[c + r * m->c] = i == j;
+		m->data[i + j * m->c] = i == j;
 	}
 }
 
@@ -96,16 +96,14 @@ void sti_matrix_mulp(sti_matrix* a, sti_matrix* b, sti_matrix* out) {
 	
 	memset(out->data, 0, sizeof(out->data) * out->c * out->r);
 	
-	for(int j = 0; j < m->r; j++)
-	for(int i = 0; i < m->c; i++) {
-		for(int k = 0; k < ; k++) {
+	for(int j = 0; j < b->r; j++)
+	for(int i = 0; i < a->c; i++) {
+		for(int k = 0; k < a->r; k++) {
 			// a moves right in columns
 			// b moves down in rows
-			M(out, i, j) += M(a, k, r) * M(b, c, k);
+			M(out, i, j) += M(a, k, i) * M(b, j, k);
 		}
 	}
-	
-	return out;
 }
 
 
@@ -117,19 +115,19 @@ sti_matrix* sti_matrix_mul_transb(sti_matrix* a, sti_matrix* b) {
 	
 	o = sti_matrix_new(b->r, a->r);
 	
-	memset(out->data, 0, sizeof(out->data) * out->c * out->r);
+	memset(o->data, 0, sizeof(o->data) * o->c * o->r);
 	
-	for(int j = 0; j < m->r; j++)
-	for(int i = 0; i < m->c; i++) {
-		for(int k = 0; k < ; k++) {
-			M(out, i, j) += M(a, k, r) * M(b, k, c);
+	for(int j = 0; j < b->r; j++)
+	for(int i = 0; i < a->c; i++) {
+		for(int k = 0; k < a->r; k++) {
+			M(o, i, j) += M(a, k, i) * M(b, j, k);
 		}
 	}
 	
-	return out;
+	return o;
 }
 
-
+#define MIN(a, b) (a < b ? a : b)
 
 void sti_matrix_add(sti_matrix* a, sti_matrix* b, sti_matrix* out) {
 	

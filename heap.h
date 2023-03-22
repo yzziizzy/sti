@@ -42,11 +42,11 @@ void heap_insert_(heap_* h, char* elem, size_t elem_sz);
 #define HEAP_peek(h, e) heap_peek_(&(h)->heap, (void*)(e), sizeof(*((h)->type)));
 int heap_peek_(heap_* h, char* out, size_t elem_sz);
 
-// remove the top, most extreme value from the heat
+// remove the top, most extreme value from the heap
 #define HEAP_pop(h, e) heap_pop_(&(h)->heap, (void*)(e), sizeof(*((h)->type)));
 int heap_pop_(heap_* h, char* out, size_t elem_sz);
 
-// pop the top element and insert a new onw at the same time
+// pop the top element and insert a new one at the same time
 // faster than separate operations.
 #define HEAP_insert_pop(h, i, o) heap_insert_pop_(&(h)->heap, (void*)(i), (o), sizeof(*((h)->type)));
 void heap_insert_pop_(heap_* h, char* in, char* out, size_t elem_sz);

@@ -23,13 +23,13 @@ inline static size_t HT_nextPOT(size_t in) {
 }
 
 
-struct HT_Pointer_Type    {}; // key's length is stated explicitly
-struct HT_IntLiteral_Type {}; // key's length is determined by sizeof(), and can be passed in an int64
-struct HT_Sizeof_Type     {}; // key's length is determined by sizeof()
-struct HT_String_Type     {}; // null terminated key pointer
+struct HT_Pointer_Type    { int useless; }; // key's length is stated explicitly
+struct HT_IntLiteral_Type { int useless; }; // key's length is determined by sizeof(), and can be passed in an int64
+struct HT_Sizeof_Type     { int useless; }; // key's length is determined by sizeof()
+struct HT_String_Type     { int useless; }; // null terminated key pointer
 
-struct HT_Option_None {};
-struct HT_Option_Literal {}; // keys are literal 64 bit values, not pointers to memory
+struct HT_Option_None { int useless; };
+struct HT_Option_Literal { int useless; }; // keys are literal 64 bit values, not pointers to memory
 
 #define HT_BUILTIN_TYPES(q, z) \
 	_Bool q: z, \
@@ -117,7 +117,7 @@ struct { \
 		KeyType* keyTypep; \
 		struct KeyOpt keyOpt; \
 		struct ValOpt valOpt; \
-	} meta[0]; \
+	} meta[]; \
 }
 
 
@@ -176,19 +176,50 @@ int oaht_get_klit(struct HT_base_layout* ht, uint64_t key, void* val);
 
 #define HT_TYPECHECK(h, a, b) (void*)(1 ? a : (h)->meta[0].b)
 
-#define HT_get(h, key, valp) oaht_get_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, valp, valTypep))
-#define HT_getn(h, key, valp) oaht_get_klit(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, valp, valTypep))
+#define HT_get(h, key, valp) ({ \
+	__typeof__((h)->meta[0].keyType) __HT_key = (key); \
+	oaht_get_kptr(&(h)->base, \
+	_Generic((h)->meta[0].keyTypeFlag, \
+		struct HT_String_Type: __HT_key, \
+		default: &__HT_key \
+	), HT_TYPECHECK(h, valp, valTypep)); \
+})
+
+/*
+#define HT_get(h, key, valp) ({ \
+	__typeof__((h)->meta[0].keyType) __HT_key = (key); \
+	_Generic((h)->meta[0].keyTypeFlag, \
+		struct HT_String_Type: oaht_get_kptr(&(h)->base, __HT_key, HT_TYPECHECK(h, valp, valTypep)), \
+		default: oaht_get_kptr(&(h)->base, &__HT_key, HT_TYPECHECK(h, valp, valTypep)) \
+	); \
+})
+*/
+
 
 #define HT_getp(h, key, valp) oaht_getp_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), (void**)(1 ? valp : &((h)->meta[0].valTypep)))
 
 
 int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val);
 int oaht_set_klit(struct HT_base_layout* ht, uint64_t key, void* val);
-#define HT_set(h, key, valp)  _Generic((h)->meta[0].keyTypeFlag, \
-	struct HT_String_Type: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), HT_TYPECHECK(h, &valp, valTypep)), \
-	default: oaht_set_kptr(&(h)->base, HT_TYPECHECK(h, &key, keyTypep), HT_TYPECHECK(h, &valp, valTypep)) \
-)
-#define HT_setn(h, key, valp)  oaht_set_klit(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, &valp, valTypep))
+#define HT_set(h, key, val) ({ \
+	__typeof__((h)->meta[0].keyType) __HT_key = (key); \
+	__typeof__((h)->meta[0].valType) __HT_val = (val); \
+	oaht_set_kptr(&(h)->base, \
+	_Generic((h)->meta[0].keyTypeFlag, \
+		struct HT_String_Type: __HT_key, \
+		default: &__HT_key \
+	), &__HT_val); \
+})
+
+/*#define HT_set(h, key, val) ({ \
+	__typeof__((h)->meta[0].keyType) __HT_key = (key); \
+	__typeof__((h)->meta[0].valType) __HT_val = (val); \
+	_Generic((h)->meta[0].keyTypeFlag, \
+		struct HT_String_Type: oaht_set_kptr(&(h)->base, __HT_key, &__HT_val), \
+		default: oaht_set_kptr(&(h)->base, &__HT_key, &__HT_val) \
+	); \
+})*/
+//#define HT_setn(h, key, valp)  oaht_set_klit(&(h)->base, (uint64_t)(1 ? key : ((h)->meta[0].keyType)), HT_TYPECHECK(h, &valp, valTypep))
 
 /* doesn't work because the compiler is not smart enough to not typecheck the contents of non-chosen _Generic cases...
 #define HT_set(h, key, valp) _Generic(key, \
@@ -202,8 +233,18 @@ int oaht_set_klit(struct HT_base_layout* ht, uint64_t key, void* val);
 
 //#define HT_set(h, key, val) oaht_set((char**)&((h)->buckets), HT_STRIDE(h), &(h)->fill, &(h)->alloc_size, key, (char*)(1 ? &(val) : &((h)->buckets->value)))
 
-int oaht_delete(struct HT_base_layout* ht, char* key);
-#define HT_delete(h, key) oaht_delete(&(h)->base, key)
+int oaht_delete(struct HT_base_layout* ht, void* key);
+//#define HT_delete(h, key) oaht_delete(&(h)->base, key)
+
+#define HT_delete(h, key) ({ \
+	__typeof__((h)->meta[0].keyType) __HT_key = (key); \
+	oaht_delete(&(h)->base, \
+	_Generic((h)->meta[0].keyTypeFlag, \
+		struct HT_String_Type: __HT_key, \
+		default: &__HT_key \
+	)); \
+})
+
 
 // iteration. no order. results undefined if modified while iterating
 // returns 0 when there is none left

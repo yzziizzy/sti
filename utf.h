@@ -29,7 +29,7 @@
 Naming Convention
 Mostly derived from string.h
 
-str [n|k] r? case? {operation} [8|32] p?
+str [n|k] r? case? {operation} [8|32] p? _inplace?
 
 str: consistent prefix
 n: limited by bytes
@@ -40,22 +40,21 @@ operation: see below
 8: operates on utf8
 32: operates on utf32
 p: (utf8 only) accepts a pointer to a potentially multibyte encoded sequence instead of a 32-bit codepoint
-
-TODO: alloca versions of dup
+_inplace: modifies the source buffer
 
 Operations:
 	cat: append onto existing string; strcat
-	chr: search for a charater; strchr
+	chr: search for a character; strchr
 	cmp: compare; strcmp
 	colwsp: collapse whitespace. All sequences of whitespace are converted into a single copy of the provided character
 	cpy: copy; strcpy
-	cspn: return length of inverse prefix substring
+	cspn: return length of inverse prefix substring (postfix for 'r' version)
 	dup: duplicate into newly allocated memory; strdup
 	dupa: duplicate onto the stack using alloca
 	len: calculate length; strlen
 	pbrk: search for the first of any of a set of characters
 	rev: reverse the string
-	spn: return length of prefix substring
+	spn: return length of prefix substring (postfix for 'r' version)
 	skip: search for the first character not in a set of characters (strspn, but returns a pointer)
 	str: search for a substring; strstr
 	tolower: convert the string to lowercase
@@ -70,7 +69,59 @@ Arguments:
 	uint32_t c32; a unicode codepoint (utf32)
 	size_t blen; operation limit, in bytes
 	size_t clen; operation limit, in codepoints
+	
+"n" versions should not leave behind mutilated multi-byte characters if they hit the limit in the middle of one.
 */
+
+// spn functions return the number of characters spanned
+
+
+// TODO: char* strnchr(const char* s, int c, size_t n); // returns a pointer to the found char, or NULL
+// TODO: size_t strncspn(const char* s, const char* reject, size_t n);
+// TODO: char* strnpbrk(const char* s, const char* accept, size_t n);
+// TODO: size_t strnspn(const char* s, const char* accept, size_t n);
+// TODO: char* strrev(char* s); // returns s
+// TODO: char* strnrev(const char* s, size_t n); // returns s
+
+// TODO: char* strrpbrk(const char* s, const char* accept); // returns a pointer to the first match character
+// TODO: size_t strrcspn(const char* s, const char* reject);
+// TODO: size_t strrspn(const char* s, const char* accept); 
+// TODO: char* strnrpbrk(const char* s, const char* accept, size_t n); // returns a pointer to the first match character
+// TODO: size_t strnrcspn(const char* s, const char* reject, size_t n);
+// TODO: size_t strnrspn(const char* s, const char* accept, size_t n);
+
+// TODO: char* strltrim(char* s, const char* charset); // moves chars to left, returns s
+// TODO: char* strnltrim(char* s, const char* charset, size_t n); // moves chars to left, returns s
+// TODO: char* strrtrim(char* s, const char* charset); // moves the null byte to the left, returns s
+// TODO: char* strtrim(char* s, const char* charset); // both above, returns s
+// TODO: char* strcolwsp(char* s); // does not trim, returns s
+// TODO: char* strncolwsp(char* s, size_t n); // does not trim, returns s
+
+// TODO: char* strcolwsptrim(char* s); // also trims, returns s
+// TODO: char* strcapwords(char* s); // capitalize the first letter following whitespace, and the beginning of the string, returns s
+// TODO: char* strcapsentences(char* s); //  capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
+// TODO: char* strncapwords(char* s, size_t n) -- capitalize the first letter following whitespace, and the beginning of the string, returns s
+// TODO: char* strncapsentences(char* s, size_t n) -- capitalize the first letter following terminal punctuation, and the beginning of the string, returns s
+
+
+// replace functions should be optimized for very long src strings and short needle and replacement strings 
+//  strreplace(char* src, char* dst, char* needle, char* replacement) // src != dst, replaces all occurrences of needle with replacement
+//  strnreplace(char* src, char* dst, char* needle, char* replacement, size_t dst_alloc_len) // src != dst
+//  strreplace_inplace(char* src, char* needle, char* replacement) // modifies src in-place. (must be done in reverse if strlen(replacement) > strlen(needle), counting needles on the forward pass)
+//  strnreplace_inplace(char* src, char* needle, char* replacement, size_t src_alloc_len) // modifies src in-place. (must be done in reverse if strlen(replacement) > strlen(needle), counting needles on the forward pass)
+
+// format numbers, bytes, money
+
+// limited ('n') versions stop at the null byte or the limit, whichever is first
+
+// edge cases:
+//   null pointers result in segfault
+//   empty strings
+//   1-char strings
+//   strings limited at 0
+//   strings limited at 1
+//   limited strings that hit the null byte
+
 
 // returns the number of characters in a utf8 string
 size_t charlen8(const char* u8);
