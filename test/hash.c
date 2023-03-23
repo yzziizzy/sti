@@ -6,7 +6,41 @@
 
 
 
-#define ERROR(a) printf("%s:%d  " a "\n", __FILE__, __LINE__)
+#define ERROR(a, ...) printf("%s:%d  " a "\n", __FILE__, __LINE__ __VA_OPT__(,) __VA_ARGS__)
+
+
+
+
+void print_hash_table(struct HT_base_layout* ht) {
+	
+	for(size_t i = 0; i < ht->alloc_size; i++) {
+		char* b = (char*)ht->buckets + (i * ht->stride);
+		
+		size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+		
+		uint64_t* b_hash = (uint64_t*)b;
+		char* b_key = b + sizeof(uint64_t);
+		char* b_val = b + sizeof(uint64_t) + key_width;;
+		
+		printf("bucket #%ld", i);
+		
+		if(*b_hash == 0) printf("  [empty]\n\n");
+		else {
+			
+			printf("\n  hash: %lx\n", *b_hash);
+			if(ht->key_mode == 's')
+				printf("  key: '%s'\n", *(char**)b_key);
+			else
+				printf("  key: %lx\n", *b_key);
+				
+			printf("  val: %lx\n", *(int*)b_val);
+			
+			printf("  \n");
+		}
+	}
+	
+}
+
 
 
 typedef struct {
@@ -17,35 +51,41 @@ typedef struct {
 
 
 int main() {
-
+	int n;
+	int nstrs = 10;
+	char** strlist = malloc(sizeof(*strlist) * nstrs); 
+	
+	for(int i = 0; i < nstrs; i++) {
+		char* b = malloc(20);
+		sprintf(b, "%d", i);
+		strlist[i] = b;
+	}
 	
 	
 	
 	HT(int) str_int;
 	HT_init(&str_int, 16);
+/*	
+	for(int i = 0; i < nstrs; i++) {
+		HT_set(&str_int, strlist[i], i);
+	}
 	
-	HT_set(&str_int, "one", 1);
-	HT_set(&str_int, "two", 2);
-	HT_set(&str_int, "three", 3);
+	print_hash_table(&str_int.base);
+	
+	
+	for(int i = 0; i < nstrs; i++) {
+		int n = 0;
+		if(HT_get(&str_int, strlist[i], &n)) ERROR("not found %d", i);
+		if(n != i) ERROR("wrong value '%s' != %d", strlist[i], i); 
+	}
+	
 
-	int n = 0;
-	if(HT_get(&str_int, "one", &n)) ERROR("not found");
-	if(n != 1) ERROR("wrong value"); 
-	
-	n = 0;
-	if(HT_get(&str_int, "two", &n)) ERROR("not found");
-	if(n != 2) ERROR("wrong value"); 
-	
-	n = 0;
-	if(HT_get(&str_int, "three", &n)) ERROR("not found");
-	if(n != 3) ERROR("wrong value"); 
-
-	if(HT_delete(&str_int, "three")) ERROR("could not delete");
+	if(HT_delete(&str_int, "3")) ERROR("could not delete");
 
 	n = 0;
-	if(!HT_get(&str_int, "three", &n)) ERROR("wrongly found");
+	if(!HT_get(&str_int, "3", &n)) ERROR("wrongly found");
 	if(n != 0) ERROR("wrong value"); 
-
+*/
 	char* one = strdup("one");
 	char* two = strdup("two");
 	char* three = strdup("three");
@@ -57,6 +97,8 @@ int main() {
 	HT_set(&str_int, one, 1);
 	HT_set(&str_int, two, 2);
 	HT_set(&str_int, three, 3);
+
+	print_hash_table(&str_int.base);
 
 	n = 0;
 	if(HT_get(&str_int, one, &n)) ERROR("not found");

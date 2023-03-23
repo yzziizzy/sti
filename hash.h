@@ -133,13 +133,13 @@ struct { \
 
 #define HT_KEYMODE_LEN(h) _Generic((h)->meta[0].keyTypeFlag, \
 	struct HT_String_Type: 0, \
-	struct HT_Sizeof_Type: sizeof((h)->meta[0].valType), \
-	struct HT_Pointer_Type: sizeof((h)->meta[0].valType) \
+	struct HT_Sizeof_Type: sizeof((h)->meta[0].keyType), \
+	struct HT_Pointer_Type: sizeof((h)->meta[0].keyType) \
 )
 
 #define HT_KEY_WIDTH(h) _Generic((h)->meta[0].keyTypeFlag, \
 	struct HT_String_Type: sizeof(char*), \
-	struct HT_Sizeof_Type: sizeof((h)->meta[0].valType), \
+	struct HT_Sizeof_Type: sizeof((h)->meta[0].keyType), \
 	struct HT_Pointer_Type: sizeof(void*) \
 )
 

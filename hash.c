@@ -113,6 +113,12 @@ int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 	uint64_t hash;
 	int64_t bi;
 	
+	// memory layout:
+	//
+	// uint64_t hash;
+	// keyType key;
+	// valType val;
+	
 	if(key == NULL) {
 //		if(valp) *valp = NULL;
 		return 2;
@@ -121,21 +127,50 @@ int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 	size_t key_len = ht->key_mode == 's' ? strlen(key) : ht->key_len;
 	hash = hash_key(key, key_len);
 	
+	
+	
 	bi = oaht_find_bucket(ht, hash, key);
+//	printf("\nkeymode: %c, keylen %ld, hash %lx, bi: %ld \n", ht->key_mode, key_len, hash, bi);
+
 	if(bi < 0) {// || *(char**)(ht->buckets + (bi * ht->stride) + sizeof(uint64_t)) == NULL) {
 //		*valp = NULL;
+//		printf("bail #1 (negative bucket index)\n");
 		return 1;
 	}
 	
-	uint64_t bhash = *(uint64_t*)((char*)ht->buckets + (bi * ht->stride));
-	if(!bhash) return 1;
-	
+	char* b = (char*)ht->buckets + (ht->stride * bi);
+
 	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+	
+	uint64_t* b_hash = (uint64_t*)b;
+	char* b_key = b + sizeof(uint64_t);
+	char* b_val = b + sizeof(uint64_t) + key_width;
+	
+	
+	if(*b_hash != hash) {
+//		printf("bail #2 (wrong hash)\n");
+		return 1;
+	}
+	
+	if(ht->key_mode != 'i') {	
+		if(memcmp(*(char**)b_key, key, key_len)) {
+//			printf("bail #3 (hash collision, wrong key)\n");
+			return 1;
+		}
+	}
+	else {
+		if(memcmp(b_key, key, key_width)) {
+//			printf("bail #4 (hash collision, wrong key)\n");
+			return 1;
+		}
+	}
+	
 //	printf("oaht get - bi: %ld (alloc %ld, stride %ld)\n", bi, ht->alloc_size, ht->stride);
 	
-	//                         index             hash               key    
-	*valp = (char*)ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width;
-	memcpy(*valp, (char*)ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width, ht->stride - 8 - 8);
+	//                               index             hash               key    
+	*valp = b_val; //(char*)ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width;
+	//printf("memcpy len: %ld\n", ht->stride - key_width - 8);
+	//memcpy(*valp, (char*)ht->buckets + (bi * ht->stride) + sizeof(uint64_t) + key_width, ht->stride - key_width - 8);
 	return 0;
 }
 
@@ -166,13 +201,13 @@ int oaht_get_kptr(struct HT_base_layout* ht, void* key, void* val) {
 int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val) {
 	uint64_t hash;
 	int64_t bi;
-	
-	struct bucket {
-		uint64_t hash;
-		char* key;
-		char value;
-	};
-	
+
+	// memory layout:
+	//
+	// uint64_t hash;
+	// keyType key;
+	// valType val;
+
 	// check size and grow if necessary
 	if((float)ht->fill / (float)ht->alloc_size >= 0.75) {
 		oaht_resize(ht, ht->alloc_size * 2);
@@ -194,27 +229,35 @@ int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val) {
 // 	printf("oaht set - bi: %ld (alloc %ld, stride %ld)\n", bi, ht->alloc_size, ht->stride);
 
 	char* b = (char*)ht->buckets + (ht->stride * bi);
-	#define BK ((struct bucket*)b)
+
+	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
 	
-	if(BK->hash == 0) {
+	uint64_t* b_hash = (uint64_t*)b;
+	char* b_key = b + sizeof(uint64_t);
+	char* b_val = b + sizeof(uint64_t) + key_width;
+	
+	if(*b_hash == 0) {
 		// new bucket
 		ht->fill++;
 	}
 	
 	
-	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
-	memcpy(b + sizeof(uint64_t) + key_width, val, ht->stride - sizeof(uint64_t) - key_width);
+	size_t val_width = ht->stride - sizeof(uint64_t) - key_width;
 	
+	// copy the value in
+	memcpy(b_val, val, val_width);
+	
+	// copy the key in
 	if(ht->key_mode == 'i') {
-		memcpy(&BK->key, key, ht->key_len);
+		memcpy(b_key, key, key_width);
 	}
 	else {
-		BK->key = key;
+		*(uint64_t*)b_key = (uint64_t)key;
 	}
 	
 	
-	BK->hash = hash;
-#undef BK
+	// finally the hash value
+	*b_hash = hash;
 	
 	return 0;
 }
