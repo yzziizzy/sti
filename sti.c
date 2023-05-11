@@ -21,6 +21,7 @@
 #include "ini.c"
 #include "string_int.c"
 #include "matrix.c"
+#include "b64.c"
 //#include "sort.c"
 
 // semi-platform-dependent

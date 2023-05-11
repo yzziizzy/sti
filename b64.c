@@ -1,0 +1,95 @@
+
+
+
+#include "b64.h"
+
+
+
+static inline uint8_t b64char(uint8_t c) {
+	if(c >= 'a') return c - 'a' + 26;
+	if(c >= 'A') return c - 'A';
+	if(c >= '0') return c - '0' + 52;
+	if(c == '/') return 63;
+	if(c == '+') return 62;
+	return 0;
+}
+
+
+void base64_decode(char* in, uint64_t inLen, uint8_t* out, uint64_t* outLen) {
+	
+	uint64_t quads = inLen / 4;
+	uint32_t rem = inLen % 4;
+	
+	uint64_t o = 0;
+	
+	uint64_t i = 0;
+	for(uint64_t j = 0; j < quads; j++, i += 4) {
+		union {
+			uint64_t q;
+			uint8_t b[4];
+		} x;
+			
+		uint8_t c0 = b64char(in[i + 0]);
+		uint8_t c1 = b64char(in[i + 1]);
+		uint8_t c2 = b64char(in[i + 2]);
+		uint8_t c3 = b64char(in[i + 3]);
+		
+		x.q = (c0 << 18) | (c1 << 12) | (c2 << 6) | c3;
+		
+		out[o + 0] = x.b[2];
+		out[o + 1] = x.b[1];
+		out[o + 2] = x.b[0];
+		
+		o += 3;
+	}
+	
+	*outLen = quads * 3;
+	
+	// adjust length for padding
+	if(in[i - 2] == '=') (*outLen) -= 2;
+	else if(in[i - 1] == '=') (*outLen)--;
+	
+	if(!rem) return;
+	
+	uint8_t c0 = 0, c1 = 0, c2 = 0;
+	union {
+		uint64_t q;
+		uint8_t b[4];
+	} x;
+	
+	x.q = 0;
+	
+	switch(rem) {
+		case 3:
+			c2 = b64char(in[i + 2]);
+			/* fallthrough */
+		case 2:
+			c1 = b64char(in[i + 1]);
+			/* fallthrough */
+		case 1:
+			c0 = b64char(in[i + 0]);
+		default:
+	}
+	
+	x.q = (c0 << 18) | (c1 << 12) | (c2 << 6);
+	
+	
+	if(x.b[0]) {
+		out[o + 2] = x.b[0];
+		(*outLen)++;
+	}
+	if(x.b[1]) {
+		out[o + 1] = x.b[1];
+		(*outLen)++;
+	}
+	if(x.b[2]) {
+		out[o + 0] = x.b[2];
+		(*outLen)++;
+	}
+}
+
+
+
+
+
+

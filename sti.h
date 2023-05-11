@@ -21,6 +21,7 @@
 #include "ini.h"
 #include "string_int.h"
 #include "matrix.h"
+#include "b64.h"
 
 // heavily dependent on Linux
 #include "memarena.h"
