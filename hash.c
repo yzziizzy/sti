@@ -385,18 +385,16 @@ int oaht_delete(struct HT_base_layout* ht, void* key) {
 
 
 
-
 // iteration. no order. results undefined if modified while iterating
 // returns 0 when there is none left
 // set iter to NULL to start
 int oaht_nextp(struct HT_base_layout* ht, void** iter, void** key, void** valp) { 
-	struct bucket {
-		uint64_t hash;
-		char* key;
-		char value;
-	};
+	// memory layout:
+	//
+	// uint64_t hash;
+	// keyType key;
+	// valType val;
 
-	#define B ((struct bucket*)b)
 
 	char* b = *iter;
 	
@@ -409,18 +407,32 @@ int oaht_nextp(struct HT_base_layout* ht, void** iter, void** key, void** valp) 
 		if(b >= (char*)ht->buckets + (ht->alloc_size * ht->stride)) {
 			// end of the list
 			*valp = NULL;
-			*key = NULL;
 			return 0;
 		}
-	} while(!B->hash);
+	} while(!*(uint64_t*)b);
 	
-	*key = B->key;
+	// *key = B->key;
+	
 	
 	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
-	// TODO: implicit key width
-	*valp = b + sizeof(uint64_t) + key_width;
+	size_t val_width = ht->stride - sizeof(uint64_t) - key_width;
+	
+	uint64_t* b_hash = (uint64_t*)b;
+	char* b_key = b + sizeof(uint64_t);
+	char* b_val = b + sizeof(uint64_t) + key_width;
+	
+	// copy the value pointer
+	*valp = b_val;
+	
+	// copy the key out
+	if(ht->key_mode == 'i') {
+		memcpy(key, b_key, key_width);
+	}
+	else {
+		*(uint64_t*)key = *(uint64_t*)b_key;
+	}
+	
 	*iter = b;
-	#undef B
 	
 	return 1;
 }
@@ -429,14 +441,13 @@ int oaht_nextp(struct HT_base_layout* ht, void** iter, void** key, void** valp) 
 // returns 0 when there is none left
 // set iter to NULL to start
 int oaht_next(struct HT_base_layout* ht, void** iter, void** key, void* val) { 
-	struct bucket {
-		uint64_t hash;
-		char* key;
-		char value;
-	};
-
-	#define B ((struct bucket*)b)
-
+	// memory layout:
+	//
+	// uint64_t hash;
+	// keyType key;
+	// valType val;
+	
+	
 	char* b = *iter;
 	
 	// a tiny bit of idiot-proofing
@@ -446,20 +457,34 @@ int oaht_next(struct HT_base_layout* ht, void** iter, void** key, void* val) {
 		b += ht->stride;
 		if(b >= (char*)ht->buckets + (ht->alloc_size * ht->stride)) {
 			// end of the list
-			*key = NULL;
 			return 0;
 		}
-	} while(!B->key);
+	} while(0 == (*(uint64_t*)b));
 	
-	*key = B->key;
 	
-	memcpy(val, &B->value, ht->stride - sizeof(uint64_t) - sizeof(char*)); // BUG: implicit key length
+	size_t key_width = ht->key_mode == 'i' ? ht->key_len : sizeof(char*);
+	size_t val_width = ht->stride - sizeof(uint64_t) - key_width;
+	
+	uint64_t* b_hash = (uint64_t*)b;
+	char* b_key = b + sizeof(uint64_t);
+	char* b_val = b + sizeof(uint64_t) + key_width;
+	
+	// copy the value out
+	memcpy(val, b_val, val_width);
+	
+	// copy the key out
+	if(ht->key_mode == 'i') {
+		memcpy(key, b_key, key_width);
+	}
+	else {
+		*(uint64_t*)key = *(uint64_t*)b_key;
+		
+	}
+	
 	*iter = b;
-	#undef B
 	
 	return 1;
 }
-
 
 
 
