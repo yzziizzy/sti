@@ -181,12 +181,12 @@ do { \
 	} \
 	\
 	memmove( /* move the rest of x forward */ \
-		VEC_DATA(x) + where + VEC_LEN(y), \
-		VEC_DATA(x) + where,  \
-		(VEC_LEN(x) - where) * sizeof(*VEC_DATA(x)) \
+		VEC_DATA(x) + ((where) + VEC_LEN(y)), \
+		VEC_DATA(x) + (where),  \
+		(VEC_LEN(x) - (where)) * sizeof(*VEC_DATA(x)) \
 	); \
 	memcpy( /* copy y into the space created */ \
-		VEC_DATA(x) + where, \
+		VEC_DATA(x) + (where), \
 		VEC_DATA(y),  \
 		VEC_LEN(y) * sizeof(*VEC_DATA(y)) \
 	); \
