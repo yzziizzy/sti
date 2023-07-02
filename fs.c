@@ -118,7 +118,7 @@ int recurse_dirs(
 			if(flags & FSU_INCLUDE_DIRS) {
 				stop = fn(fullPath, n, data);
 			}
-			if(depth != 0) {
+			if(!stop && depth > 0) {
 				stop |= recurse_dirs(fullPath, fn, data, depth - 1, flags);
 			}
 		}
