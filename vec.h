@@ -63,11 +63,23 @@ do { \
 	VEC_LEN(x)++; \
 } while(0)
 
-// increase size but don't assign
+// increase size and evaluates to a pointer to it
 #define VEC_INC(x) \
-do { \
+({ \
 	VEC_CHECK(x); \
 	VEC_LEN(x)++; \
+	&VEC_TAIL(x); \
+})
+
+
+// set the size and zero the contents
+#define VEC_CALLOC(x, sz) \
+do { \
+	if(VEC_ALLOC(x) < (sz)) { \
+		vec_resize_to((void**)&VEC_DATA(x), &VEC_ALLOC(x), sizeof(*VEC_DATA(x)), (sz)); \
+	} \
+	VEC_LEN(x) = (sz); \
+	memset(VEC_DATA(x), 0, sizeof(*VEC_DATA(x)) * (sz)); \
 } while(0)
 
 
