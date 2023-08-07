@@ -169,7 +169,7 @@ typedef struct cpp_tu {
 
 
 
-cpp_token_list_t* lex_file(cpp_tu_t* tu, char* path);
+cpp_token_list_t* lex_file(cpp_tu_t* tu, cpp_file_t* file);
 void preprocess_file(cpp_tu_t* tu, cpp_context_t* parent, char* path, char is_system);
 void preprocess_token_list(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* tokens);
 

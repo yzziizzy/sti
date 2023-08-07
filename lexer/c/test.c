@@ -20,12 +20,14 @@ int main(int argc, char* argv[]) {
 	preprocess_file(tu, NULL, "./sample.c", 0);
 //	preprocess_file(tu, NULL, "/usr/include/stdint.h", 1);
 	
-	/*
-	c_ast_tu_t* atu = calloc(1, sizeof(*atu));
+	
+	ast_tu_t* atu = calloc(1, sizeof(*atu));
 	atu->cpp = tu;
-	c_ast_tu_init(atu);
-	c_parser_tu(atu);
-	*/
+
+	c_parser_tu(tu, atu);
+	
+	
+	
 	/*
 	cpp_context_t* ctx = tu->root_ctx;
 	

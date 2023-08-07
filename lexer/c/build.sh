@@ -2,4 +2,4 @@
 
 gcc -lutil _build.c -o ._build -ggdb \
 	&& ./._build \
-	&& ./lextest
+	&& gdb -ex r ./lextest

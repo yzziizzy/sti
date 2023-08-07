@@ -178,13 +178,13 @@ static void inject_pasted(cpp_tu_t* tu, cpp_context_t* ctx, cpp_token_list_t* li
 }
 
 
-cpp_token_list_t* lex_file(cpp_tu_t* tu, char* path) {
+cpp_token_list_t* lex_file(cpp_tu_t* tu, cpp_file_t* file) {
 	lexer_source_t* src = calloc(1, sizeof(*src));
 	
-	src->text = readWholeFile(path, &src->len);
+	src->text = readWholeFile(file->full_path, &src->len);
 	src->head = src->text;
 	if(!src->text) {
-		fprintf(stderr, "Failed to read file '%s'\n", path);
+		fprintf(stderr, "Failed to read file '%s'\n", file->full_path);
 		free(src);
 		return NULL;
 	}
@@ -209,6 +209,7 @@ cpp_token_list_t* lex_file(cpp_tu_t* tu, char* path) {
 		*n = tok;
 		n->alloc = n->len; // the interred string doesn't waste any space
 		n->text = strnint_(tu->str_table, n->text, n->len);
+		n->file = file;
 		
 		tok.start_line = tok.end_line;
 		tok.start_col = tok.end_col + 1;
@@ -373,7 +374,7 @@ void preprocess_file(cpp_tu_t* tu, cpp_context_t* parent, char* path, char is_sy
 	
 	// lex the file on first load
 	if(!file->raw_tokens) {
-		file->raw_tokens = lex_file(tu, file->full_path);
+		file->raw_tokens = lex_file(tu, file);
 		if(!file->raw_tokens) return;
 	}
 	

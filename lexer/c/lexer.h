@@ -30,6 +30,8 @@ typedef struct lexer_source {
 } lexer_source_t;
 
 
+struct cpp_file;
+
 typedef struct lexer_token {
 	int type;
 	char has_newline; // lexically speaking. escaped newlines don't count.
@@ -44,6 +46,8 @@ typedef struct lexer_token {
 	size_t len; // length of the output token
 	size_t alloc; // allocated size of the token buffer
 	char* text; // the token text
+	
+	struct cpp_file* file;
 } lexer_token_t;
 
 
