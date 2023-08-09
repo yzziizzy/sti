@@ -6,7 +6,7 @@
 
 
 void base64_decode(char* in, uint64_t inLen, uint8_t* out, uint64_t* outLen);
-
+void base64_encode(char* in, uint64_t inLen, char* out, uint64_t* outLen);
 
 
 
