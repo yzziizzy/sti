@@ -89,6 +89,60 @@ void base64_decode(char* in, uint64_t inLen, uint8_t* out, uint64_t* outLen) {
 }
 
 
+static inline char charfromhextet(uint8_t h) {
+	if(h < 26) return h + 'A';
+	if(h < 52) return h - 26 + 'a';
+	if(h < 62) return h - 52 + '0';
+	if(h == 62) return '+';
+	if(h == 63) return '/';
+	return 0;
+}
+
+
+void base64_encode(char* in, uint64_t inLen, char* out, uint64_t* outLen) {
+	
+	uint64_t trios = inLen / 3;
+	uint64_t rem = inLen % 3;
+	
+	uint64_t o = 0;
+	
+	uint64_t i = 0;
+	for(uint64_t j = 0; j < trios; j++, i += 3) {
+		uint32_t x = 0;
+		
+		x = (in[i + 0] << 16 | in[i + 1] << 8 | in[i + 2]);
+		
+		out[o + 0] = charfromhextet((x >> 18) & 0b00111111);
+		out[o + 1] = charfromhextet((x >> 12) & 0b00111111);
+		out[o + 2] = charfromhextet((x >> 6) & 0b00111111);
+		out[o + 3] = charfromhextet((x >> 0) & 0b00111111);
+		
+		o += 4;
+	}
+	
+	*outLen = trios * 4;
+	
+	if(!rem) return;
+	(*outLen) += 4;
+	
+	out[o + 3] = '=';
+	
+	uint32_t x = 0;
+	x = (in[i + 0] << 16);
+	
+	if(rem == 2) {
+		x |= (in[i + 1] << 8);
+		out[o + 2] = charfromhextet((x >> 6) & 0b00111111);
+	}
+	else {
+		out[o + 2] = '=';
+	}
+	
+	out[o + 0] = charfromhextet((x >> 18) & 0b00111111);
+	out[o + 1] = charfromhextet((x >> 12) & 0b00111111);
+	
+}
+
 
 
 
