@@ -195,9 +195,14 @@ int oaht_get_klit(struct HT_base_layout* ht, uint64_t key, void* val);
 })
 */
 
-
-#define HT_getp(h, key, valp) oaht_getp_kptr(&(h)->base, HT_TYPECHECK(h, key, keyType), (void**)(1 ? valp : &((h)->meta[0].valTypep)))
-
+#define HT_getp(h, key, valp)  ({ \
+	__typeof__((h)->meta[0].keyType) __HT_key = (key); \
+	oaht_getp_kptr(&(h)->base, \
+	_Generic((h)->meta[0].keyTypeFlag, \
+		struct HT_String_Type: __HT_key, \
+		default: &__HT_key \
+	), HT_TYPECHECK(h, valp, valTypepp)); \
+})
 
 int oaht_set_kptr(struct HT_base_layout* ht, void* key, void* val);
 int oaht_set_klit(struct HT_base_layout* ht, uint64_t key, void* val);
