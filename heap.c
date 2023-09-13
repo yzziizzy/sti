@@ -86,6 +86,21 @@ void heap_insert_pop_(heap_* h, char* in, char* out, size_t elem_sz) {
 	heap_down_(h, 0, elem_sz);
 }
 
+
+void heap_delete_(heap_* h, char* elem, size_t elem_sz) {
+
+	// find the item to be deleted
+	ssize_t ind = heap_find_(h, elem, elem_sz);
+	if(ind == -1) return;
+	
+	// swap with last item, then delete the new last item
+	swap_mem_(h->data + (ind * elem_sz), h->data + ((h->len-1) * elem_sz), elem_sz);
+		
+	// rebalance heap with the new value in the deletion location
+	heap_down_(h, ind, elem_sz);
+}
+
+
 void heap_free_(heap_* h) {
 	if(h->data) free(h->data);
 	h->data = NULL;
@@ -101,7 +116,7 @@ void heap_up_(heap_* h, size_t ci, size_t elem_sz) {
 		
 		size_t pi = (ci - 1) / 2;
 		
-		int ret = h->cmp(h->data + (elem_sz * pi), h->data + (elem_sz * ci));
+		int ret = h->cmp(h->data + (elem_sz * pi), h->data + (elem_sz * ci), h->user);
 		if(ret > 0) break;
 		
 		swap_mem_(h->data + (elem_sz * pi), h->data + (elem_sz * ci), elem_sz);
@@ -123,13 +138,13 @@ void heap_down_(heap_* h, size_t pi, size_t elem_sz) {
 	}
 	else {
 		// find the smallest child
-		r = h->cmp(h->data + (ai * elem_sz), h->data + (bi * elem_sz));
+		r = h->cmp(h->data + (ai * elem_sz), h->data + (bi * elem_sz), h->user);
 		ci =  r > 0 ? ai : bi; 
 	}
 	
 // 	printf("smaller: %d of %d and %d\n", *(int*)(h->data+ci*elem_sz),*(int*)(h->data+ai*elem_sz),*(int*)(h->data+bi*elem_sz));
 	
-	r = h->cmp(h->data + (ci * elem_sz), h->data + (pi * elem_sz));
+	r = h->cmp(h->data + (ci * elem_sz), h->data + (pi * elem_sz), h->user);
 	if(r > 0) {
 // 		printf(" -> %d < %d, swapping \n", *(int*)(h->data+ci*elem_sz),*(int*)(h->data+pi*elem_sz));
 		
@@ -139,6 +154,19 @@ void heap_down_(heap_* h, size_t pi, size_t elem_sz) {
 		return;
 	}
 	
+}
+
+
+ssize_t heap_find_(heap_* h, char* elem, size_t elem_sz) {
+	int r;
+	
+	// TODO: replace with binary search, assuming it's actually faster
+	
+	for(size_t i = 0; i < h->len; i++) {
+		if(0 == memcmp(h->data + i * elem_sz, elem, elem_sz)) return i;
+	}
+	
+	return -1;
 }
 
 
