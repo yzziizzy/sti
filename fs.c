@@ -52,6 +52,35 @@ int is_path_a_dir(char* path) {
 	return 0;
 }
 
+// handles ~ properly
+// returns 0 for false, 1 for true, and 0 on any error
+int is_regular_file(char* path) {
+	int ret;
+	struct stat sb;
+	
+	if(!path) return 0;
+	
+	if(path[0] == '~') {
+		char* homedir, *tmp;
+		
+		homedir = getenv("HOME");
+		tmp = path_join(homedir, path + 1);
+		
+		ret = stat(tmp, &sb);
+		
+		free(tmp);
+	}
+	else {
+		ret = stat(path, &sb);
+	}
+	
+	if(ret) return 0;
+	
+	if(sb.st_mode & S_IFREG) return 1;
+	
+	return 0;
+}
+
 
 // returns negative on error, nonzero if scanning was halted by the callback
 int recurse_dirs(
@@ -81,7 +110,7 @@ int recurse_dirs(
 	while((result = readdir(derp)) && !stop) {
 		char* n = result->d_name;
 		unsigned char type = DT_UNKNOWN;
-		char* fullPath;
+		char* fullPath = NULL;
 		
 		// skip self and parent dir entries
 		if(n[0] == '.') {
@@ -107,6 +136,7 @@ int recurse_dirs(
 #endif
 		
 		if(flags & FSU_NO_FOLLOW_SYMLINKS && type == DT_LNK) {
+			if(fullPath) free(fullPath);
 			continue;
 		}
 		
@@ -264,7 +294,7 @@ char* read_whole_file_extra(char* path, size_t extraAlloc, size_t* srcLen) {
 	
 	f = fopen(path, "rb");
 	if(!f) {
-		fprintf(stderr, "Could not open file \"%s\"\n", path);
+//		fprintf(stderr, "Could not open file \"%s\"\n", path);
 		return NULL;
 	}
 	
@@ -295,7 +325,7 @@ int write_whole_file(char* path, void* data, size_t len) {
 	
 	f = fopen(path, "wb");
 	if(!f) {
-		fprintf(stderr, "Could not open file \"%s\"\n", path);
+//		fprintf(stderr, "Could not open file \"%s\"\n", path);
 		return 1;
 	}
 	
@@ -308,6 +338,166 @@ int write_whole_file(char* path, void* data, size_t len) {
 	
 	return 0;
 }
+
+
+
+// returns a list of the relative file names 
+char** read_whole_dir(char* path, unsigned int flags, size_t* outLen) {
+	DIR* derp;
+	struct dirent* result;
+	
+	derp = opendir(path);
+	if(derp == NULL) {
+		//fprintf(stderr, "Error opening directory '%s': %s\n", path, strerror(errno));
+		return NULL;
+	}
+	
+	size_t on = 0;
+	size_t oalloc = 16;
+	char** o = malloc(sizeof(*o) * oalloc);
+	
+	
+	while(result = readdir(derp)) {
+		char* n = result->d_name;
+		unsigned char type = DT_UNKNOWN;
+		
+		
+		
+		// skip self and parent dir entries
+		if(n[0] == '.') {
+			if(n[1] == '.' && n[2] == 0) continue;
+			if(n[1] == 0) continue;
+			
+			if(flags & FSU_EXCLUDE_HIDDEN) continue;
+		}
+
+#ifdef _DIRENT_HAVE_D_TYPE
+		type = result->d_type; // the way life should be
+#else
+		struct stat upgrade_your_fs;
+		
+		lstat(n, &upgrade_your_fs);
+		
+		if(S_ISREG(upgrade_your_fs.st_mode)) type = DT_REG;
+		else if(S_ISDIR(upgrade_your_fs.st_mode)) type = DT_DIR;
+		else if(S_ISLNK(upgrade_your_fs.st_mode)) type = DT_LNK;
+#endif
+		
+		if((flags & FSU_NO_FOLLOW_SYMLINKS) && (type == DT_LNK)) {
+			continue;
+		}
+		
+		
+		if(
+			(type == DT_DIR && (flags & FSU_INCLUDE_DIRS)) ||
+			(type == DT_REG && !(flags & FSU_EXCLUDE_FILES))
+		) {
+			if(on > oalloc - 1) {
+				oalloc *= 2;
+				o = realloc(o, sizeof(*o) * oalloc); 
+			}
+			
+			o[on++] = strdup(n);
+		}
+	}
+	
+	
+	closedir(derp);
+	
+	o[on] = NULL;
+	if(outLen) *outLen = on;
+	
+	return o;
+}
+
+
+
+
+// returns a list of the absolute file names 
+char** read_whole_dir_abs(char* path, unsigned int flags, size_t* outLen) {
+	DIR* derp;
+	struct dirent* result;
+	
+	char* abspath = resolve_path(path);
+	if(!abspath) {
+		if(outLen) *outLen = 0;
+		return NULL;
+	}
+	
+	derp = opendir(abspath);
+	if(derp == NULL) {
+		fprintf(stderr, "Error opening directory '%s': %s\n", path, strerror(errno));
+		return NULL;
+	}
+	
+	size_t on = 0;
+	size_t oalloc = 16;
+	char** o = malloc(sizeof(*o) * oalloc);
+	
+	
+	while(result = readdir(derp)) {
+		char* n = result->d_name;
+		unsigned char type = DT_UNKNOWN;
+		char* fullPath = NULL;
+		
+		
+		// skip self and parent dir entries
+		if(n[0] == '.') {
+			if(n[1] == '.' && n[2] == 0) continue;
+			if(n[1] == 0) continue;
+			
+			if(flags & FSU_EXCLUDE_HIDDEN) continue;
+		}
+
+#ifdef _DIRENT_HAVE_D_TYPE
+		type = result->d_type; // the way life should be
+#else
+		// do some slow extra bullshit to get the type
+		fullPath = path_join(abspath, n);
+		
+		struct stat upgrade_your_fs;
+		
+		lstat(fullPath, &upgrade_your_fs);
+		
+		if(S_ISREG(upgrade_your_fs.st_mode)) type = DT_REG;
+		else if(S_ISDIR(upgrade_your_fs.st_mode)) type = DT_DIR;
+		else if(S_ISLNK(upgrade_your_fs.st_mode)) type = DT_LNK;
+#endif
+		
+		if((flags & FSU_NO_FOLLOW_SYMLINKS) && (type == DT_LNK)) {
+			if(fullPath) free(fullPath);
+			continue;
+		}
+		
+#ifdef _DIRENT_HAVE_D_TYPE
+		fullPath = path_join(abspath, n);
+#endif
+		
+		if(
+			(type == DT_DIR && (flags & FSU_INCLUDE_DIRS)) ||
+			(type == DT_REG && !(flags & FSU_EXCLUDE_FILES))
+		) {
+			if(on > oalloc - 1) {
+				oalloc *= 2;
+				o = realloc(o, sizeof(*o) * oalloc); 
+			}
+			
+			o[on++] = fullPath;
+		}
+
+	}
+	
+	free(abspath);
+	closedir(derp);
+	
+	o[on] = NULL;
+	if(outLen) *outLen = on;
+	
+	return o;
+}
+
+
+
 
 
 // works like realpath(), except also handles ~/

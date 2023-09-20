@@ -27,7 +27,8 @@ double timeSinceEpoch(double past); // also in seconds
 
 
 
-
+#ifndef STI_HAS_STATIC_nextPOT
+#define STI_HAS_STATIC_nextPOT
 // super nifty site:
 // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 inline static size_t nextPOT(size_t in) {
@@ -42,7 +43,7 @@ inline static size_t nextPOT(size_t in) {
 	
 	return in;
 }
-
+#endif STI_HAS_STATIC_nextPOT
 
 #ifndef STI_C3DLAS_NO_CONFLICT
 // Random number helpers

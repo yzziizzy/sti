@@ -143,7 +143,8 @@ struct { \
 	struct HT_Pointer_Type: sizeof(void*) \
 )
 
-
+#define HT_fill(o) ((o)->base.fill)
+#define HT_alloc(o) ((o)->base.alloc_size)
 
 
 #define HT_init(h, sz) \
@@ -194,6 +195,7 @@ int oaht_get_klit(struct HT_base_layout* ht, uint64_t key, void* val);
 	); \
 })
 */
+
 
 #define HT_getp(h, key, valp)  ({ \
 	__typeof__((h)->meta[0].keyType) __HT_key = (key); \

@@ -33,6 +33,10 @@ void recursive_glob(char* base_path, char* pattern, int flags, rglob* results);
 // returns 0 for false, 1 for true, and 0 on any error
 int is_path_a_dir(char* path);
 
+// handles ~ properly
+// returns 0 for false, 1 for true, and 0 on any error
+int is_regular_file(char* path);
+
 // join all path segments in a new buffer
 #define path_join(...) path_join_(PP_NARG(__VA_ARGS__), __VA_ARGS__)
 char* path_join_(size_t nargs, ...);
@@ -54,9 +58,18 @@ char* read_whole_file(char* path, size_t* srcLen);
 // srcLen reflects the length of the content, not the allocation
 char* read_whole_file_extra(char* path, size_t extraAlloc, size_t* srcLen);
 
-
 // returns 0 on success
 int write_whole_file(char* path, void* data, size_t len);
+
+
+// returns a list of the relative file names 
+char** read_whole_dir(char* path, unsigned int flags, size_t* outLen);
+
+// returns a list of the absolute file names 
+char** read_whole_dir_abs(char* path, unsigned int flags, size_t* outLen);
+
+
+
 
 // return 0 to continue, nonzero to stop all directory scanning
 typedef int (*readDirCallbackFn)(char* /*fullPath*/, char* /*fileName*/, void* /*data*/);
@@ -65,6 +78,8 @@ typedef int (*readDirCallbackFn)(char* /*fullPath*/, char* /*fileName*/, void* /
 #define FSU_NO_FOLLOW_SYMLINKS (1<<1)
 #define FSU_INCLUDE_DIRS       (1<<2)
 #define FSU_EXCLUDE_FILES      (1<<3)
+#define FSU_DIRS_ONLY          (FSU_EXCLUDE_FILES | FSU_INCLUDE_DIRS)
+
 
 // returns negative on error, nonzero if scanning was halted by the callback
 int recurse_dirs(

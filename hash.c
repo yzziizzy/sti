@@ -44,8 +44,6 @@ inline static size_t nextPOT(size_t in) {
 
 
 
-
-
 static ptrdiff_t oaht_find_bucket(struct HT_base_layout* ht, uint64_t hash, void* key) {
 	int64_t startBucket, bi;
 	
@@ -64,7 +62,7 @@ static ptrdiff_t oaht_find_bucket(struct HT_base_layout* ht, uint64_t hash, void
 		struct bucket* bucket = (struct bucket*)((char*)ht->buckets + (bi * ht->stride));
 		
 		// empty bucket
-		if(bucket->key == NULL) {
+		if(bucket->hash == 0) {
 			return bi;
 		}
 		
@@ -91,7 +89,6 @@ static ptrdiff_t oaht_find_bucket(struct HT_base_layout* ht, uint64_t hash, void
 					break;
 			}
 				
-			
 			// collision, probe next bucket
 		}
 		
@@ -128,10 +125,10 @@ int oaht_getp_kptr(struct HT_base_layout* ht, void* key, void** valp) {
 	hash = hash_key(key, key_len);
 	
 	
-	
 	bi = oaht_find_bucket(ht, hash, key);
 //	printf("\nkeymode: %c, keylen %ld, hash %lx, bi: %ld \n", ht->key_mode, key_len, hash, bi);
-
+	
+	
 	if(bi < 0) {// || *(char**)(ht->buckets + (bi * ht->stride) + sizeof(uint64_t)) == NULL) {
 //		*valp = NULL;
 //		printf("bail #1 (negative bucket index)\n");
