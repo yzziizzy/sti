@@ -48,7 +48,7 @@ int main(/*int argc, char* argv[]*/) {
 	
 	b64t_encode("light w");
 	b64t_encode("light wo");
-	b64t_encode"light wor");
+	b64t_encode("light wor");
 	b64t_encode("Many hands make light work.");
 	
 	return 0;
