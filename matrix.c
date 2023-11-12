@@ -182,7 +182,9 @@ void sti_matrix_mulp_transb(sti_matrix* a, sti_matrix* b, sti_matrix* out) {
 	}
 }
 
-#define MIN(a, b) (a < b ? a : b)
+#ifndef MIN
+	#define MIN(a, b) (a < b ? a : b)
+#endif
 
 void sti_matrix_add(sti_matrix* a, sti_matrix* b, sti_matrix* out) {
 	
