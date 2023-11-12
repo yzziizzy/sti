@@ -82,6 +82,17 @@ do { \
 	memset(VEC_DATA(x), 0, sizeof(*VEC_DATA(x)) * (sz)); \
 } while(0)
 
+// Ensure that the vec is at least of a certain size, and zero any newly allocated portion
+#define VEC_CREALLOC(x, sz) \
+do { \
+	if(VEC_ALLOC(x) < (sz)) { \
+		vec_c_resize_to((void**)&VEC_DATA(x), &VEC_ALLOC(x), sizeof(*VEC_DATA(x)), (sz)); \
+		VEC_LEN(x) = (sz); \
+	} \
+} while(0)
+
+
+
 
 #define VEC_PREPEND(x, e) \
 do { \
@@ -436,6 +447,7 @@ void vec_resize(void** data, size_t* size, size_t elem_size);
 ptrdiff_t vec_find(void* data, size_t len, size_t stride, void* search);
 ptrdiff_t vec_rm_val(char* data, size_t* len, size_t stride, void* search);
 void vec_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size);
+void vec_c_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size);
 void vec_copy(
 	char** dst_data, char* src_data, 
 	size_t* dst_alloc, size_t src_alloc, 

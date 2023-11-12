@@ -42,6 +42,25 @@ void vec_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size)
 	*data = tmp;
 }
 
+void vec_c_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size) {
+	void* tmp;
+	
+	if(*size >= new_size) return;
+	
+	size_t npot = nextPOT(new_size);
+	
+	tmp = realloc(*data, *size * elem_size);
+	if(!tmp) {
+		fprintf(stderr, "Out of memory in vector resize, %ld bytes requested\n", *size);
+		return;
+	}
+	
+	memset(tmp + *size * elem_size, 0, (npot - *size) * elem_size);
+	
+	*size = npot;
+	*data = tmp;
+}
+
 void vec_resize(void** data, size_t* size, size_t elem_size) {
 	void* tmp;
 	
@@ -91,7 +110,7 @@ void vec_copy(
 ) {
 	if(*dst_alloc < src_alloc) {
 		*dst_alloc = src_alloc;
-		if(*dst_alloc == 0) {
+		if(*dst_data == 0) {
 			*dst_data = malloc(elem_size * src_alloc);
 		}
 		else {
@@ -100,5 +119,5 @@ void vec_copy(
 	}
 	
 	*dst_len = src_len;
-	memcpy(*dst_data, src_data, elem_size * src_len);
+	memcpy(*dst_data, src_data, elem_size * *dst_len);
 }
