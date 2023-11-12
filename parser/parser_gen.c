@@ -429,7 +429,9 @@ static void print_state_switch(state_info* si) {
 	if(VEC_LEN(&si->cs_cases)) {
 		VEC_EACH(&si->cs_cases, ckey, ci) {
 			if(si->retry_as && 0 == strcmp(si->retry_as, ci.cs_name)) continue;
-			char* action = ci.action == '^' ? "discard_char_id" : "push_char_id";
+			char* action = "push_char_id";
+			if(ci.action == 1) action = "push_char_done";
+			else if(ci.action == 2) action = "done_zero_move";
 			char* inv = ci.invert ? "!" : "";
 			printf("\tif(%scharset_has(cset_%s, c)) { %s(%s); }\n", inv, ci.cs_name, action, ci.dest_state);
 		}
@@ -859,12 +861,14 @@ int main(int argc, char* argv[]) {
 			// charset fail-to
 			if(*s == '+') {
 				s++;
-				end = strpbrk(s, ">^~");
+				end = strpbrk(s, ">=~");
 				
 				char* set_name = strndup(s, end - s);
 				
 				
 				int type = *end;
+				
+				
 				
 				s = end + 1;
 				end = word_end(s, &wl);
@@ -890,6 +894,8 @@ int main(int argc, char* argv[]) {
 					.action = action,
 					.invert = invert,
 				}));
+				
+				// printf("//Generating extra case <%s> with type/action <%c/%d> for set <%s>\n", set_name, type, action, set_name);
 				
 				(void)fail_to;
 				(void)set_name;
