@@ -4,6 +4,7 @@
 // Public Domain.
 
 #include <stdint.h>
+#include <sys/types.h> // ssize_t
 
 typedef int (*comp_fn)(const void* a, const void* b, void* user);
 

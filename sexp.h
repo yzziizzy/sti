@@ -25,17 +25,26 @@ typedef struct sexp {
 
 
 sexp* sexp_parse(char* source);
+sexp* sexp_parse_file(char* path);
 void sexp_free(sexp* x);
 
-int64_t sexp_asInt(sexp* x); 
-double sexp_asDouble(sexp* x); 
+void sexp_print(int fd, sexp* x);
 
-int64_t sexp_argAsInt(sexp* x, size_t argn);
-double sexp_argAsDouble(sexp* x, size_t argn);
+
+
+// if called on a scalar value, returns the requested conversion and ignores argn
+// OOB and NULL input tolerant; returns 0/NULL
+
+sexp* sexp_arg(sexp* x, size_t argn);
+int64_t sexp_int(sexp* x, size_t argn);
+uint64_t sexp_uint(sexp* x, size_t argn);
+float sexp_float(sexp* x, size_t argn);
+double sexp_double(sexp* x, size_t argn);
 
 // returns internally managed string, user must dup
-char* sexp_argAsStr(sexp* x, size_t argn); 
-sexp* sexp_argAsSexp(sexp* x, size_t argn); 
+char* sexp_str(sexp* x, size_t argn);
+ 
+
 
 
 

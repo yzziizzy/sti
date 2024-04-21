@@ -28,7 +28,7 @@ static sexp* parse_literal(char** s) {
 	//check if it's not quoted
 	if(**s != '"' && **s != '\'') {
 		
-		e = strpbrk(*s, " \r\n\t)");
+		e = strpbrk(*s, " \r\n\t(){}[]<>");
 		if(!e) {
 			fprintf(stderr, "sexp: unexpected end of input parsing literal\n");
 			return x;
@@ -55,6 +55,9 @@ static sexp* parse_literal(char** s) {
 		i++;
 	}
 	
+	if(**s == q) (*s)++; // skip the closing quote
+	
+	
 	x->str[i] = '\0';
 	
 	return x;
@@ -62,7 +65,7 @@ static sexp* parse_literal(char** s) {
 
 
 
-static sexp* parse(char** s) {
+static sexp* parse(char** s, long depth) {
 	
 	sexp* x, *y;
 	
@@ -71,6 +74,7 @@ static sexp* parse(char** s) {
 	
 	while(**s) {
 		char c = **s;
+		
 		switch(c) {
 			case '(': /* fall through */ // sub expression
 			case '{': /* fall through */ // sub expression
@@ -80,7 +84,7 @@ static sexp* parse(char** s) {
 				
 				// TODO: check for (*   *) and skip as comment
 				
-				y = parse(s);
+				y = parse(s, depth + 1);
 				y->brace = c;
 				VEC_PUSH(&x->args, y);
 				break;
@@ -99,7 +103,7 @@ static sexp* parse(char** s) {
 			case ' ':
 				(*s)++;
 				break;
-				
+			
 			default: // some literal of some sort
 				y = parse_literal(s);
 				VEC_PUSH(&x->args, y);
@@ -107,7 +111,7 @@ static sexp* parse(char** s) {
 		}
 	}
 	
-	fprintf(stderr, "sexp: unexpected end of input parsing expression.\n");
+	if(depth != 0) fprintf(stderr, "sexp: unexpected end of input parsing expression.\n");
 	
 	return x;
 }
@@ -117,7 +121,7 @@ static sexp* parse(char** s) {
 sexp* sexp_parse(char* source) {
 	char* s = strpbrk(source, "({[<") + 1;
 	
-	return parse(&s);
+	return parse(&s, 0);
 }
 
 sexp* sexp_parse_file(char* path) {
@@ -125,7 +129,51 @@ sexp* sexp_parse_file(char* path) {
 	
 	s = readWholeFile(path, NULL);
 	
-	return parse(&s);
+	return parse(&s, 0);
+}
+
+
+
+sexp* sexp_arg(sexp* x, size_t argn) {
+	if(x->type != 0) NULL;
+	if(VEC_LEN(&x->args) < argn) NULL;
+	return VEC_ITEM(&x->args, argn);
+}
+
+int64_t sexp_int(sexp* x, size_t argn) {
+	if(!x) return 0;
+	if(x->type == 1) return strtol(x->str, NULL, 0);
+	if(VEC_LEN(&x->args) < argn) return 0;
+	return sexp_int(VEC_ITEM(&x->args, argn), 0);
+}
+
+uint64_t sexp_uint(sexp* x, size_t argn) {
+	if(!x) return 0;
+	if(x->type == 1) return strtoul(x->str, NULL, 0);
+	if(VEC_LEN(&x->args) < argn) return 0;
+	return sexp_uint(VEC_ITEM(&x->args, argn), 0);
+}
+
+float sexp_float(sexp* x, size_t argn) {
+	if(!x) return 0;
+	if(x->type == 1) return strtof(x->str, NULL);
+	if(VEC_LEN(&x->args) < argn) return 0;
+	return sexp_float(VEC_ITEM(&x->args, argn), 0);
+}
+
+double sexp_double(sexp* x, size_t argn) {
+	if(!x) return 0;
+	if(x->type == 1) return strtod(x->str, NULL);
+	if(VEC_LEN(&x->args) < argn) return 0;
+	return sexp_double(VEC_ITEM(&x->args, argn), 0);
+}
+
+// returns internally managed string, user must dup
+char* sexp_str(sexp* x, size_t argn) {
+	if(!x) return NULL;
+	if(x->type == 1) return x->str;
+	if(VEC_LEN(&x->args) < argn) return NULL;
+	return sexp_str(VEC_ITEM(&x->args, argn), 0);
 }
 
 
@@ -157,42 +205,6 @@ int64_t sexp_asInt(sexp* x) {
 } 
 
 
-double sexp_asDouble(sexp* x) {
-	
-	if(!x->str) return 0.0;
-	if(x->type == 0) return 0.0;
-
-	return strtod(x->str, NULL);
-}
-
-int64_t sexp_argAsInt(sexp* x, size_t argn) {
-	if(x->type != 0) return 0;
-	if(VEC_LEN(&x->args) < argn) return 0;
-	 
-	return sexp_asInt(VEC_ITEM(&x->args, argn));
-}
-
-double sexp_argAsDouble(sexp* x, size_t argn) {
-	if(x->type != 0) return 0.0;
-	if(VEC_LEN(&x->args) < argn) return 0.0;
-	 
-	return sexp_asDouble(VEC_ITEM(&x->args, argn));
-}
-
-// returns internally managed string, user must dup
-char* sexp_argAsStr(sexp* x, size_t argn) {
-	if(x->type != 0) return "";
-	if(VEC_LEN(&x->args) < argn) return "";
-	 
-	return VEC_ITEM(&x->args, argn)->str;
-}
-
-sexp* sexp_argAsSexp(sexp* x, size_t argn) {
-	if(x->type != 0) return NULL;
-	if(VEC_LEN(&x->args) < argn) return NULL;
-		 
-	return VEC_ITEM(&x->args, argn);
-}
 
 
 void sexp_free(sexp* x) {
@@ -205,6 +217,7 @@ void sexp_free(sexp* x) {
 	}
 
 	if(x->str) free(x->str);
+	VEC_FREE(&x->args);
 	free(x);
 }
 
@@ -213,7 +226,40 @@ void sexp_free(sexp* x) {
 
 
 
+static void sexp_print_internal(int fd, sexp* x, int depth) {
+	
+	for(int i = 0; i < depth; i++) dprintf(fd, "  ");
+	
+	if(x->type == 1) {	
+		dprintf(fd, "\"%s\"\n", x->str);
+		return;
+	}
+	
+	dprintf(fd, "%c\n", x->brace);
+	
+	VEC_EACH(&x->args, n, y) {
+		sexp_print_internal(fd, y, depth + 1);
+	}
+	
+	
+	for(int i = 0; i < depth; i++) dprintf(fd, "  ");
 
+	int c;
+	switch(x->brace) {
+		case '(': c = ')'; break;
+		case '{': c = '}'; break;
+		case '[': c = ']'; break;
+		case '<': c = '>'; break;
+		default: c = x->brace; 
+	}
+	
+	dprintf(fd, "%c\n", c);
+}
+
+
+void sexp_print(int fd, sexp* x) {
+	sexp_print_internal(fd, x, 0);
+}
 
 
 
