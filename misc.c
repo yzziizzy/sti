@@ -36,15 +36,13 @@ double timeSincePerf(double past) {
 double getCurrentTimeEpoch(void) { // in seconds
 	double now;
 	struct timespec ts;
-	static double offset = 0;
 	
 	// CLOCK_MONOTONIC_RAW in >= Linux 2.6.28.
 	clock_gettime(CLOCK_REALTIME, &ts);
 	
 	now = (double)ts.tv_sec + ((double)ts.tv_nsec / 1000000000.0);
-	if(offset == 0) offset = now;
 	
-	return now - offset;
+	return now;
 }
 // deceptively but consistently named, this function is comparative with stamps
 //   provided by the previous function
