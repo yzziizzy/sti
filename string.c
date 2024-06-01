@@ -1,8 +1,11 @@
 // Public Domain.
 
 #include <stdarg.h>
+#include <stddef.h> // ptrdiff_t
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h> // printf, sprintf, vsnprintf
+#include <stdlib.h> // malloc, realloc
 #include <ctype.h>
 
 #include "string.h"
