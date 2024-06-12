@@ -272,6 +272,20 @@ do { \
 	qsort_r(VEC_DATA(x), VEC_LEN(x), sizeof(*VEC_DATA(x)), (int(*)(const void*,const void*,void*))fn, (void*)s);
 
 
+// moves the specified index into sorted position inside an otherwise sorted vec
+// IMPORTANT: the vec is assumed to be sorted except the specified index
+// returns the new index
+#define VEC_BUBBLE_INDEX(x, i, fn) \
+	vec_bubble_index(VEC_DATA(x), VEC_LEN(x), sizeof(*VEC_DATA(x)), (i), (int(*)(const void*,const void*))fn);
+
+
+
+
+#define VEC_UNIQ(x, fn) \
+	vec_uniq(VEC_DATA(x), &VEC_LEN(x), sizeof(*VEC_DATA(x)), (int(*)(const void*,const void*))fn);
+
+#define VEC_UNIQ_R(x, fn) \
+	vec_uniq_r(VEC_DATA(x), &VEC_LEN(x), sizeof(*VEC_DATA(x)), (int(*)(const void*,const void*))fn);
 
 
 
@@ -455,6 +469,11 @@ void vec_copy(
 	size_t elem_size
 );
 
+
+ssize_t vec_bubble_index(void* data, size_t len, size_t stride, size_t index, int (*cmp)(const void*,const void*));
+
+void vec_uniq(void* data, size_t* lenp, size_t stride, int (*cmp)(const void*,const void*));
+void vec_uniq_r(void* data, size_t* lenp, size_t stride, int (*cmp)(const void*,const void*,void*), void* arg);
 
 
 

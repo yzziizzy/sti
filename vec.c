@@ -121,3 +121,106 @@ void vec_copy(
 	*dst_len = src_len;
 	memcpy(*dst_data, src_data, elem_size * *dst_len);
 }
+
+
+// IMPORTANT: the vec is assumed to be sorted except the specified index
+ssize_t vec_bubble_index(void* data, size_t len, size_t stride, size_t index, int (*cmp)(const void*,const void*)) {
+	#define signum(x) ((x > 0) - (x < 0))
+	// find the destination index
+	
+	// TEMP: linear search for now
+	ssize_t dst_index = index;
+	
+	if(len == 0) return -1;
+	
+	// there are three scenarios:
+	//   index is the first element, so only search forward.
+	//   index is the last element, so only search backward.
+	//   index is in the middle, so we need to decide which direction to go
+	
+	int direction;
+	
+	if(index == 0) {
+		direction = 1;
+	} 
+	else if(index >= len - 1) {
+		direction = -1;
+	}
+	else {
+		int res_p = cmp(data + ((index + 1) * stride), data + (index * stride));
+		int res_m = cmp(data + ((index - 1) * stride), data + (index * stride));
+		
+		// if either is 0, index is properly sorted already
+		if(res_p == 0 || res_m == 0) return index;
+		if(res_p >= 0 && res_m <= 0) return index; // already sorted
+		
+		direction = res_p > 0 ? -1 : 1;
+	}
+	
+//	dst_index += direction;
+	 do {
+		dst_index += direction;
+		
+		int res = cmp(data + ((dst_index) * stride), data + (index * stride));
+		
+		if(res == 0 || signum(res) == direction) break;
+		
+		
+	} while(dst_index > 0 && dst_index < len - 1);
+	
+	// TODO: sanity checks on degenerate moves
+	void* tmp = alloca(stride);
+	memcpy(tmp, data + (index * stride), stride);
+	
+	if(dst_index > index) { // move intermediate values backwards
+		memmove(data + (index * stride), data + ((index + 1) * stride), stride * (dst_index - index));
+	} 
+	else if(dst_index < index) { // move intermediate values forwards
+		memmove(data + ((dst_index + 1) * stride), data + (dst_index * stride), stride * (index - dst_index));
+	}
+	else {
+		// no move; already sorted
+	}
+	
+	memcpy(data + (dst_index * stride), tmp, stride);
+	
+	return dst_index;
+}
+
+
+
+void vec_uniq(void* data, size_t* lenp, size_t stride, int (*cmp)(const void*,const void*)) {
+	size_t read_index = 0;
+	size_t write_index = 0;
+	size_t len = *lenp;
+	
+	while(read_index < len) {
+		memcpy(data + (write_index * stride), data + (read_index * stride), stride);
+		
+		do {
+			read_index++;
+		} while(read_index < len && 0 == cmp(data + (write_index * stride), data + (read_index * stride)));
+		
+		write_index++;
+	}
+
+	*lenp = write_index;
+}
+
+void vec_uniq_r(void* data, size_t* lenp, size_t stride, int (*cmp)(const void*,const void*,void*), void* arg) {
+	size_t read_index = 0;
+	size_t write_index = 0;
+	size_t len = *lenp;
+	
+	while(read_index < len) {
+		memcpy(data + (write_index * stride), data + (read_index * stride), stride);
+		
+		do {
+			read_index++;
+		} while(read_index < len && 0 == cmp(data + (write_index * stride), data + (read_index * stride), arg));
+		
+		write_index++;
+	}
+
+	*lenp = write_index;
+}
