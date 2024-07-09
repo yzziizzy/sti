@@ -128,19 +128,19 @@ do { \
 // ruins order but is O(1). meh.
 #define VEC_RM(x, i) \
 do { \
-	if(VEC_LEN(x) < (i)) break; \
-	VEC_ITEM(x, i) = VEC_PEEK(x); \
+	if(VEC_LEN(x) <= (i)) break; \
+	if((i) + 1 < VEC_LEN(x)) VEC_ITEM(x, i) = VEC_PEEK(x); \
 	VEC_LEN(x)--; \
 } while(0)
 
 // preserves order. O(n)
 #define VEC_RM_SAFE(x, i) \
 do { \
-	if(VEC_LEN(x) < (i)) break; \
-	memmove( \
+	if(VEC_LEN(x) <= (i)) break; \
+	if((i) + 1 < VEC_LEN(x)) memmove( \
 		(char*)VEC_DATA(x) + ((i) * sizeof(*VEC_DATA(x))), \
 		(char*)VEC_DATA(x) + (((i) + 1) * sizeof(*VEC_DATA(x))), \
-		(VEC_LEN(x) - (i)) * sizeof(*VEC_DATA(x)) \
+		(VEC_LEN(x) - (i) - 1) * sizeof(*VEC_DATA(x)) \
 	); \
 	VEC_LEN(x)--; \
 } while(0)
