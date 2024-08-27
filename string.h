@@ -4,6 +4,10 @@
 // Public Domain.
 
 
+#include <stdint.h>
+#include <stddef.h> // ptrdiff_t
+
+
 #ifndef STI_REPLACE_STD_STRING
 	#include <string.h>
 #endif

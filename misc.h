@@ -43,7 +43,7 @@ inline static size_t nextPOT(size_t in) {
 	
 	return in;
 }
-#endif STI_HAS_STATIC_nextPOT
+#endif // STI_HAS_STATIC_nextPOT
 
 #ifndef STI_C3DLAS_NO_CONFLICT
 // Random number helpers
