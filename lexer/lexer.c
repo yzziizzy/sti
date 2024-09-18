@@ -255,7 +255,13 @@ void prefix_tree_add_handler(prefix_tree_t* tree, char* preamble, handler_fn han
 }
 
 
-static void send_token(lexer_info_t* lx, size_t len) {
+static void send_token(lexer_info_t* lx, size_t len, char type) {
+	
+	if(type == -1) {
+		if(lx->was_space) type = LEXER_TOKEN_TYPE_whitespace;
+		else type = LEXER_TOKEN_TYPE_unknown;
+	}
+	
 	lexer_token_t tok = {
 		.start_line = lx->num_buffer[0].line_num,
 		.start_col = lx->num_buffer[0].col_num,
@@ -263,8 +269,8 @@ static void send_token(lexer_info_t* lx, size_t len) {
 		.end_col = lx->num_buffer[len-1].col_num,
 		.text = lx->cached_buffer,
 		.text_len = len,
+		.type = type,
 		.is_generic = lx->in_generic_token,
-		.is_whitespace = lx->was_space,
 		.id = lx->cur_node->id,
 		.sol = lx->t_sol,
 		.eol = lx->t_eol,
@@ -313,7 +319,7 @@ int lex_pp(lexer_info_t* lx) {
 		read_char(lx);
 		if(lx->eof) break;
 		if(lx->c == '\n') {
-			send_token(lx, lx->buf_len - 1);
+			send_token(lx, lx->buf_len - 1, LEXER_TOKEN_TYPE_generic);
 			shift_buffer(lx, 1);
 			lx->was_space = 1;
 			break;
@@ -335,7 +341,7 @@ int lex_num(lexer_info_t* lx) {
 		
 		if(!(isalnum(c) || c == '.' || c == '-' || c == '+')) {
 			// done
-			send_token(lx, lx->buf_len - 1);
+			send_token(lx, lx->buf_len - 1, LEXER_TOKEN_TYPE_number);
 			shift_buffer(lx, 1);
 			return 1;
 		}
@@ -362,7 +368,7 @@ int lex_dot(lexer_info_t* lx) {
 			return lex_num(lx);
 		}
 		
-		send_token(lx, lx->buf_len - 1);
+		send_token(lx, lx->buf_len - 1, LEXER_TOKEN_TYPE_punct);
 		shift_buffer(lx, 1);
 		return 1;
 	}
@@ -374,15 +380,15 @@ int lex_dot(lexer_info_t* lx) {
 	
 	if(lx->c != '.') {
 		// send two separate dots
-		send_token(lx, 1);
+		send_token(lx, 1, LEXER_TOKEN_TYPE_punct);
 		shift_buffer(lx, lx->buf_len - 1);
-		send_token(lx, 1);
+		send_token(lx, 1, LEXER_TOKEN_TYPE_punct);
 		shift_buffer(lx, lx->buf_len - 1);
 		return 1;
 	}
 	else {
 		// send ...
-		send_token(lx, lx->buf_len);
+		send_token(lx, lx->buf_len, LEXER_TOKEN_TYPE_punct);
 		shift_buffer(lx, 0);
 		return 0;
 	}
@@ -394,7 +400,7 @@ int lex_slc(lexer_info_t* lx) {
 		read_char(lx);
 		if(lx->eof) break;
 		if(lx->c == '\n') {
-			send_token(lx, lx->buf_len - 1);
+			send_token(lx, lx->buf_len - 1, LEXER_TOKEN_TYPE_comment);
 			shift_buffer(lx, 1);
 			lx->was_space = 1;
 			return 1;
@@ -410,7 +416,7 @@ int lex_mlc(lexer_info_t* lx) {
 		read_char(lx);
 		if(lx->eof) break;
 		if(lx->c == '/' && lx->buffer[lx->buf_len - 2] == '*') {
-			send_token(lx, lx->buf_len);
+			send_token(lx, lx->buf_len, LEXER_TOKEN_TYPE_comment);
 			shift_buffer(lx, 0);
 			break;
 		}
@@ -429,7 +435,7 @@ int lex_string(lexer_info_t* lx) {
 		if(escaped) escaped = 0;
 		else if(lx->c == '\\') escaped = 1;
 		else if(lx->c == '"') {
-			send_token(lx, lx->buf_len);
+			send_token(lx, lx->buf_len, LEXER_TOKEN_TYPE_stringlit);
 			shift_buffer(lx, 0);
 			break;
 		}
@@ -448,7 +454,7 @@ int lex_charlit(lexer_info_t* lx) {
 		if(escaped) escaped = 0;
 		else if(lx->c == '\\') escaped = 1;
 		else if(lx->c == '\'') {
-			send_token(lx, lx->buf_len);
+			send_token(lx, lx->buf_len, LEXER_TOKEN_TYPE_charlit);
 			shift_buffer(lx, 0);
 			break;
 		}
@@ -528,7 +534,7 @@ int lex_file(char* path, lexer_opts_t* opts) {
 			if(lx->buf_len > 0) {
 				lx->t_eol = 1;
 //				printf("A");
-				send_token(lx, lx->buf_len);
+				send_token(lx, lx->buf_len, -1);
 			}
 			
 			if(lx->have_cached_token) {
@@ -546,7 +552,7 @@ int lex_file(char* path, lexer_opts_t* opts) {
 			// try to end the token
 			if(!lx->was_space && lx->buf_len > 1) {
 //				printf("B(%d)", c);
-				send_token(lx, lx->buf_len - 1);
+				send_token(lx, lx->buf_len - 1, -1);
 				
 				shift_buffer(lx, 1);
 				lx->in_generic_token = 0;
@@ -557,7 +563,7 @@ int lex_file(char* path, lexer_opts_t* opts) {
 		else {
 			if(lx->was_space && lx->buf_len > 1) {
 //				printf("C");
-				send_token(lx, lx->buf_len - 1);
+				send_token(lx, lx->buf_len - 1, -1);
 				shift_buffer(lx, 1);
 				lx->was_space = 0;
 				lx->cur_node = &tree.root;
@@ -579,7 +585,7 @@ int lex_file(char* path, lexer_opts_t* opts) {
 			// see if the current node was terminal and shift
 			if(lx->cur_node->id) {
 //				printf("D");
-				send_token(lx, lx->buf_len - 1);
+				send_token(lx, lx->buf_len - 1, -1);
 				
 				shift_buffer(lx, 1);
 				lx->in_generic_token = 0;
@@ -598,7 +604,7 @@ int lex_file(char* path, lexer_opts_t* opts) {
 	FOUND:
 		if(lx->in_generic_token && lx->buf_len > 0) {
 //			printf("E(%c)", c);
-			send_token(lx, lx->buf_len - 1);
+			send_token(lx, lx->buf_len - 1, -1);
 		
 			shift_buffer(lx, 1);
 		}

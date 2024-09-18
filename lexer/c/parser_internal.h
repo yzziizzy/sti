@@ -146,6 +146,17 @@ typedef struct cp_ctx {
 	struct string_internment_table* str_table;
 	cpp_token_list_t* tokens;
 	
+	
+	long cursor;
+	
+	lexer_token_t EOF_token; // to simplify the code
+	
+	
+	#define X(a, b, ...) char* a;
+		C_PARSER_STRING_CACHE_LIST
+	#undef X
+	
+	// old junk
 	VEC(stack_state_t) stack;
 	
 	
@@ -153,10 +164,8 @@ typedef struct cp_ctx {
 	stack_state_t* state;
 		
 	ast_tu_t* tu;
-
-	#define X(a, b, ...) char* a;
-		C_PARSER_STRING_CACHE_LIST
-	#undef X
+	
+	
 	
 } cp_ctx_t;
 

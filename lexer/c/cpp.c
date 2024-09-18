@@ -236,13 +236,13 @@ void cpp_tu_init(cpp_tu_t* tu) {
 	tu->initialized = 1;
 }
 
-static int is_regular_file(char* path) {
-	struct stat st;
-	if(!stat(path, &st)) {
-		if((st.st_mode & S_IFMT) == S_IFREG) return 1;
-	}
-	return 0;
-}
+//static int is_regular_file(char* path) {
+//	struct stat st;
+//	if(!stat(path, &st)) {
+//		if((st.st_mode & S_IFMT) == S_IFREG) return 1;
+//	}
+//	return 0;
+//}
 
 static cpp_file_t* init_file(cpp_tu_t* tu, char* full_path, char* include_name) {
 	cpp_file_t* file;
