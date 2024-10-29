@@ -8,11 +8,9 @@
 #include "vec.h"
 
 
-#ifndef STI_HAS_STATIC_nextPOT
-#define STI_HAS_STATIC_nextPOT
 // super nifty site:
 // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-inline static size_t nextPOT(size_t in) {
+inline static size_t sti_vec_nextPOT(size_t in) {
 	
 	in--;
 	in |= in >> 1;
@@ -24,14 +22,15 @@ inline static size_t nextPOT(size_t in) {
 	
 	return in;
 }
-#endif
+
+
 
 void vec_resize_to(void** data, size_t* size, size_t elem_size, size_t new_size) {
 	void* tmp;
 	
 	if(*size >= new_size) return;
 	
-	*size = nextPOT(new_size);
+	*size = sti_vec_nextPOT(new_size);
 	
 	tmp = realloc(*data, *size * elem_size);
 	if(!tmp) {
@@ -47,7 +46,7 @@ void vec_c_resize_to(void** data, size_t* size, size_t elem_size, size_t new_siz
 	
 	if(*size >= new_size) return;
 	
-	size_t npot = nextPOT(new_size);
+	size_t npot = sti_vec_nextPOT(new_size);
 	
 	tmp = realloc(*data, npot * elem_size);
 	if(!tmp) {

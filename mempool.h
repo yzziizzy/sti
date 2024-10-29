@@ -1,5 +1,5 @@
-#ifndef __EACSMB_mempool_h__
-#define __EACSMB_mempool_h__
+#ifndef __sti__mempool_h__
+#define __sti__mempool_h__
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -208,4 +208,4 @@ else \
 
 
 
-#endif //__EACSMB_mempool_h__
+#endif //__sti__mempool_h__

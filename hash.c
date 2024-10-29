@@ -20,25 +20,22 @@ static uint64_t hash_key(char* key, int64_t len);
  
  
 
-
-#ifndef STI_HAS_STATIC_nextPOT
-#define STI_HAS_STATIC_nextPOT
-// super nifty site:
-// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-inline static size_t nextPOT(size_t in) {
-	
-	in--;
-	in |= in >> 1;
-	in |= in >> 2;
-	in |= in >> 4;
-	in |= in >> 8;
-	in |= in >> 16;
-	in++;
-	
-	return in;
-}
-
-#endif
+//
+//// super nifty site:
+//// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+//inline static size_t hash_nextPOT(size_t in) {
+//	
+//	in--;
+//	in |= in >> 1;
+//	in |= in >> 2;
+//	in |= in >> 4;
+//	in |= in >> 8;
+//	in |= in >> 16;
+//	in++;
+//	
+//	return in;
+//}
+//
 
 
 
