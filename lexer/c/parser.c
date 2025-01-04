@@ -605,6 +605,20 @@ int is_typespec_(cp_ctx_t* ctx, lexer_token_t* t) {
 	X(abs_declr) \
 	X(array_index) \
 	X(function_parens) \
+	X(while) \
+	X(if) \
+	X(ifelse) \
+	X(link) \
+	X(switch) \
+	X(return) \
+	X(continue) \
+	X(break) \
+	X(case) \
+	X(compound_stmt) \
+	X(function_defn) \
+	X(varargs) \
+	X(param_decln) \
+	X() \
 
 
 
@@ -742,6 +756,8 @@ lexer_token_t* cp_token(cp_ctx_t* ctx, long* cursor, char* text) {
 	return NULL;
 }
 
+
+
 node* cp_struct_spec(cp_ctx_t* ctx, long* cursor);
 node* cp_ident(cp_ctx_t* ctx, long* cursor);
 node* cp_init_declr(cp_ctx_t* ctx, long* cursor);
@@ -753,7 +769,13 @@ node* cp_struct_declr(cp_ctx_t* ctx, long* cursor);
 node* cp_const_expr(cp_ctx_t* ctx, long* cursor);
 node* cp_cast_expr(cp_ctx_t* ctx, long* cursor);
 node* cp_direct_abstract_declr(cp_ctx_t* ctx, long* cursor);
-
+node* cp_param_list(cp_ctx_t* ctx, long* cursor);
+node* cp_param_decln(cp_ctx_t* ctx, long* cursor);
+node* cp_expr(cp_ctx_t* ctx, long* cursor);
+node* cp_stmt(cp_ctx_t* ctx, long* cursor);
+node* cp_compound_stmt(cp_ctx_t* ctx, long* cursor);
+node* cp_jump_stmt(cp_ctx_t* ctx, long* cursor);
+node* cp_decln_list(cp_ctx_t* ctx, long* cursor);
 
 
 node* cp_type_spec(cp_ctx_t* ctx, long* cursor) {
@@ -1016,6 +1038,21 @@ node* cp_decln(cp_ctx_t* ctx, long* cursor) {
 }
 
 
+node* cp_decln_list(cp_ctx_t* ctx, long* cursor) {
+	node* n = cp_decln(ctx, cursor);
+	if(!n) return n;
+	
+	node* tail = n;
+	while(1) {
+		node* n2 = cp_decln(ctx, cursor);
+		if(!n2) break;
+		
+		tail->next = n2;
+		tail = n2;
+	}
+	
+	return n;
+}
 
 
 
@@ -1094,10 +1131,333 @@ node* cp_init_declr(cp_ctx_t* ctx, long* cursor) {
 	return n;
 }
 
-node* cp_ext_decln(cp_ctx_t* ctx, long* cursor) {
-	printf("-%s-\n", __func__);
-	return cp_decln(ctx, cursor);
+
+
+node* cp_expr_stmt(cp_ctx_t* ctx, long* cursor) {
+
+	node* n = cp_expr(ctx, cursor);
+	if(!n) return NULL;
+	
+	lexer_token_t* t = cp_token(ctx, cursor, ";");
+	if(!t) {
+		return NULL; // TODO: gc
+	}
+	
+	return n;
 }
+
+
+
+//iteration_statement
+//	: WHILE '(' expression ')' statement
+//	| DO statement WHILE '(' expression ')' ';'
+//	| FOR '(' expression_statement expression_statement ')' statement
+//	| FOR '(' expression_statement expression_statement expression ')' statement
+//	;
+
+node* cp_iteration_stmt(cp_ctx_t* ctx, long* cursor) {
+	
+	long c = *cursor;
+	lexer_token_t* t = TT(&c);
+	if(!t || !t->text) return NULL;
+	
+	if(!strcmp(t->text, "while")) {
+		lexer_token_t* opparen = cp_token(ctx, &c, "(");
+		if(!opparen) {
+			printf("missing ( after while\n");
+			return NULL;
+		}
+		
+		node* n2 = cp_expr(ctx, &c);
+		if(!n2) {
+			printf("missing expression inside while statement\n");
+			return NULL; // TODO: gc
+		}
+		
+		lexer_token_t* clparen = cp_token(ctx, &c, ")");
+		if(!clparen) {
+			printf("missing ) after while\n");
+			return NULL;
+		}
+	
+		node* n3 = cp_stmt(ctx, &c);
+		
+		*cursor = c;
+		return new_node(N_while, t, n2, n3);
+	}
+	
+	// TODO: do
+	
+	if(!strcmp(t->text, "for")) {
+		
+		// TODO: for guts
+		
+		
+		node* n3 = cp_stmt(ctx, &c);
+		
+		*cursor = c;
+		return new_node(N_while, t, NULL, n3);
+	}
+	
+	
+	return NULL;
+}
+
+
+node* cp_selection_stmt(cp_ctx_t* ctx, long* cursor) {
+	
+	long c = *cursor;
+	lexer_token_t* t = TT(&c);
+	if(!t || !t->text) return NULL;
+	
+	if(!strcmp(t->text, "if")) {
+		lexer_token_t* opparen = cp_token(ctx, &c, "(");
+		if(!opparen) {
+			printf("missing ( after if\n");
+			return NULL;
+		}
+		
+		node* n2 = cp_expr(ctx, &c);
+		if(!n2) {
+			printf("missing expression inside if statement\n");
+			return NULL; // TODO: gc
+		}
+		
+		lexer_token_t* clparen = cp_token(ctx, &c, ")");
+		if(!clparen) {
+			printf("missing ) after if\n");
+			return NULL;
+		}
+		
+		node* n3 = cp_stmt(ctx, &c);
+		
+		lexer_token_t* elset = cp_token(ctx, &c, "else");
+		if(!elset) {
+			*cursor = c;
+			return new_node(N_if, t, n2, n3);
+		}
+		
+		node* n4 = cp_stmt(ctx, &c);
+		if(!n4) {
+			printf("missing statement after else\n");
+		}
+		
+		*cursor = c;
+		return new_node(N_ifelse, t, n2, new_node(N_link, elset, n3, n4));
+	}
+	
+	
+	if(!strcmp(t->text, "switch")) {
+		lexer_token_t* opparen = cp_token(ctx, &c, "(");
+		if(!opparen) {
+			printf("missing ( after switch\n");
+			return NULL;
+		}
+		
+		node* n2 = cp_expr(ctx, &c);
+		if(!n2) {
+			printf("missing expression inside switch statement\n");
+			return NULL; // TODO: gc
+		}
+		
+		lexer_token_t* clparen = cp_token(ctx, &c, ")");
+		if(!clparen) {
+			printf("missing ) after switch\n");
+			return NULL;
+		}
+	
+		node* n3 = cp_stmt(ctx, &c);
+		
+		*cursor = c;
+		return new_node(N_switch, t, n2, n3);
+	}
+	
+	return NULL;
+}
+
+
+node* cp_jump_stmt(cp_ctx_t* ctx, long* cursor) {
+
+	long c = *cursor;
+	lexer_token_t* t = TT(&c);
+	if(!t || !t->text) return NULL;
+	
+	
+	if(!strcmp(t->text, "goto")) {
+		node* n2 = cp_ident(ctx, &c);
+		if(!n2) {
+			printf("missing identifier after goto\n");
+			return NULL; // TODO: gc
+		}
+		
+		if(!cp_token(ctx, &c, ";")) {
+			printf("missing semicolon after goto\n");
+		}
+		
+		*cursor = c;
+		return new_node(N_return, t, n2);
+	}
+	
+	if(!strcmp(t->text, "continue")) {
+		if(!cp_token(ctx, &c, ";")) {
+			printf("missing semicolon after continue\n");
+		}
+		
+		*cursor = c;
+		return new_node(N_continue, t);
+	}
+	
+	if(!strcmp(t->text, "break")) {
+		if(!cp_token(ctx, &c, ";")) {
+			printf("missing semicolon after break\n");
+		}
+		
+		*cursor = c;
+		return new_node(N_break, t);
+	}
+	
+	if(!strcmp(t->text, "return")) {
+		node* n2 = cp_expr(ctx, &c);
+	
+		if(!cp_token(ctx, &c, ";")) {
+			printf("missing semicolon after return\n");
+		}
+		
+		*cursor = c;
+		return new_node(N_return, t, n2);
+	}
+	
+	return NULL;
+}
+
+
+
+node* cp_labeled_stmt(cp_ctx_t* ctx, long* cursor) {
+
+	long c = *cursor;
+	lexer_token_t* t = TT(&c);
+	if(!t || !t->text) return NULL;
+	c++;
+	
+	if(!strcmp(t->text, "case")) {
+		node* n2 = cp_const_expr(ctx, &c);
+		lexer_token_t* t2 = cp_token(ctx, &c, ":");
+		if(!t2) return NULL;
+		
+		node* n3 = cp_const_expr(ctx, &c);
+		
+		*cursor = c;
+		return new_node(N_case, t, n2, n3);
+	}
+	
+	if(!strcmp(t->text, "default")) {
+		lexer_token_t* t2 = cp_token(ctx, &c, ":");
+		if(!t2) return NULL;
+		
+		node* n3 = cp_const_expr(ctx, &c);
+		
+		*cursor = c;
+		return new_node(N_case, t, n3);		
+	}
+	
+	if(t->type = LEXER_TOK_IDENT) {
+		lexer_token_t* t2 = cp_token(ctx, &c, ":");
+		if(!t2) return NULL;
+		
+		node* n3 = cp_const_expr(ctx, &c);
+		
+		*cursor = c;
+		return new_node(N_case, t, n3);		
+	}
+	
+	return NULL;
+}
+
+node* cp_stmt(cp_ctx_t* ctx, long* cursor) {
+	node* n;
+	n = cp_labeled_stmt(ctx, cursor);
+	if(n) return n;
+	
+	n = cp_compound_stmt(ctx, cursor);
+	if(n) return n;
+/*
+	n = cp_expr_stmt(ctx, cursor);
+	if(n) return n;
+
+	n = cp_selection_stmt(ctx, cursor);
+	if(n) return n;
+
+	n = cp_iteration_stmt(ctx, cursor);
+	if(n) return n;
+	
+	n = cp_jump_stmt(ctx, cursor);
+	if(n) return n;
+	*/
+	return NULL;
+}
+
+
+node* cp_stmt_list(cp_ctx_t* ctx, long* cursor) {
+	node* n = cp_stmt(ctx, cursor);
+	if(!n) return n;
+	
+	node* tail = n;
+	while(1) {
+		node* n2 = cp_stmt(ctx, cursor);
+		if(!n2) break;
+		
+		tail->next = n2;
+		tail = n2;
+	}
+	
+	return n;
+}
+
+
+node* cp_compound_stmt(cp_ctx_t* ctx, long* cursor) {
+	
+	long c = *cursor;
+	lexer_token_t* opbrace = cp_token(ctx, &c, "{");
+	if(!opbrace) return NULL;
+	
+	node* n2 = cp_decln_list(ctx, &c);
+	node* n3 = cp_stmt_list(ctx, &c);
+	
+	lexer_token_t* clbrace = cp_token(ctx, &c, "}");
+	if(!clbrace) {
+		// TODO: cleanup
+		printf("missing closing brace in compound statement\n");
+		return NULL;
+	}
+	
+	return new_node(N_compound_stmt, opbrace, n2, n3);
+}
+
+
+
+node* cp_fn_defn(cp_ctx_t* ctx, long* cursor) {
+		
+	long c = *cursor;
+	node* n1 = cp_decln_specs(ctx, &c);
+	node* n2 = cp_declr(ctx, &c);
+	if(!n2) return NULL; // TODO gc
+		
+	node* n3 = cp_decln_list(ctx, &c);
+	node* n4 = cp_compound_stmt(ctx, &c);
+	if(!n4) return NULL;
+	
+	return new_node(N_function_defn, NULL, new_node(N_link, NULL, n1, n2), new_node(N_link, NULL, n3, n4));
+}
+
+
+node* cp_ext_decln(cp_ctx_t* ctx, long* cursor) {
+
+	node* n = cp_decln(ctx, cursor);
+	if(n) return n;
+
+	return cp_fn_defn(ctx, cursor);
+}
+
 
 node* cp_tu(cp_ctx_t* ctx, long* cursor) {
 	printf("-%s-\n", __func__);
@@ -1109,12 +1469,11 @@ node* cp_tu(cp_ctx_t* ctx, long* cursor) {
 		if(!n2) break;
 		
 		tail->next = n2;
-		tail = n2;
+		tail = n2;	
 	}
 	
 	return n;
 }
-
 
 node* cp_postfix_expr(cp_ctx_t* ctx, long* cursor) {
 	return cp_ident(ctx, cursor);
@@ -1133,7 +1492,10 @@ type_name
 
 
 node* cp_type_qual_list(cp_ctx_t* ctx, long* cursor) {
-
+//type_qualifier_list
+//	: type_qualifier
+//	| type_qualifier_list type_qualifier
+//	;
 	return NULL;
 }
 
@@ -1160,22 +1522,59 @@ node* cp_abstract_declr(cp_ctx_t* ctx, long* cursor) {
 }
 
 
-//
-//parameter_type_list
-//	: parameter_list
-//	| parameter_list ',' ELLIPSIS
-//	;
-//
-//parameter_list
-//	: parameter_declaration
-//	| parameter_list ',' parameter_declaration
-//	;
-//
-//parameter_declaration
-//	: declaration_specifiers declarator
-//	| declaration_specifiers abstract_declarator
-//	| declaration_specifiers
-//	;
+
+
+node* cp_param_type_list(cp_ctx_t* ctx, long* cursor) {
+	node* n = cp_param_list(ctx, cursor);
+	if(!n) return NULL;
+	
+	lexer_token_t* t = cp_token(ctx, cursor, ",");
+	if(!t) return n;
+	
+	t = cp_token(ctx, cursor, "...");
+	if(!t) {
+		printf("expected paramater declaration\n");
+		return n;
+	}
+	
+	return new_node(N_varargs, t, n, NULL);
+}
+
+node* cp_param_list(cp_ctx_t* ctx, long* cursor) {
+	node* n = cp_param_decln(ctx, cursor);
+	if(!n) return NULL;
+	
+	node* tail = n;
+	while(1) {
+		
+		lexer_token_t* t = cp_token(ctx, cursor, ",");
+		if(!t) break;
+	
+		node* n2 = cp_param_decln(ctx, cursor);
+		if(!n2) {
+			printf("expected paramater declaration\n");
+			return n;
+		}
+		
+		tail->next = n2;
+		tail = n2;
+	}
+	
+	return n;
+}
+
+node* cp_param_decln(cp_ctx_t* ctx, long* cursor) {
+	node* n2 = cp_decln_specs(ctx, cursor);
+	if(!n2) return NULL;
+	
+	node* n3 = cp_declr(ctx, cursor);
+	if(!n3) {
+		n3 = cp_abstract_declr(ctx, cursor);
+	}
+	
+	return new_node(N_param_decln, NULL, n2, n3);
+}
+
 
 node* cp_direct_abstract_declr(cp_ctx_t* ctx, long* cursor) {
 //	
@@ -1191,19 +1590,58 @@ node* cp_direct_abstract_declr(cp_ctx_t* ctx, long* cursor) {
 //	| direct_abstract_declarator '(' parameter_type_list ')'
 //	;
 	
-	lexer_token_t* t1 = TT(cursor);
-	long c = *cursor + 1;
-	lexer_token_t* t2 = TT(&c);
-	
-	if(!strcmp(t1->text, "(") && !strcmp(t2->text, ")")) {
-		return new_node(N_function_parens);
+	for(long i = 0; ; i++) {
+		lexer_token_t* t1 = TT(cursor);
+		long c = *cursor + 1;
+		lexer_token_t* t2 = TT(&c);
+		
+		if(!strcmp(t1->text, "(")) {
+			if(!strcmp(t2->text, ")")) {
+				*cursor = c;
+				return new_node(N_function_parens);
+			}
+			
+			node* n2 = cp_param_type_list(ctx, &c);
+			if(!n2) {
+				if(i == 
+				n2 = cp_abstract_declr(ctx, &c);
+				if(!n2) {
+					printf("missing param list or abstract declarator\n");
+					return NULL;
+				}
+			}
+			
+			lexer_token_t* t3 = cp_token(ctx, &c, ")");
+			if(!t3) {
+				printf("missing closing paren after function declaration\n");
+			}
+			
+			*cursor = c;
+			return new_node(N_function_parens, t1, n2);
+		}
+		else if(!strcmp(t1->text, "[")) {
+			if(!strcmp(t2->text, "]")) {
+				*cursor = c;
+				return new_node(N_array_index);
+			}
+			
+			node* n2 = cp_const_expr(ctx, &c);
+			if(!n2) {
+				printf("missing constant expression in array index\n");
+				return NULL;
+			}
+			
+			lexer_token_t* t3 = cp_token(ctx, &c, "]");
+			if(!t3) {
+				printf("missing closing bracket after array index\n");
+			}
+			
+			*cursor = c;
+			return new_node(N_array_index, t1, n2);
+		}
 	}
 	
-	if(!strcmp(t1->text, "[") && !strcmp(t2->text, "]")) {
-		return new_node(N_array_index);
-	}
-	
-	
+	// TODO: loop
 	
 	return NULL;
 }

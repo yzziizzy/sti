@@ -9,6 +9,10 @@ int baz[b*c+a];
 int baz[!*&~-+a];
 int baz[(int)(long)a];
 
+float fn(int x, double y) {
+	return x + y;
+}
+
 //long int bar;
 
 //struct baz {
