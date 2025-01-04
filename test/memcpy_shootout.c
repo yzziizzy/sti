@@ -72,7 +72,6 @@ void reset_cache() {
 	}
 }
 
-
 int main(int argc, char* argv[]) {
 
 	srand(101);
@@ -85,6 +84,7 @@ int main(int argc, char* argv[]) {
 	cachebuster = calloc(1, cacheSize);
 	
 	fprintf(stderr, "cache size: %ld\n", cacheSize);
+
 	
 	int nsizes = 8;
 	
