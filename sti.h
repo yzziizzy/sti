@@ -13,6 +13,7 @@
 #include "rpn.h"
 #include "sets.h"
 #include "sexp.h"
+#include "slot.h"
 #include "string.h"
 #include "utf.h"
 #include "rb.h"

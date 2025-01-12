@@ -12,6 +12,7 @@
 #include "misc.c"
 #include "sets.c"
 #include "sexp.c"
+#include "slot.c"
 #include "string.c"
 #include "utf.c"
 #include "vec.c"
