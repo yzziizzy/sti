@@ -85,7 +85,7 @@ int PointerSet_exists(PointerSet* ps, void* p) {
 }
 
 PointerSet* PointerSet_alloc() {
-	PointerSet* ps = malloc(sizeof(ps));
+	PointerSet* ps = malloc(sizeof(*ps));
 	ps->alloc = 0;
 	ps->length = 0;
 	
@@ -384,7 +384,7 @@ int StructSet_exists(StructSet* ss, void* p) {
 }
 
 StructSet* StructSet_alloc_(size_t elem_size, SetCmpFn cmp) {
-	StructSet* ss = malloc(sizeof(ss));
+	StructSet* ss = malloc(sizeof(*ss));
 	StructSet_init(ss, elem_size, cmp);
 	return ss;
 }
