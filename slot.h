@@ -23,7 +23,7 @@ struct slot_base_props {
 	size_t fill, alloc;
 	size_t chunksAlloc;
 	size_t chunksLen;
-	u64 nextFree;
+	uint64_t nextFree;
 };
 
 
@@ -37,7 +37,7 @@ void slot_free(struct slot_base_props* base);
 			uint64_t occupancy[((chunklen) / 64) + !!((chunklen) % 64)]; \
 			union { \
 				type t; \
-				u64 nextFree; \
+				uint64_t nextFree; \
 			} data[chunklen]; \
 		}** chunks; \
 		struct slot_base_props b; \
@@ -235,7 +235,7 @@ effective source:
 */
 // pointer version
 
-int slot_next(struct slot_base_props* base, u64 chunkLen, u64* c, u64* i, int inc);
+int slot_next(struct slot_base_props* base, uint64_t chunkLen, uint64_t* c, uint64_t* i, int inc);
 
 #define SLOT__PASTE(a, b) CAT(a, b) 
 #define SLOT__ITER_I(key, val) SLOT__PASTE(SLOT_iteri_ ## key ## __ ## val ## __, __LINE__)

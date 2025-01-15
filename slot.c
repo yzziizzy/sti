@@ -22,7 +22,7 @@ void slot_resize(struct slot_base_props* base, size_t chunk_mem_size, size_t chu
 
 
 // returns 1 to continue, 0 top stop
-int slot_next(struct slot_base_props* base, u64 chunkLen, u64* c, u64* i, int inc) {
+int slot_next(struct slot_base_props* base, uint64_t chunkLen, uint64_t* c, uint64_t* i, int inc) {
 	
 	if(inc) goto INC;
 	
