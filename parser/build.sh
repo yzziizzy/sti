@@ -2,7 +2,7 @@
 
 # Public Domain.
 
-CFLAGS="-Wall  -Wextra -pedantic"
+CFLAGS="-Wall  -Wextra  -std=gnu11 -Wno-unused-variable -Wno-parentheses"
 
 gcc -o parser_gen parser_gen.c ../sti.c \
 	-lm \
