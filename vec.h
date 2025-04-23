@@ -224,6 +224,7 @@ do { \
 		(VEC_LEN(x) - (i)) * sizeof(*VEC_data(x)) \
 	); \
 	VEC_data(x)[i] = (e); \
+	VEC_LEN(x)++; \
 } while(0)
 
 
