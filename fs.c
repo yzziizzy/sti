@@ -174,7 +174,8 @@ char* path_join_(size_t nargs, ...) {
 	size_t j_len;
 	char* joiner = "/";
 	int escape = 0;
-
+	int catcount = 0;
+	
 	if(nargs == 0) return NULL;
 
 	// calculate total buffer length
@@ -183,38 +184,48 @@ char* path_join_(size_t nargs, ...) {
 
 	for(size_t i = 0; i < nargs; i++) {
 		char* s = va_arg(va, char*);
-		if(s) total += strlen(s);
+		if(s) {
+			int len = strlen(s);
+			if(len > 0) {
+				catcount++;
+				total += len;
+			}
+		}
+//		printf("arg %ld: %s\n", i, s);
 	}
 
 	va_end(va);
 
 	j_len = strlen(joiner);
-	total += j_len * (nargs - 1);
+	total += j_len * (catcount - 1);
 
 	out = malloc((total + 1) * sizeof(char*));
 	end = out;
 
 	va_start(va, nargs);
 
+	size_t catted = 0;
 	for(size_t i = 0; i < nargs; i++) {
 		char* s = va_arg(va, char*);
+		if(!s) continue;
 		size_t l = strlen(s);
+		if(!l) continue;
 		
 		if(s) {
 			if(l > 1) {
 				escape = s[l-2] == '\\' ? 1 : 0;
 			}
 
-			if(i > 0 && (s[0] == joiner[0])) {
+			if(catted > 0 && (s[0] == joiner[0])) {
 				s++;
 				l--;
 			}
 
-			if(i > 0 && i != nargs-1 && !escape && (s[l-1] == joiner[0])) {
+			if(catted > 0 && catted != catcount-1 && !escape && (s[l-1] == joiner[0])) {
 				l--;
 			}
 
-			if(i > 0) {
+			if(catted > 0) {
 				strcpy(end, joiner);
 				end += j_len;
 			}
@@ -226,6 +237,8 @@ char* path_join_(size_t nargs, ...) {
 			//   manually so memcpy is a drop-in replacement here.
 			memcpy(end, s, l);
 			end += l;
+			
+			catted++;
 		}
 	}
 

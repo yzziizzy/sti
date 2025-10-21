@@ -1760,6 +1760,33 @@ node* cp_mul_expr(cp_ctx_t* ctx, long* cursor) {
 	return  new_node(N_math_exp, t, l, r);
 }
 
+/* left associativity fix:
+static pnode* pc_sum(parser_context* ctx) {
+	
+	int tt = pc_TT(ctx);
+	pnode* left, *right;
+	
+	if(tt == 0) return NULL;
+	left = pc_factor(ctx);
+	
+	while(1) {
+		tt = pc_TT(ctx);
+		
+		if(tt == 0) return left;
+		if(!(tt == EXP_plus || tt == EXP_minus)) break;
+		
+		ctx->cursor++;
+			
+		right = pc_factor(ctx);
+		if(!right) return left;	
+		
+		left = pc_binoper(ctx, tt, left, right);
+	}
+	
+	return left;
+}
+*/
+
 
 node* cp_add_expr(cp_ctx_t* ctx, long* cursor) {
 	node* l = cp_mul_expr(ctx, cursor);
