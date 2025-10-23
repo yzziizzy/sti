@@ -99,7 +99,7 @@ static inline char charfromhextet(uint8_t h) {
 }
 
 
-void base64_encode(char* in, uint64_t inLen, char* out, uint64_t* outLen) {
+void base64_encode(unsigned char* in, uint64_t inLen, char* out, uint64_t* outLen) {
 	
 	uint64_t trios = inLen / 3;
 	uint64_t rem = inLen % 3;
@@ -110,7 +110,17 @@ void base64_encode(char* in, uint64_t inLen, char* out, uint64_t* outLen) {
 	for(uint64_t j = 0; j < trios; j++, i += 3) {
 		uint32_t x = 0;
 		
-		x = (in[i + 0] << 16 | in[i + 1] << 8 | in[i + 2]);
+		u32 i0 = in[i + 0];
+		u32 i1 = in[i + 1];
+		u32 i2 = in[i + 2];
+		
+		i0 <<= 16;
+		i1 <<= 8;
+		
+		i0 &= 0x00ff0000;
+		i1 &= 0x0000ff00;
+		
+		x = i0 | i1 | i2;
 		
 		out[o + 0] = charfromhextet((x >> 18) & 0b00111111);
 		out[o + 1] = charfromhextet((x >> 12) & 0b00111111);
