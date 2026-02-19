@@ -29,6 +29,8 @@ do { \
 	(x)->alloc = 0; \
 } while(0)
 
+
+// all-caps versions exist for legacy reasons and should not be used now
 #define VEC_INIT(x) VEC_init(x) 
 
 // helpers
@@ -144,7 +146,7 @@ do { \
 	if(VEC_LEN(x) > 0) { \
 		VEC_LEN(x)--; \
 	} \
-	VEC_item(x, VEC_len(x)); \
+	VEC_item(x, VEC_len(x) - 1); \
 })
 
 
@@ -158,6 +160,7 @@ do { \
 } while(0)
 
 // preserves order. O(n)
+#define VEC_rm_ordered(x, i) VEC_rm_safe(x, i)
 #define VEC_RM_SAFE(x, i) VEC_rm_safe(x, i)
 #define VEC_rm_safe(x, i) \
 do { \
