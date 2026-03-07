@@ -6,6 +6,7 @@
 #include "talloc.c"
 #include "heap.c"
 #include "fs.c"
+#include "proc.c"
 #include "hash.c"
 #include "hash_fns/MurmurHash3.c"
 #include "hash_fns/sha.c"
