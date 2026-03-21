@@ -30,7 +30,7 @@ void svec_free(struct svec_base_props* base);
 	}
 
 
-// initialisze a vector
+// initialize a vector
 #define SVEC_init(x) \
 do { \
 	(x)->chunks = NULL; \

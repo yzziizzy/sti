@@ -3,9 +3,26 @@
 
 #include "slot.h"
 
-
+// super nifty site:
+// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+inline static size_t slot_nextPOT_(size_t in) {
+	
+	in--;
+	in |= in >> 1;
+	in |= in >> 2;
+	in |= in >> 4;
+	in |= in >> 8;
+	in |= in >> 16;
+	in++;
+	
+	return in;
+}
 
 void slot_resize(struct slot_base_props* base, size_t chunk_mem_size, size_t chunk_len) {
+	
+	if(base->fill == 0 && base->alloc == 0) {
+		base->nextFree = ULONG_MAX; // initialize the free list's tail
+	}
 	
 	if(base->chunksLen >= base->chunksAlloc) {
 		if(base->chunksAlloc == 0) base->chunksAlloc = 4;
@@ -18,6 +35,32 @@ void slot_resize(struct slot_base_props* base, size_t chunk_mem_size, size_t chu
 	base->alloc += chunk_len;
 }
 
+
+void slot_resize_to(struct slot_base_props* base, size_t chunk_mem_size, size_t chunk_len, size_t min_size) {
+	
+	if(base->fill == 0 && base->alloc == 0) {
+		base->nextFree = ULONG_MAX; // initialize the free list's tail
+	}
+	
+	uint64_t needed_chunks = (min_size / chunk_len) + 1;
+	
+	if(needed_chunks >= base->chunksAlloc) {
+		base->chunksAlloc = slot_nextPOT_(needed_chunks);
+		if(base->chunksAlloc < 4) base->chunksAlloc = 4;
+		
+		base->data = realloc(base->data, base->chunksAlloc * sizeof(void*));
+		
+		for(int i = base->chunksLen; i < base->chunksAlloc; i++) base->data[i] = NULL;
+	}
+	
+	// allocate memory up to the requested size
+	if(needed_chunks > base->chunksLen) {
+		for(int i = base->chunksLen; i < needed_chunks; i++) base->data[i] = calloc(1, chunk_mem_size);
+		base->chunksLen = needed_chunks;
+	}
+	
+	base->alloc = base->chunksLen * chunk_len;
+}
 
 
 
@@ -69,7 +112,6 @@ void slot_free(struct slot_base_props* base) {
 	base->alloc = 0;
 	base->nextFree = 0;
 }
-
 
 
 
