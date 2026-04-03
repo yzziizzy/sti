@@ -32,11 +32,11 @@ void sha512_sum(const void* in, uint32_t inlen, uint8_t* out64);
 // block by block processing
 void sha256_init(sha256_state* md);
 void sha256_process(sha256_state* md, const void* in, uint32_t inlen);
-void sha256_done(sha256_state* md, void* out);
+void sha256_done(sha256_state* md, uint8_t* out32);
 
 void sha512_init(sha512_state* md);
 void sha512_process(sha512_state* md, const void* in, uint32_t inlen);
-void sha512_done(sha512_state* md, void* out);
+void sha512_done(sha512_state* md, uint8_t* out64);
 
 
 

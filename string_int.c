@@ -56,6 +56,7 @@ static int resize(string_internment_table_t* tab, size_t new_size);
 
 
 
+// allocates and initializes memory for the table.
 void string_internment_table_init(struct string_internment_table** ptab) {
 	struct string_internment_table* tab = calloc(1, sizeof(*tab));
 	*ptab = tab;
@@ -68,6 +69,18 @@ void string_internment_table_init(struct string_internment_table** ptab) {
 	tab->ht.alloc_size = 1024;
 	tab->ht.fill = 0;
 	tab->ht.buckets = calloc(1, tab->ht.alloc_size * sizeof(*tab->ht.buckets));
+}
+
+
+// frees all memory related to the table, including all the strings held inside
+void string_internment_table_destroy(struct string_internment_table* tab) {
+	
+	for(size_t i = 0; i < tab->pool_fill; i++) {
+		free(tab->pool[i].data);
+	}
+	
+	free(tab->pool);
+	free(tab->ht.buckets);
 }
 
 

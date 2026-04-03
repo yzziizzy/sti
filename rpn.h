@@ -22,6 +22,8 @@ typedef struct sti_op_prec_rule {
 int infix_to_rpn(sti_op_prec_rule* rules, char** infix, char*** rpn, size_t* rpnlen);
 
 
+int parse_arithmetic_string(char* src, char*** out, size_t* outlen);
+
 int64_t rpn_eval_int_str(char** rpn);
 double rpn_eval_double_str(char** rpn);
 

@@ -3,7 +3,9 @@
 
 #include <stdatomic.h>
 
-static inline void spin_lock(_Atomic u32* sl) {
+typedef _Atomic u32 spinlock_t;
+
+static inline void spin_lock(spinlock_t* sl) {
 	do {
 		int zero = 0;
 		int res = atomic_compare_exchange_strong_explicit(sl, &zero, 1, memory_order_acq_rel, memory_order_relaxed);
@@ -13,7 +15,7 @@ static inline void spin_lock(_Atomic u32* sl) {
 	} while(1);
 }
 
-static inline void spin_unlock(_Atomic u32* sl) {
+static inline void spin_unlock(spinlock_t* sl) {
 	atomic_store_explicit(sl, 0, memory_order_release);
 }
 

@@ -5,7 +5,7 @@
 
 
 
-typedef int (*ini_read_callback_fn)(char*, char*, char*, void*);
+typedef int (*ini_read_callback_fn)(char* section_name, char* key, char* value, void* use_data);
 
 
 

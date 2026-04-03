@@ -9,7 +9,22 @@
 #include "rpn.h"
 #include "vec.h"
 
-
+/*
+sti_op_prec_rule rules[] = {
+	{"",    0, STI_OP_ASSOC_NONE,  0},
+	{"~",  50, STI_OP_ASSOC_RIGHT, 1},
+	{"+",  10, STI_OP_ASSOC_LEFT,  2},
+	{"-",  10, STI_OP_ASSOC_LEFT,  2},
+	{"*",  20, STI_OP_ASSOC_LEFT,  2},
+	{"**", 30, STI_OP_ASSOC_LEFT,  2},
+	{"/",  20, STI_OP_ASSOC_LEFT,  2},
+	{"(",  80, STI_OP_OPEN_PAREN,  0},
+	{")",  80, STI_OP_CLOSE_PAREN, 0},
+	{"[",  90, STI_OP_OPEN_PAREN,  0},
+	{"]",  90, STI_OP_CLOSE_PAREN, 0},
+	{NULL, 0, 0, 0},
+};
+*/
 
 int parse_arithmetic_string(char* src, char*** out, size_t* outlen) {
 	VEC(char*) o;
@@ -61,7 +76,7 @@ int parse_arithmetic_string(char* src, char*** out, size_t* outlen) {
 			case '8':
 			case '9':
 			case '.':
-				l = strspn(s, "0123456789.xbeE");
+				l = strspn(s, "0123456789.xXabcdefABCDEF");
 				VEC_PUSH(&o, strndup(s, l));
 				s += l;
 				break;
@@ -224,7 +239,7 @@ int64_t rpn_eval_int_str(char** rpn) {
 	
 	for(char** r = rpn; *r; r++) {
 		if(string_is_number(*r)) {
-			VEC_PUSH(&stack, strtol(*r, NULL, 10));
+			VEC_PUSH(&stack, strtol(*r, NULL, 0));
 			continue;
 		}
 		
@@ -239,6 +254,7 @@ int64_t rpn_eval_int_str(char** rpn) {
 			case '&': oper(c = a & b);
 			case '|': oper(c = a | b);
 			case '^': oper(c = a ^ b);
+			case '~': oper(c = ~a);
 			case '<': 
 				if((*r)[1] == '<') oper(c = a << b);
 				break;

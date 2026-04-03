@@ -139,7 +139,7 @@ void sha256_process(sha256_state* md, const void* src, u32 inlen) {
 	}
 }
 
-void sha256_done(sha256_state* md, void* out) {
+void sha256_done(sha256_state* md, uint8_t* out32) {
 	// Increase the length of the message
 	md->length += md->curlen * 8;
 
@@ -165,7 +165,7 @@ void sha256_done(sha256_state* md, void* out) {
 
 	// Copy output
 	for(int i = 0; i < 8; i++)
-		store32(md->state[i], (unsigned char*)(out)+(4*i));
+		store32(md->state[i], (unsigned char*)(out32)+(4*i));
 }
 
 
@@ -300,7 +300,7 @@ void sha512_process(sha512_state* md, const void* src, u32 inlen) {
 	}
 }
 
-void sha512_done(sha512_state* md, void *out) {
+void sha512_done(sha512_state* md, uint8_t* out64) {
 	// Increase the length of the message
 	md->length += md->curlen * 8ULL;
 
@@ -328,7 +328,7 @@ void sha512_done(sha512_state* md, void *out) {
 
 	// Copy output
 	for(int i = 0; i < 8; i++)
-		store64(md->state[i], (unsigned char*)(out)+(8*i));
+		store64(md->state[i], (unsigned char*)(out64)+(8*i));
 }
 
 
