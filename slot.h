@@ -238,7 +238,6 @@ do { \
 } while(0)
 
 
-// todo: update nextfree
 
 #define SLOT_rm(x, p) \
 do { \

@@ -120,6 +120,7 @@ static sexp* parse(char** s, long depth) {
 
 sexp* sexp_parse(char* source) {
 	char* s = strpbrk(source, "({[<") + 1;
+	if(!s) return NULL;
 	
 	return parse(&s, 0);
 }
@@ -127,7 +128,9 @@ sexp* sexp_parse(char* source) {
 sexp* sexp_parse_file(char* path) {
 	char* s;
 	
-	s = readWholeFile(path, NULL);
+	size_t len;
+	s = readWholeFileExtra(path, 1, &len);
+	s[len] = 0;
 	
 	return parse(&s, 0);
 }
@@ -174,6 +177,12 @@ char* sexp_str(sexp* x, size_t argn) {
 	if(x->type == 1) return x->str;
 	if(VEC_LEN(&x->args) < argn) return NULL;
 	return sexp_str(VEC_ITEM(&x->args, argn), 0);
+}
+
+// returns a new string
+char* sexp_strdup(sexp* x, size_t argn) {
+	char* s = sexp_str(VEC_ITEM(&x->args, argn), 0);
+	return s ? strdup(s) : NULL;
 }
 
 

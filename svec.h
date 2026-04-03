@@ -72,6 +72,7 @@ do { \
 
 #define SVEC_pointer_index(x, p) svec_pointer_index(&(x)->b, sizeof(**(x)->chunks), SVEC_CHUNK_SIZE(x), (p));
 
+#define SVEC_trunc(x) do { SVEC_len(x) = 0; } while(0)
 
 
 #define SVEC_free(x) svec_free(&(x)->b); 

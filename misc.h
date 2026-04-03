@@ -6,6 +6,24 @@
 #include <stdlib.h>
 #include <math.h> // fmin,fmax
 
+#include "macros.h"
+
+
+#define pmalloc(...) pmalloc__N(PP_NARG(__VA_ARGS__), __VA_ARGS__)
+#define pmalloc__N(n, ...) CAT(pmalloc__, n)(__VA_ARGS__)
+#define pmalloc__1(x) x = malloc(sizeof(*(x)))
+#define pmalloc__2(x, cnt) x = malloc((cnt) * sizeof(*(x)))
+#define pmalloc__3(x, xdim, ydim) x = malloc((xdim) * (ydim) * sizeof(*(x)))
+#define pmalloc__4(x, xdim, ydim, zdim) x = malloc((xdim) * (ydim) * (zdim) * sizeof(*(x)))
+
+#define pcalloc(...) pcalloc__N(PP_NARG(__VA_ARGS__), __VA_ARGS__)
+#define pcalloc__N(n, ...) CAT(pcalloc__, n)(__VA_ARGS__)
+#define pcalloc__1(x) x = calloc(1, sizeof(*(x)))
+#define pcalloc__2(x, cnt) x = calloc(1, (cnt) * sizeof(*(x)))
+#define pcalloc__3(x, xdim, ydim) x = calloc(1, (xdim) * (ydim) * sizeof(*(x)))
+#define pcalloc__4(x, xdim, ydim, zdim) x = calloc(1, (xdim) * (ydim) * (zdim) * sizeof(*(x)))
+
+
 
 // *performance* time counting functions
 

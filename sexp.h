@@ -43,7 +43,10 @@ double sexp_double(sexp* x, size_t argn);
 
 // returns internally managed string, user must dup
 char* sexp_str(sexp* x, size_t argn);
- 
+
+// returns a fresh copy
+char* sexp_strdup(sexp* x, size_t argn);
+
 
 
 

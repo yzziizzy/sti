@@ -253,6 +253,11 @@ int oaht_delete(struct HT_base_layout* ht, void* key);
 })
 
 
+void oaht_trunc(struct HT_base_layout* ht);
+#define HT_trunc(h) oaht_trunc(&(h)->base)
+
+
+
 // iteration. no order. results undefined if modified while iterating
 // returns 0 when there is none left
 // set iter to NULL to start
