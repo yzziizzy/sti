@@ -1,6 +1,7 @@
 
 // Public Domain
 
+#include <limits.h>
 #include "slot.h"
 
 // super nifty site:
