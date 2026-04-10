@@ -173,23 +173,45 @@ size_t strnrspn(const char* s, const char* accept, size_t n) {
 }
 
 // moves chars to left, returns s
+char* strltrim(char* s, const char* charset) {
+	uint8_t v, index;
+	uint64_t table[4] = {0};
+	size_t i = 0;
+	
+	for(size_t j = 0; charset[j]; j++) {
+		table[charset[j] >> 6] |= 1 << (charset[j] & 63);	
+	}
+	
+	for(i = 0; s[i]; i++) {
+		if(!(table[s[i] >> 6] & 1 << (s[i] & 63))) break;
+	}
+	
+	// move the rest down
+	char* w = s;
+	for(char* r = s + i; *r; r++, w++) *w = *r;
+	*w = '\0';
+	
+	return s;
+}
+
+// moves chars to left, returns s
 char* strnltrim(char* s, const char* charset, size_t n) {
-    uint8_t v, index;
-    uint64_t table[4] = {0};
-
-    for (size_t j = 0; charset[j] != '\0'; j++)
-        table[charset[j] >> 6] |= 1 << (charset[j] & 63);
-
-    size_t i = 0;
-
-    while (i < n) {
-        if (!(table[s[i] >> 6] & 1 << (s[i] & 63))) break;
-        i++;
-    }
-
-    memmove(s, s + i, n - i);
-
-    return s;
+	uint8_t v, index;
+	uint64_t table[4] = {0};
+	size_t i, w;
+	
+	for(size_t j = 0; charset[j] != '\0'; j++)
+		table[charset[j] >> 6] |= 1 << (charset[j] & 63);
+	
+	
+	for(i = 0; s[i] && i < n; i++) {
+		if(!(table[s[i] >> 6] & 1 << (s[i] & 63))) break;
+	}
+	
+	for(w = 0; s[i] && i < n; i++, w++) s[w] = s[i];
+	if(i < n) s[w] = '\0';
+	
+	return s;
 }
 
 // does not trim, returns s

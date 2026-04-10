@@ -83,6 +83,7 @@ size_t strnrcspn(const char* s, const char* reject, size_t n);
 size_t strnrspn(const char* s, const char* accept, size_t n);
 
 // moves chars to left, returns s
+char* strltrim(char* s, const char* charset);
 char* strnltrim(char* s, const char* charset, size_t n);
 
 // does not trim, returns s

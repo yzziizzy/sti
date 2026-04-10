@@ -4,7 +4,37 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+static inline void __attribute__((always_inline)) debug_break_() {
+//	__asm__ inline("int $0x03");
+	__builtin_trap();
+}
+//#define debug_break *((char*)0) = "debug break";
+#define debug_break debug_break_();
+
+
 //#define STI_DEBUG_PATH_PREFIX "src/" or whatever your prefix is
+
+
+#if DEBUG
+	#define STI_PANIC_ACTION debug_break_()
+#else
+	#define STI_PANIC_ACTION exit(1)
+#endif
+
+
+
+#ifdef STI_DEBUG_PATH_PREFIX
+	#define panic(fmt, ...) do { \
+		fprintf(stderr, "%s:%d " fmt "\n", strstr(__FILE__, STI_DEBUG_PATH_PREFIX) + strlen(STI_DEBUG_PATH_PREFIX), __LINE__ __VA_OPT__(,) __VA_ARGS__); \
+		STI_PANIC_ACTION; \
+	} while(0);
+	
+#else
+	#define panic(fmt, ...) do { \
+		fprintf(stderr, "%s:%d " fmt "\n", __FILE__, __LINE__ __VA_OPT__(,) __VA_ARGS__); \
+		STI_PANIC_ACTION; \
+	} while(0);
+#endif
 
 
 typedef int8_t*  int8p_t;
