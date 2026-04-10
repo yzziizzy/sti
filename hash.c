@@ -305,6 +305,22 @@ int oaht_resize(struct HT_base_layout* ht, size_t newSize) {
 }
 
 
+// clears all keys
+void oaht_trunc(struct HT_base_layout* ht) {
+
+	struct bucket {
+		uint64_t hash;
+		void* key;
+		char value[];
+	};
+	
+	for(long bi = 0; bi < ht->alloc_size; bi++) {
+		struct bucket* bucket = (struct bucket*)((char*)ht->buckets + (bi * ht->stride));
+		bucket->hash = 0;
+	}
+	
+	ht->fill = 0;
+}
 
 // zero for success
 int oaht_delete(struct HT_base_layout* ht, void* key) {

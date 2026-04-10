@@ -328,7 +328,7 @@ do { \
 
 #define VEC_UNIQ_R(x, fn) VEC_uniq_r(x, fn)
 #define VEC_uniq_r(x, fn) \
-	vec_uniq_r(VEC_data(x), &VEC_LEN(x), sizeof(*VEC_data(x)), (int(*)(const void*,const void*))fn);
+	vec_uniq_r(VEC_data(x), &VEC_LEN(x), sizeof(*VEC_data(x)), (int(*)(const void*,const void*,void*))fn);
 
 
 
