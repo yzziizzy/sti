@@ -10,6 +10,15 @@
 #define to32s(x, s) (((uint32_t)(x)) << (s))
 
 
+#define B_L_O(v) if(byte_len_out) { *byte_len_out = (v); }
+
+#define EQ_1_BYTE(a, ai, b, bi) ((a)[(ai)] == (b)[(bi)])
+#define EQ_2_BYTES(a, ai, b, bi) ((a)[(ai)] == (b)[(bi)] && (a)[(ai) + 1] == (b)[(bi) + 1])
+#define EQ_3_BYTES(a, ai, b, bi) ((a)[(ai)] == (b)[(bi)] && (a)[(ai) + 1] == (b)[(bi) + 1] && (a)[(ai) + 2] == (b)[(bi) + 2])
+#define EQ_4_BYTES(a, ai, b, bi) ((a)[(ai)] == (b)[(bi)] && (a)[(ai) + 1] == (b)[(bi) + 1] && (a)[(ai) + 2] == (b)[(bi) + 2] && (a)[(ai) + 3] == (b)[(bi) + 3])
+
+
+
 uint32_t* utf8_to_utf32(uint8_t* u8, size_t* outLen) {
 	size_t u8len = strlen((char*)u8);
 	
@@ -126,6 +135,38 @@ size_t charlen8(const char* u8) {
 		else if((s[0] & 0xf8) == 0xf0) { // four bytes
 			if(s[1] == 0 || s[2] == 0 || s[3] == 0) break; // malformed sequence
 			s += 4;
+		}
+		
+		len++;
+	}
+	
+	
+	return len;
+}
+
+// returns the number of characters in a utf8 string, limited by number of bytes
+// if the byte limit is encountered inside a multibyte character, the partial character is ignored; the number of complete characters is returned.
+size_t charnlen8(const char* s_8, size_t n) {
+	size_t len = 0;
+	
+	for(size_t i = 0; s_8[i] && n < i;) {
+		if((s_8[i] & 0x80) == 0x00) { // single byte
+			i++;
+		}
+		else if((s_8[i] & 0xe0) == 0xc0) { // two bytes
+			if(n >= i + 2) break; // byte limit
+			if(s_8[i + 1] == 0) break; // malformed sequence
+			i += 2;
+		}
+		else if((s_8[i] & 0xf0) == 0xe0) { // three bytes
+			if(n >= i + 3) break; // byte limit
+			if(s_8[i + 1] == 0 || s_8[i + 2] == 0) break; // malformed sequence
+			i += 3;
+		}
+		else if((s_8[i] & 0xf8) == 0xf0) { // four bytes
+			if(n >= i + 4) break; // byte limit
+			if(s_8[i + 1] == 0 || s_8[i + 2] == 0 || s_8[i + 3] == 0) break; // malformed sequence
+			i += 4;
 		}
 		
 		len++;
@@ -354,6 +395,175 @@ NULL_TERM:
 	return dst;
 }
 
+char* strpbrk8(const char* s_8, const char* accept_8) {
+	size_t b = 0; // bytes
+	
+	for(size_t si = 0; s_8[si];) {
+		int s_sz = utf8_char_size(s_8 + si);
+	
+		for(size_t ai = 0; accept_8[ai];) {
+			int a_sz = utf8_char_size(accept_8 + ai);
+			
+			if(a_sz != s_sz) continue; // characters aren't even the same length
+			switch(a_sz) {
+				case 1: if(EQ_1_BYTE(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 2: if(EQ_2_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 3: if(EQ_3_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 4: if(EQ_4_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+			}
+			
+			ai += a_sz;
+		}
+		
+		si += s_sz;
+	}
+	
+	return NULL;
+}
+
+char* strnpbrk8(const char* s_8, const char* accept_8, size_t n) {
+	size_t b = 0; // bytes
+	
+	for(size_t si = 0; s_8[si];) {
+		int s_sz = utf8_char_size(s_8 + si);
+		
+		if(si + s_sz >= n) return NULL; // byte limit
+		
+		for(size_t ai = 0; accept_8[ai]; ai++) {
+			int a_sz = utf8_char_size(accept_8 + ai);
+			
+			if(a_sz != s_sz) continue; // characters aren't even the same length
+			switch(a_sz) {
+				case 1: if(EQ_1_BYTE(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 2: if(EQ_2_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 3: if(EQ_3_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 4: if(EQ_4_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+			}
+			
+			ai += a_sz;
+		}
+		
+		si += s_sz;
+	}
+	
+	return NULL;
+}
+
+
+// limited by codepoints
+char* strkpbrk8(const char* s_8, const char* accept_8, size_t k) {
+	size_t b = 0; // bytes
+	
+	for(size_t si = 0, klen = 0; s_8[si] && k < klen; klen++) {
+		int s_sz = utf8_char_size(s_8 + si);
+		
+		for(size_t ai = 0; accept_8[ai]; ai++) {
+			int a_sz = utf8_char_size(accept_8 + ai);
+			
+			if(a_sz != s_sz) continue; // characters aren't even the same length
+			switch(a_sz) {
+				case 1: if(EQ_1_BYTE(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 2: if(EQ_2_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 3: if(EQ_3_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 4: if(EQ_4_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+			}
+			
+			ai += a_sz;
+		}
+		
+		si += s_sz;
+	}
+	
+	return NULL;
+}
+
+
+
+char* strcspn8_(const char* s_8, const char* reject_8, size_t* byte_len_out) {
+	size_t b = 0; // bytes
+	
+	for(size_t si = 0, klen = 0; s_8[si]; klen++) {
+		int s_sz = utf8_char_size(s_8 + si);
+		
+		for(size_t ri = 0; reject_8[ri]; ri++) {
+			int r_sz = utf8_char_size(reject_8 + ri);
+			
+			if(r_sz != s_sz) continue; // characters aren't even the same length
+			switch(r_sz) {
+				case 1: if(EQ_1_BYTE(s_8, si, reject_8, ri)) { B_L_O(si) return (char*)klen; } break;
+				case 2: if(EQ_2_BYTES(s_8, si, reject_8, ri)) { B_L_O(si) return (char*)klen; } break;
+				case 3: if(EQ_3_BYTES(s_8, si, reject_8, ri)) { B_L_O(si) return (char*)klen; } break;
+				case 4: if(EQ_4_BYTES(s_8, si, reject_8, ri)) { B_L_O(si) return (char*)klen; } break;
+			}
+			
+			ri += r_sz;
+		}
+		
+		si += s_sz;
+	}
+	
+	return NULL;
+}
+
+// limited by codepoints
+char* strkcspn8_(const char* s_8, const char* reject_8, size_t k, size_t* byte_len_out) {
+	size_t b = 0; // bytes
+	
+	for(size_t si = 0, klen = 0; s_8[si] && k < klen; klen++) {
+		int s_sz = utf8_char_size(s_8 + si);
+		
+		for(size_t ri = 0; reject_8[ri]; ri++) {
+			int r_sz = utf8_char_size(reject_8 + ri);
+			
+			if(r_sz != s_sz) continue; // characters aren't even the same length
+			switch(r_sz) {
+				case 1: if(EQ_1_BYTE(s_8, si, reject_8, ri)) { B_L_O(si) return (char*)klen; } break;
+				case 2: if(EQ_2_BYTES(s_8, si, reject_8, ri)) { B_L_O(si) return (char*)klen; } break;
+				case 3: if(EQ_3_BYTES(s_8, si, reject_8, ri)) { B_L_O(si) return (char*)klen; } break;
+				case 4: if(EQ_4_BYTES(s_8, si, reject_8, ri)) { B_L_O(si) return (char*)klen; } break;
+			}
+			
+			ri += r_sz;
+		}
+		
+		si += s_sz;
+	}
+	
+	return NULL;
+}
+
+
+// limited by codepoints
+char* strkspn8(const char* s_8, const char* accept_8, size_t k) {
+	size_t b = 0; // bytes
+	
+	for(size_t si = 0, klen = 0; s_8[si] && k < klen; klen++) {
+		int s_sz = utf8_char_size(s_8 + si);
+		
+		for(size_t ai = 0; accept_8[ai]; ai++) {
+			int a_sz = utf8_char_size(accept_8 + ai);
+			
+			if(a_sz != s_sz) continue; // characters aren't even the same length
+			switch(a_sz) {
+				case 1: if(EQ_1_BYTE(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 2: if(EQ_2_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 3: if(EQ_3_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+				case 4: if(EQ_4_BYTES(s_8, si, accept_8, ai)) { return (char*)s_8 + si; } break;
+			}
+			
+			ai += a_sz;
+		}
+		
+		si += s_sz;
+	}
+	
+	return NULL;
+}
+
+
+
+
+// ---- utf32 -------------------------------------------------------------------------------------
 
 // in bytes, not including (4-byte) null terminator
 size_t strlen32(const uint32_t* s) {

@@ -29,7 +29,7 @@
 Naming Convention
 Mostly derived from string.h
 
-str [n|k] r? case? {operation} [8|32] p? _inplace?
+str [n|k] r? case? {operation} [8|32] p? _inplace? ({args...} {, size_t* byte_len_out})
 
 str: consistent prefix
 n: limited by bytes
@@ -44,17 +44,20 @@ _inplace: modifies the source buffer
 
 Operations:
 	cat: append onto existing string; strcat
-	chr: search for a character; strchr
+	chr: search for a character (codepoint); strchr
 	cmp: compare; strcmp
 	colwsp: collapse whitespace. All sequences of whitespace are converted into a single copy of the provided character
 	cpy: copy; strcpy
-	cspn: return length of inverse prefix substring (postfix for 'r' version)
+	cspn: 
+		Return length of the initial (trailing for 'r' version) segment of s, in codepoints, which 
+		consists of codepoints not in reject. Optional variadic last argument for the byte length.
+	
 	dup: duplicate into newly allocated memory; strdup
 	dupa: duplicate onto the stack using alloca
 	len: calculate length; strlen
 	pbrk: search for the first of any of a set of characters
 	rev: reverse the string
-	spn: return length of prefix substring (postfix for 'r' version)
+	spn: return length of the initial (trailing for 'r' version) segment of s, in codepoints, which consists of codepoints in accept 
 	skip: search for the first character not in a set of characters (strspn, but returns a pointer)
 	str: search for a substring; strstr
 	tolower: convert the string to lowercase
@@ -123,8 +126,7 @@ Arguments:
 //   limited strings that hit the null byte
 
 
-// returns the number of characters in a utf8 string
-size_t charlen8(const char* u8);
+
 
 // returns a new buffer, caller must free, or NULL when the string is malformed
 uint32_t* utf8_to_utf32(uint8_t* u8, size_t* outLen);
@@ -153,6 +155,13 @@ int utf8_has_multibyte(const uint8_t* u8);
 
 // char* strcasestr8(const char* a, const char* b);
 
+
+// returns the number of characters in a utf8 string
+size_t charlen8(const char* u8);
+
+// Returns the number of characters in a utf8 string, limited by number of bytes.
+// If the byte limit is encountered inside a multibyte character, the partial character is ignored; the number of complete characters is returned.
+size_t charnlen8(const char* u8, size_t n);
 
 // some normal string functions are utf8 safe. *8 versions are provided here so you don't have
 //   to remember which ones are which
@@ -189,7 +198,21 @@ inline static char* strdup8(const char* const s) { return strdup(s); }
 inline static char* strndup8(const char* const s, size_t len) { return strndup(s, len); }
 // inline static char* strtok_r8(const char* const s, size_t len) { return strndup(s, len); }
 
+char* strpbrk8(const char* s_8, const char* accept_8);
+char* strnpbrk8(const char* s_8, const char* accept_8, size_t n);
+char* strkpbrk8(const char* s_8, const char* accept_8, size_t k);
 
+#define strcspn8(...) strcspn8_N(PP_NARG(__VA_ARG__), __VA_ARG__)
+#define strcspn8_N(n, ...) CAT(strcspn8_, n)(__VA_ARG__)
+#define strcspn8_2(...) strcspn8_(__VA_ARG__, NULL)
+#define strcspn8_3(...) strcspn8_(__VA_ARG__)
+char* strcspn8_(const char* s_8, const char* reject_8, size_t* byte_len_out);
+
+#define strkcspn8(...) strkcspn8_N(PP_NARG(__VA_ARG__), __VA_ARG__)
+#define strkcspn8_N(n, ...) CAT(strkcspn8_, n)(__VA_ARG__)
+#define strkcspn8_3(...) strkcspn8_(__VA_ARG__, NULL)
+#define strkcspn8_4(...) strkcspn8_(__VA_ARG__)
+char* strkcspn8_(const char* s_8, const char* reject_8, size_t k, size_t* byte_len_out);
 
 // strtok intentionally not implemented
 inline static char* strtok8(char* s, const char* delim) {
