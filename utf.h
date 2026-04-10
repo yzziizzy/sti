@@ -22,6 +22,7 @@
 
 
 #include <string.h>
+#include "macros.h"
 
 // utf8 functions
 
@@ -202,12 +203,16 @@ char* strpbrk8(const char* s_8, const char* accept_8);
 char* strnpbrk8(const char* s_8, const char* accept_8, size_t n);
 char* strkpbrk8(const char* s_8, const char* accept_8, size_t k);
 
+
+// optional last argument for the byte length
 #define strcspn8(...) strcspn8_N(PP_NARG(__VA_ARG__), __VA_ARG__)
 #define strcspn8_N(n, ...) CAT(strcspn8_, n)(__VA_ARG__)
 #define strcspn8_2(...) strcspn8_(__VA_ARG__, NULL)
 #define strcspn8_3(...) strcspn8_(__VA_ARG__)
 char* strcspn8_(const char* s_8, const char* reject_8, size_t* byte_len_out);
 
+
+// optional last argument for the byte length
 #define strkcspn8(...) strkcspn8_N(PP_NARG(__VA_ARG__), __VA_ARG__)
 #define strkcspn8_N(n, ...) CAT(strkcspn8_, n)(__VA_ARG__)
 #define strkcspn8_3(...) strkcspn8_(__VA_ARG__, NULL)
