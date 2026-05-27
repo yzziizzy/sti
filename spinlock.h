@@ -1,9 +1,10 @@
 #ifndef __sti__spinlock_h__
 #define __sti__spinlock_h__
 
+#include <stdint.h>
 #include <stdatomic.h>
 
-typedef _Atomic u32 spinlock_t;
+typedef _Atomic uint32_t spinlock_t;
 
 static inline void spin_lock(spinlock_t* sl) {
 	do {
