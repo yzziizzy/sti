@@ -48,6 +48,12 @@ char* path_ext(char* path);
 // also provides the length of the path without the period and extension
 char* path_ext2(char* path, int* end);
 
+// like dirname(3) but not retarded. returns a newly duped string and does not modify its argument
+char* path_dirname(const char* path);
+
+// like basename(3) but not retarded. returns a newly duped string and does not modify its argument
+char* path_basename(const char* path);
+
 
 // returns a null terminated string. srcLen does NOT include the null terminator
 // nulls inside the string are not escaped or removed; the first null is not

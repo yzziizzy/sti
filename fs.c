@@ -16,6 +16,7 @@
 #include <unistd.h> // pathconf
 #include <sys/stat.h>
 #include <wordexp.h>
+#include <libgen.h> // dirname, basename
 
 #include "fs.h"
 
@@ -284,6 +285,23 @@ char* path_ext2(char* path, int* end) {
 }
 
 
+// like dirname(3) but not retarded. returns a newly duped string and does not modify its argument
+char* path_dirname(const char* path) {
+	char* path2 = strdup(path); // because dirname can modify its argument
+	char* dir = dirname(path2);
+	char* out = strdup(dir); // because who knows where dir points to
+	free(path2);
+	return out;
+}
+
+// like basename(3) but not retarded. returns a newly duped string and does not modify its argument
+char* path_basename(const char* path) {
+	char* path2 = strdup(path); // because basename can modify its argument
+	char* base = basename(path2);
+	char* out = strdup(base); // because who knows where dir points to
+	free(path2);
+	return out;
+}
 
 
 
